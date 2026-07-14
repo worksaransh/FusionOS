@@ -35,7 +35,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build + push API image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: backend
           push: true
@@ -44,7 +44,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/fusionos-api:${{ github.sha }}
 
       - name: Build + push web image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: frontend
           push: true
