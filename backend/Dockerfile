@@ -3,7 +3,7 @@
 # each module is still internally partitioned so a future extraction into its own
 # image/service is a deployment change, not a rewrite.
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY . .
