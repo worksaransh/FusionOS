@@ -1,0 +1,12 @@
+# Scrapes FusionOS.Api.Host's Prometheus endpoint (Program.cs's
+# app.MapPrometheusScrapingEndpoint(), added alongside the OTLP exporter —
+# 09_CODING_STANDARDS.md §6 / audit Observability finding: request + .NET
+# runtime metrics existed nowhere to query before this).
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: fusionos-api
+    static_configs:
+      - targets: ["api:8080"]
+    metrics_path: /metrics

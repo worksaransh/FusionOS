@@ -1,0 +1,13 @@
+# Root-level ignores that apply across the whole repo — backend/.gitignore
+# and frontend/.gitignore already cover their own build output (bin/obj,
+# node_modules/dist). This covers everything else: local Postgres backups
+# (scripts/backup-postgres.sh output — data, not source), OS/editor cruft,
+# and local-only env overrides at the repo root.
+backups/
+.env
+.env.local
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

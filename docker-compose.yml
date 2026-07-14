@@ -1,0 +1,134 @@
+# FusionOS local development stack — 02_TECH_STACK.md §9.
+# Brings up the full dependency set the modular monolith needs: PostgreSQL
+# (all module schemas), Redis (caching), Kafka (cross-module integration
+# events per 03_SYSTEM_ARCHITECTURE.md §4.2), the API host, the frontend, and
+# the observability stack (OTLP collector + Prometheus + Loki + Grafana —
+# 09_CODING_STANDARDS.md §6).
+#
+# Usage:
+#   docker compose up -d postgres redis kafka          # infra only, run backend/frontend locally
+#   docker compose up --build                          # everything, containerized
+#   docker compose up -d otel-collector prometheus loki grafana  # observability only
+#     then open http://localhost:3000 (Grafana, admin/admin) — Loki and
+#     Prometheus datasources are already provisioned.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fusionos
+      POSTGRES_USER: fusionos
+      POSTGRES_PASSWORD: fusionos
+    ports:
+      - "5432:5432"
+    volumes:
+      - fusionos_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fusionos -d fusionos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    image: apache/kafka:3.7.0
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: "fusionos-dev-cluster-id-000001"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.102.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - fusionos_prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+
+  loki:
+    image: grafana/loki:2.9.8
+    ports:
+      - "3100:3100"
+    volumes:
+      - fusionos_loki_data:/loki
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - fusionos_grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=fusionos;Username=fusionos;Password=fusionos"
+      Kafka__BootstrapServers: "kafka:9092"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      Observability__OtlpEndpoint: "http://otel-collector:4317"
+      Observability__LokiUrl: "http://loki:3100"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+      loki:
+        condition: service_started
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  fusionos_postgres_data:
+  fusionos_prometheus_data:
+  fusionos_loki_data:
+  fusionos_grafana_data:

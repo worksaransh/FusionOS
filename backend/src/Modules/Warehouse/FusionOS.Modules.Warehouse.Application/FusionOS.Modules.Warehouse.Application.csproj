@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../FusionOS.Modules.Warehouse.Domain/FusionOS.Modules.Warehouse.Domain.csproj" />
+    <ProjectReference Include="../../../Shared/FusionOS.BuildingBlocks.Application/FusionOS.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FusionOS.SharedKernel/FusionOS.SharedKernel.csproj" />
+    <ProjectReference Include="../FusionOS.BuildingBlocks.Infrastructure/FusionOS.BuildingBlocks.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

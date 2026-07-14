@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../../../Shared/FusionOS.SharedKernel/FusionOS.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,53 @@
+# FusionOS CD — audit DevOps finding: CI built Docker images but never
+# published them anywhere, so "deploy" meant manually building on whatever
+# machine was doing the deploying. Pushes both images to GitHub Container
+# Registry on every merge to main, tagged with the commit SHA (for a
+# reproducible rollback target) and `latest`. Uses GITHUB_TOKEN — no extra
+# secrets to provision. Actually deploying these images to a real environment
+# (Kubernetes, ECS, etc.) is a distinct follow-up: there is no live FusionOS
+# environment for this workflow to target yet, so it stops at "the images are
+# built, signed by GHCR, and ready to pull."
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish:
+    name: Build + push images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build + push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fusionos-api:latest
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fusionos-api:${{ github.sha }}
+
+      - name: Build + push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fusionos-web:latest
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fusionos-web:${{ github.sha }}

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FusionOS.Modules.Sales.Infrastructure/FusionOS.Modules.Sales.Infrastructure.csproj" />
+    <ProjectReference Include="../../../Shared/FusionOS.BuildingBlocks.EventBus/FusionOS.BuildingBlocks.EventBus.csproj" />
+  </ItemGroup>
+
+</Project>

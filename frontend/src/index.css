@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — 06_UI_UX_DESIGN_SYSTEM.md §2. Every module composes these
+ * CSS variables via Tailwind's @theme, rather than hardcoding hex values.
+ * Light/dark pairs are defined together so no component has to special-case
+ * dark mode itself (06_UI_UX_DESIGN_SYSTEM.md §3).
+ */
+@theme {
+  --color-surface: #ffffff;
+  --color-surface-muted: #f4f5f7;
+  --color-border: #e2e4e9;
+  --color-text: #10151b;
+  --color-text-muted: #5b6472;
+  --color-primary: #2454ff;
+  --color-primary-foreground: #ffffff;
+  --color-danger: #d92d20;
+  --color-success: #12805c;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --color-surface: #12151a;
+  --color-surface-muted: #1b1f26;
+  --color-border: #2a2f3a;
+  --color-text: #f2f4f7;
+  --color-text-muted: #9aa2b1;
+  --color-primary: #5b82ff;
+  --color-primary-foreground: #0b1020;
+  --color-danger: #f97066;
+  --color-success: #32d296;
+}
+
+body {
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}

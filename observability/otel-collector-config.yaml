@@ -1,0 +1,31 @@
+# Receives OTLP traces + metrics from FusionOS.Api.Host (Observability:OtlpEndpoint
+# in docker-compose.yml points here) and re-exports them. Traces/metrics are
+# logged via the debug exporter for now — piping them into a dedicated
+# trace/metrics backend (Tempo/Prometheus remote-write, etc.) is a follow-up;
+# what this closes is the audit's actual finding, which was that the app
+# computed telemetry and then had nowhere at all to send it.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+
+exporters:
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]

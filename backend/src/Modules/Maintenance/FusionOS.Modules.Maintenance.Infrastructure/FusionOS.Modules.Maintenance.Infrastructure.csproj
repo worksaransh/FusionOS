@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FusionOS.Modules.Maintenance.Application/FusionOS.Modules.Maintenance.Application.csproj" />
+    <ProjectReference Include="../../../Shared/FusionOS.BuildingBlocks.Infrastructure/FusionOS.BuildingBlocks.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
+    <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.8.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.8.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.8.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.8.1" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.8.1" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.8.1" />
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.8.0-rc.1" />
+    <PackageReference Include="Serilog.Sinks.Grafana.Loki" Version="8.3.0" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />
+    <PackageReference Include="Hangfire.PostgreSql" Version="1.20.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Modules/Core/FusionOS.Modules.Core.Api/FusionOS.Modules.Core.Api.csproj" />
+    <ProjectReference Include="../../Modules/Inventory/FusionOS.Modules.Inventory.Api/FusionOS.Modules.Inventory.Api.csproj" />
+    <ProjectReference Include="../../Modules/Warehouse/FusionOS.Modules.Warehouse.Api/FusionOS.Modules.Warehouse.Api.csproj" />
+    <ProjectReference Include="../../Modules/Procurement/FusionOS.Modules.Procurement.Api/FusionOS.Modules.Procurement.Api.csproj" />
+    <ProjectReference Include="../../Modules/Sales/FusionOS.Modules.Sales.Api/FusionOS.Modules.Sales.Api.csproj" />
+    <ProjectReference Include="../../Modules/Finance/FusionOS.Modules.Finance.Api/FusionOS.Modules.Finance.Api.csproj" />
+    <ProjectReference Include="../../Modules/Manufacturing/FusionOS.Modules.Manufacturing.Api/FusionOS.Modules.Manufacturing.Api.csproj" />
+    <ProjectReference Include="../../Modules/Crm/FusionOS.Modules.Crm.Api/FusionOS.Modules.Crm.Api.csproj" />
+    <ProjectReference Include="../../Modules/Hrms/FusionOS.Modules.Hrms.Api/FusionOS.Modules.Hrms.Api.csproj" />
+    <ProjectReference Include="../../Modules/Quality/FusionOS.Modules.Quality.Api/FusionOS.Modules.Quality.Api.csproj" />
+    <ProjectReference Include="../../Modules/Maintenance/FusionOS.Modules.Maintenance.Api/FusionOS.Modules.Maintenance.Api.csproj" />
+    <ProjectReference Include="../../Modules/BusinessIntelligence/FusionOS.Modules.BusinessIntelligence.Api/FusionOS.Modules.BusinessIntelligence.Api.csproj" />
+    <ProjectReference Include="../../Modules/Ai/FusionOS.Modules.Ai.Api/FusionOS.Modules.Ai.Api.csproj" />
+    <ProjectReference Include="../../Modules/Marketplace/FusionOS.Modules.Marketplace.Api/FusionOS.Modules.Marketplace.Api.csproj" />
+    <ProjectReference Include="../../Modules/IntegrationHub/FusionOS.Modules.IntegrationHub.Api/FusionOS.Modules.IntegrationHub.Api.csproj" />
+    <ProjectReference Include="../../Shared/FusionOS.BuildingBlocks.EventBus/FusionOS.BuildingBlocks.EventBus.csproj" />
+  </ItemGroup>
+
+</Project>
