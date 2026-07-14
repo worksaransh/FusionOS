@@ -1,6 +1,6 @@
 # Multi-stage build for the FusionOS frontend — 02_TECH_STACK.md §5.
 
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
