@@ -1,10 +1,28 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Menu, Moon, Sun, Search, LogOut, X } from 'lucide-react';
+import { Menu, Moon, Sun, Search, LogOut, X, Bell, CheckSquare } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '../../shared/theme/ThemeProvider';
 import { useActiveCompany } from '../../shared/company/useActiveCompany';
 import { useAuthStore } from '../../shared/auth/authStore';
+import { apiClient } from '../../shared/api/client';
+import type { PagedResult } from '../../shared/api/types';
 import { MODULES } from '../modules';
+
+/**
+ * Unread-notification count for the sidebar badge (Phase M7, 2026-07-15) —
+ * a cheap page=1/pageSize=1 fetch just to read totalCount off the paged
+ * envelope, same trick DashboardPage uses for "Open Sales Orders."
+ */
+function useUnreadNotificationCount(companyId: string) {
+  const query = useQuery({
+    queryKey: ['unread-notification-count', companyId],
+    queryFn: () => apiClient.get<PagedResult<unknown>>(`/core/notifications?companyId=${companyId}&unreadOnly=true&page=1&pageSize=1`),
+    enabled: Boolean(companyId),
+    refetchInterval: 60_000,
+  });
+  return query.data?.totalCount ?? 0;
+}
 
 /**
  * Enterprise shell: persistent sidebar nav across every module, a global
@@ -30,6 +48,7 @@ export function AppShell() {
   const clearSession = useAuthStore((s) => s.clearSession);
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const unreadCount = useUnreadNotificationCount(companyId);
 
   const handleLogout = () => {
     clearSession();
@@ -69,6 +88,42 @@ export function AppShell() {
           </button>
         </div>
         <nav className="flex flex-col gap-1">
+          <NavLink
+            to="/dashboard"
+            onClick={() => setIsSidebarOpen(false)}
+            className={({ isActive }) =>
+              `rounded-md px-2 py-1.5 text-sm ${
+                isActive ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-surface-muted'
+              }`
+            }
+          >
+            Dashboard
+          </NavLink>
+          <NavLink
+            to="/core/approvals"
+            onClick={() => setIsSidebarOpen(false)}
+            className={({ isActive }) =>
+              `flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+                isActive ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-surface-muted'
+              }`
+            }
+          >
+            <CheckSquare size={14} /> Approvals
+          </NavLink>
+          <NavLink
+            to="/core/notifications"
+            onClick={() => setIsSidebarOpen(false)}
+            className={({ isActive }) =>
+              `flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+                isActive ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-surface-muted'
+              }`
+            }
+          >
+            <Bell size={14} /> Notifications
+            {unreadCount > 0 && (
+              <span className="ml-auto rounded-full bg-danger px-1.5 py-0.5 text-xs text-white">{unreadCount}</span>
+            )}
+          </NavLink>
           {MODULES.map((module) => (
             <NavLink
               key={module.name}

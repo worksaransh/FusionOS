@@ -19,6 +19,8 @@ const schema = z.object({
     .string()
     .refine((v) => !Number.isNaN(Number(v)) && Number(v) !== 0, 'Quantity delta must be a non-zero number'),
   reason: z.string().min(1, 'Reason is required').max(500),
+  batchNumber: z.string().max(100, 'Batch number cannot exceed 100 characters'),
+  serialNumber: z.string().max(100, 'Serial number cannot exceed 100 characters'),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -28,6 +30,8 @@ interface LedgerEntryDto {
   warehouseId: string;
   quantityDelta: number;
   unitCost: number | null;
+  batchNumber: string | null;
+  serialNumber: string | null;
   reason: string;
   transactionDate: string;
 }
@@ -47,7 +51,7 @@ export function StockLedgerPanel() {
 
   const { control, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { productId: '', warehouseId: '', quantityDelta: '', reason: '' },
+    defaultValues: { productId: '', warehouseId: '', quantityDelta: '', reason: '', batchNumber: '', serialNumber: '' },
   });
 
   const adjustStock = useMutation({
@@ -59,9 +63,11 @@ export function StockLedgerPanel() {
         quantityDelta: Number(values.quantityDelta),
         reason: values.reason,
         unitCost: null,
+        batchNumber: values.batchNumber === '' ? null : values.batchNumber,
+        serialNumber: values.serialNumber === '' ? null : values.serialNumber,
       }),
     onSuccess: (_data, variables) => {
-      reset({ productId: '', warehouseId: '', quantityDelta: '', reason: '' });
+      reset({ productId: '', warehouseId: '', quantityDelta: '', reason: '', batchNumber: '', serialNumber: '' });
       setLookupProductId(variables.productId);
       queryClient.invalidateQueries({ queryKey: ['stock-on-hand', companyId, variables.productId] });
       queryClient.invalidateQueries({ queryKey: ['ledger', companyId, variables.productId] });
@@ -153,6 +159,28 @@ export function StockLedgerPanel() {
             />
             {errors.reason && <span className="text-xs text-danger">{errors.reason.message}</span>}
           </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Batch/lot no. (optional)
+            <Controller
+              control={control}
+              name="batchNumber"
+              render={({ field }) => (
+                <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...field} />
+              )}
+            />
+            {errors.batchNumber && <span className="text-xs text-danger">{errors.batchNumber.message}</span>}
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Serial no. (optional)
+            <Controller
+              control={control}
+              name="serialNumber"
+              render={({ field }) => (
+                <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...field} />
+              )}
+            />
+            {errors.serialNumber && <span className="text-xs text-danger">{errors.serialNumber.message}</span>}
+          </label>
           <div className="col-span-2">
             <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Recording…' : 'Record adjustment'}</Button>
           </div>
@@ -185,6 +213,8 @@ export function StockLedgerPanel() {
               { header: 'Date', render: (entry: LedgerEntryDto) => new Date(entry.transactionDate).toLocaleString() },
               { header: 'Warehouse', render: (entry: LedgerEntryDto) => warehouseOptions.options.find((w) => w.id === entry.warehouseId)?.label ?? entry.warehouseId },
               { header: 'Qty delta', render: (entry: LedgerEntryDto) => entry.quantityDelta },
+              { header: 'Batch/lot', render: (entry: LedgerEntryDto) => entry.batchNumber ?? '—' },
+              { header: 'Serial', render: (entry: LedgerEntryDto) => entry.serialNumber ?? '—' },
               { header: 'Reason', render: (entry: LedgerEntryDto) => entry.reason },
             ]}
             rows={ledgerQuery.data.data}

@@ -19,7 +19,9 @@ public sealed record GoodsReceiptLineReceived(
     Guid ZoneId,
     decimal QuantityReceived,
     decimal? UnitCost,
-    Guid PurchaseOrderId) : IDomainEvent
+    Guid PurchaseOrderId,
+    string? BatchNumber = null,
+    string? SerialNumber = null) : IDomainEvent
 {
     public DateTimeOffset OccurredOn { get; } = DateTimeOffset.UtcNow;
 }

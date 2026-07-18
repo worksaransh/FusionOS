@@ -22,9 +22,20 @@ public sealed class Invoice : TenantAggregateRoot
     public IReadOnlyList<InvoiceLine> Lines => _lines.AsReadOnly();
     public decimal TotalAmount => _lines.Sum(l => l.LineTotal);
 
+    /// <summary>
+    /// Optional cross-module reference to Core's User (opaque, never
+    /// existence-validated — same convention as ProductId on the lines, since
+    /// validating it would require a Sales→Core project reference this module
+    /// doesn't otherwise take). Set at creation, feeding the sales-commission
+    /// summary report (docs/IMPLEMENTATION_PLAN.md Phase 10 item 11) — commission
+    /// is computed on invoiced, not just ordered, revenue, which is why this
+    /// lives on Invoice rather than SalesOrder.
+    /// </summary>
+    public Guid? SalesPersonId { get; private set; }
+
     private Invoice() { }
 
-    public static Invoice Create(Guid companyId, Guid salesOrderId, Guid customerId, IReadOnlyCollection<InvoiceLineInput> lines)
+    public static Invoice Create(Guid companyId, Guid salesOrderId, Guid customerId, IReadOnlyCollection<InvoiceLineInput> lines, Guid? salesPersonId = null)
     {
         if (salesOrderId == Guid.Empty)
             throw new ArgumentException("Sales order id is required.", nameof(salesOrderId));
@@ -40,10 +51,11 @@ public sealed class Invoice : TenantAggregateRoot
             CustomerId = customerId,
             Status = InvoiceStatus.Draft,
             InvoiceDate = DateTimeOffset.UtcNow,
+            SalesPersonId = salesPersonId,
         };
 
         foreach (var line in lines)
-            invoice._lines.Add(InvoiceLine.Create(line.ProductId, line.Quantity, line.UnitPrice));
+            invoice._lines.Add(InvoiceLine.Create(line.ProductId, line.Quantity, line.UnitPrice, line.TaxRateId, line.TaxAmount));
 
         invoice.Raise(new InvoiceCreated(invoice.Id, companyId, salesOrderId, customerId, invoice.TotalAmount));
         return invoice;

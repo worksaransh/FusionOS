@@ -36,9 +36,19 @@ modules that are scaffolded (domain shell only, no business logic yet). See
 
 Every request passes through JWT validation, then a MediatR pipeline (logging → validation →
 authorization → tenant isolation → audit) before it ever reaches a database query — this is what
-closes the cross-tenant data leak described in Phase A below. The one known gap in this flow is
-also called out on the diagram: bootstrapping the very first company currently requires an
-already-authenticated user, which is a chicken-and-egg problem for a brand-new deployment.
+closes the cross-tenant data leak described in Phase A below.
+
+**Update (2026-07-14 sprint audit):** the bootstrap deadlock previously called out here — a
+brand-new deployment couldn't create its first company because `CompaniesController` required an
+already-authenticated caller — is fixed. `POST /api/v1/core/companies` is now `[AllowAnonymous]`,
+matching the fact `CreateCompanyCommand`'s handler was always permission-free by design ("the
+bootstrap action of a fresh tenant"). The flow is now: create a company anonymously → register its
+first (Owner) user anonymously (already worked) → log in → use the JWT for everything else.
+`List`/`GetById` intentionally remain behind the default auth requirement. A related bug found in
+the same audit — `GET /companies` had no tenant filter or permission gate, so any authenticated
+user from any company could enumerate every company on the platform — is also fixed: it now
+returns only the caller's own company. See `FusionOS_Sprint_Audit.docx` for the full audit this
+came out of, including everything *not* yet fixed.
 
 ## What's actually implemented vs. scaffolded
 
@@ -54,8 +64,8 @@ migration) is explicitly out of scope for this remediation pass — see
 - Real user registration + BCrypt password hashing, JWT login (`AuthController`), and refresh-token
   issuance with rotation (opaque, SHA-256-hashed tokens, one-time use) — `Core` module.
 - **Every endpoint requires an authenticated caller by default** (`AddAuthorization` with a global
-  `FallbackPolicy`), with `[AllowAnonymous]` only on login/refresh/register. Previously no
-  controller had `[Authorize]` at all.
+  `FallbackPolicy`), with `[AllowAnonymous]` only on login/refresh/register (and now company
+  creation — see the "Update" note above). Previously no controller had `[Authorize]` at all.
 - `TenantIsolationBehavior` — a MediatR pipeline behavior that reflectively checks any request's
   `CompanyId` against the signed-in caller's own `CompanyId` claim, closing a cross-tenant data
   leak that existed as long as callers could pass any company id in a request body.
@@ -160,6 +170,30 @@ migration) is explicitly out of scope for this remediation pass — see
   each has its own DbContext/schema and a `/api/v1/{module}/health` endpoint, but no business logic.
   This is Phase F territory and was explicitly excluded from this remediation pass.
 
+## Sprint audit (2026-07-14)
+
+A brutal, adversarial code-level audit was run against every module in this repo, benchmarked
+against SAP/Oracle/Dynamics 365/Odoo/ERPNext/NetSuite/Infor. Full results — a module-by-module
+scorecard, PRD comparison, enterprise feature gap list, security/performance scoring, production
+readiness percentages, and a prioritized remaining-work backlog — are in `FusionOS_Sprint_Audit.docx`
+at the repo root. Headline findings:
+
+- Overall completion against the full 26-module/capability scope: **~15%**. Production readiness:
+  **~8%**. Six modules (Core, Inventory, Warehouse, Procurement, Sales, Finance) have real business
+  logic; the other 20 are scaffold-only or entirely missing.
+- **Two launch-blocking defects were found and one class of them fixed in this pass**: (1) zero EF
+  Core migrations exist anywhere in the repo — a fresh deployment cannot create its database schema
+  at all, still unresolved, needs a machine with the .NET SDK; (2) the auth bootstrap deadlock —
+  **fixed**, see the "Update" note under Architecture above.
+- A confirmed cross-tenant data leak (`GET /companies` had no tenant scoping) was also **fixed**
+  in this pass.
+- Everything else the audit found — RBAC gating writes only, no role administration UI, dead
+  `GetById` stubs across six controllers, zero costing methods in Inventory, no real WMS in
+  Warehouse, AR being charge-only in Finance, and the full enterprise-feature gap list (batch/serial
+  tracking, MRP/BOM, approval matrix, GST, bank reconciliation, financial statements, and more) —
+  is documented with file-path evidence and a prioritized backlog in `FusionOS_Sprint_Audit.docx`,
+  not yet fixed.
+
 ## Running it
 
 ### Prerequisites (install once)
@@ -193,7 +227,9 @@ service via `docker compose up`; set them yourself if running the API with `dotn
 
 Run `./scripts/generate-migrations.sh` (see the script header — generates `InitialCreate` for
 every module with real EF configurations), then `./scripts/generate-migrations.sh --apply` or the
-`dotnet ef database update` commands it prints, per module.
+`dotnet ef database update` commands it prints, per module. **This step has never actually been
+run against a real Postgres instance — see the Sprint Audit note above; treat it as the single
+highest-priority thing to verify before relying on anything else in this README.**
 
 ### 3. Run the API (from `backend/`)
 
@@ -269,7 +305,9 @@ implemented in an earlier round but never registered as hosted services (so neit
 actually run), and every module's `*.Api.csproj` was missing a project reference to
 `FusionOS.BuildingBlocks.EventBus` despite using its types. Both are fixed. This is a concrete
 reminder that `dotnet build` locally is the only real backend verification — brace-balance
-checking cannot catch either of those classes of bug.
+checking cannot catch either of those classes of bug. The same discipline caught two more bugs
+in the 2026-07-14 sprint audit (the auth bootstrap deadlock and the `GET /companies` cross-tenant
+leak, both fixed) — see `FusionOS_Sprint_Audit.docx` for everything it found that isn't fixed yet.
 
 ## Next steps
 
@@ -278,15 +316,20 @@ checking cannot catch either of those classes of bug.
 2. Run `npm run build`, `npm test`, and `npm run test:e2e` on a real machine to confirm the frontend
    bundles and the new test suites actually pass (see "Verification" above for why this sandbox
    couldn't run them despite `tsc` passing clean).
-3. Run an actual restore drill against `scripts/backup-postgres.sh`/`restore-postgres.sh` and record
+3. Generate and apply real EF Core migrations (`scripts/generate-migrations.sh`) — nothing in this
+   repo has ever been run against a real schema; this is the single highest-priority gap per the
+   2026-07-14 sprint audit.
+4. Run an actual restore drill against `scripts/backup-postgres.sh`/`restore-postgres.sh` and record
    real RPO/RTO numbers in `docs/DISASTER_RECOVERY.md` — nobody has run one yet.
-4. Point `otel-collector`'s trace/metric pipelines at a real backend (Tempo, a hosted OTLP vendor,
+5. Point `otel-collector`'s trace/metric pipelines at a real backend (Tempo, a hosted OTLP vendor,
    etc.) instead of the `debug` exporter it uses today — see `observability/otel-collector-config.yaml`.
-5. Ship the Payments/Credits half of Finance's Accounts Receivable ledger (Phase C added
+6. Ship the Payments/Credits half of Finance's Accounts Receivable ledger (Phase C added
    charge-only entries); add Accounts Payable, GST/Taxes, cost centers, bank reconciliation, and
    trial-balance reporting.
-6. Add server-side search for the three remaining EntityCombobox pickers (Zone, Sales Order,
+7. Add server-side search for the three remaining EntityCombobox pickers (Zone, Sales Order,
    Purchase Order) if their list sizes ever outgrow single-company/single-warehouse scope.
-7. Continue Phase 1 depth per module (Inventory variants/batch tracking, Warehouse put-away/picking/
+8. Continue Phase 1 depth per module (Inventory variants/batch tracking, Warehouse put-away/picking/
    packing, Procurement RFQ/vendor returns, Sales Quotations/Returns/Credit Notes/price lists), then
    Phase F (Manufacturing, AI platform, SAP migration) once ready.
+9. Build RBAC role/permission administration (currently every user is an all-permissions "Owner")
+   and gate read/query endpoints on permissions, not just writes — see `FusionOS_Sprint_Audit.docx`.

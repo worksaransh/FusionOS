@@ -12,6 +12,7 @@ public sealed class SalesOrderLineConfiguration : IEntityTypeConfiguration<Sales
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Quantity).HasColumnType("numeric(19,4)").IsRequired();
         builder.Property(x => x.UnitPrice).HasColumnType("numeric(19,4)").IsRequired();
+        builder.Property(x => x.DiscountPercentage).HasColumnType("numeric(5,2)").IsRequired();
         builder.Property(x => x.LineTotal).HasColumnType("numeric(19,4)").IsRequired();
     }
 }

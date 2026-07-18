@@ -10,8 +10,8 @@ public sealed class CustomerRepository : ICustomerRepository
 
     public CustomerRepository(SalesDbContext context) => _context = context;
 
-    public Task<Domain.Customers.Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _context.Customers.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    public Task<Domain.Customers.Customer?> GetByIdAsync(Guid companyId, Guid id, CancellationToken cancellationToken = default) =>
+        _context.Customers.FirstOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
 
     public Task<bool> ExistsAsync(Guid companyId, Guid customerId, CancellationToken cancellationToken = default) =>
         _context.Customers.AnyAsync(x => x.CompanyId == companyId && x.Id == customerId, cancellationToken);

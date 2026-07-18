@@ -42,5 +42,5 @@ public sealed class CreatePurchaseOrderCommandHandler : IRequestHandler<CreatePu
         order.Status.ToString(),
         order.OrderDate,
         order.TotalAmount,
-        order.Lines.Select(l => new PurchaseOrderLineDto(l.Id, l.ProductId, l.Quantity, l.UnitPrice, l.LineTotal, l.ReceivedQuantity)).ToList());
+        order.Lines.Select(l => new PurchaseOrderLineDto(l.Id, l.ProductId, l.Quantity, l.UnitPrice, l.LineTotal, l.ReceivedQuantity, l.TaxRateId, l.TaxAmount)).ToList());
 }

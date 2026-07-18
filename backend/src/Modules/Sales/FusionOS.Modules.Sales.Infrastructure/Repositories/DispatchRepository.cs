@@ -25,4 +25,21 @@ public sealed class DispatchRepository : IDispatchRepository
 
     public Task<int> CountAsync(Guid companyId, CancellationToken cancellationToken = default) =>
         _context.Dispatches.CountAsync(d => d.CompanyId == companyId, cancellationToken);
+
+    // Loads matching dispatches with their lines and sums in memory rather than
+    // relying on EF translating a SelectMany over DispatchLine (a private-field-backed
+    // owned collection) directly into SQL - safer to verify by reading given no
+    // compiler is available in this environment (2026-07-14 coverage-audit follow-up).
+    public async Task<decimal> GetDispatchedQuantityAsync(Guid companyId, Guid salesOrderId, Guid productId, CancellationToken cancellationToken = default)
+    {
+        var dispatches = await _context.Dispatches
+            .Include(d => d.Lines)
+            .Where(d => d.CompanyId == companyId && d.SalesOrderId == salesOrderId)
+            .ToListAsync(cancellationToken);
+
+        return dispatches
+            .SelectMany(d => d.Lines)
+            .Where(l => l.ProductId == productId)
+            .Sum(l => l.QuantityDispatched);
+    }
 }

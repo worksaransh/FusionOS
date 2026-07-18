@@ -4,7 +4,7 @@ using FusionOS.Modules.Inventory.Application.Ledger.Contracts;
 namespace FusionOS.Modules.Inventory.Application.Ledger.Commands.AdjustStock;
 
 /// <summary>Covers the PRD's "Stock Adjustment" capability — the first ledger-writing operation. Receipts/issues driven by Procurement/Sales/Manufacturing events are a later slice.</summary>
-public sealed record AdjustStockCommand(Guid CompanyId, Guid ProductId, Guid WarehouseId, decimal QuantityDelta, string Reason, decimal? UnitCost)
+public sealed record AdjustStockCommand(Guid CompanyId, Guid ProductId, Guid WarehouseId, decimal QuantityDelta, string Reason, decimal? UnitCost, string? BatchNumber = null, string? SerialNumber = null)
     : ICommand<InventoryLedgerEntryDto>, IRequirePermission, IAuditableCommand
 {
     public string[] RequiredPermissions => new[] { "inventory.stock.adjust" };

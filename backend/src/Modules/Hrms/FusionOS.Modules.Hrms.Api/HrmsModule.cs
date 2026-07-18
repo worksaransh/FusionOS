@@ -1,5 +1,11 @@
+using FusionOS.BuildingBlocks.Application;
 using FusionOS.BuildingBlocks.Application.Modularity;
+using FusionOS.BuildingBlocks.EventBus;
+using FusionOS.Modules.Hrms.Application.Employees.Commands.CreateEmployee;
+using FusionOS.Modules.Hrms.Application.Employees.Contracts;
+using FusionOS.Modules.Hrms.Application.LeaveRequests.Contracts;
 using FusionOS.Modules.Hrms.Infrastructure.Persistence;
+using FusionOS.Modules.Hrms.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -8,10 +14,11 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FusionOS.Modules.Hrms.Api;
 
 /// <summary>
-/// Structural registration only — reserved for Phase 4 — CRM & HRMS. Wires the module's (empty)
-/// DbContext and health endpoint into the Host so the modular-monolith shape
-/// (03_SYSTEM_ARCHITECTURE.md) is provable end-to-end today, before any business
-/// logic exists.
+/// Phase 4 — HRMS, first slice (2026-07-18). Registers the module's DbContext,
+/// Employees + LeaveRequests CQRS, repositories, and the outbox dispatcher that
+/// relays EmployeeCreated/LeaveRequestCreated/LeaveRequestApproved to Kafka
+/// (03_SYSTEM_ARCHITECTURE.md §4.2). HRMS publishes events but consumes none,
+/// so no IIntegrationEventConsumer is registered here.
 /// </summary>
 public sealed class HrmsModule : IModule
 {
@@ -24,7 +31,15 @@ public sealed class HrmsModule : IModule
             options.UseNpgsql(configuration.GetConnectionString("Postgres"),
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "hrms")));
 
+        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddModuleApplication(typeof(CreateEmployeeCommand).Assembly);
+
         services.AddControllers().AddApplicationPart(typeof(HrmsModule).Assembly);
+
+        services.AddHostedService<OutboxDispatcher<HrmsDbContext>>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

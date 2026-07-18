@@ -41,4 +41,19 @@ public sealed class Zone : TenantAggregateRoot
     }
 
     public void Deactivate() => IsActive = false;
+
+    /// <summary>
+    /// Covers Name only — WarehouseId is the zone's parent FK (moving a zone
+    /// between warehouses is a distinct business operation, not a field edit)
+    /// and Code is the business key (uniqueness-checked at creation, scoped to
+    /// company+warehouse), so both stay immutable here, matching
+    /// Product.Sku/Warehouse.Code.
+    /// </summary>
+    public void UpdateDetails(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Zone name is required.", nameof(name));
+
+        Name = name.Trim();
+    }
 }

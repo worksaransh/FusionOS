@@ -5,15 +5,17 @@ using Microsoft.EntityFrameworkCore;
 namespace FusionOS.Modules.Crm.Infrastructure.Persistence;
 
 /// <summary>
-/// Owns the "crm" schema. No entities are mapped yet — this module has not
-/// been implemented (reserved for Phase 4 — CRM & HRMS). Adding the first entity here also
-/// means adding its IEntityTypeConfiguration and an EF Core migration, per
-/// docs/blueprint/04_DATABASE_GUIDELINES.md §9.
+/// Owns the "crm" schema. Phase 4 — CRM first slice: Leads and Opportunities. Adding an
+/// entity here also means adding its IEntityTypeConfiguration and an EF Core migration,
+/// per docs/blueprint/04_DATABASE_GUIDELINES.md §9.
 /// </summary>
 public sealed class CrmDbContext : BaseDbContext
 {
     public CrmDbContext(DbContextOptions<CrmDbContext> options, ICurrentUserContext currentUser)
         : base(options, currentUser) { }
+
+    public DbSet<FusionOS.Modules.Crm.Domain.Leads.Lead> Leads => Set<FusionOS.Modules.Crm.Domain.Leads.Lead>();
+    public DbSet<FusionOS.Modules.Crm.Domain.Opportunities.Opportunity> Opportunities => Set<FusionOS.Modules.Crm.Domain.Opportunities.Opportunity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

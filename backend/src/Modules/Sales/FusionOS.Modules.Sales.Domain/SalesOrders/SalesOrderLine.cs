@@ -12,11 +12,12 @@ public sealed class SalesOrderLine
     public Guid ProductId { get; private set; }
     public decimal Quantity { get; private set; }
     public decimal UnitPrice { get; private set; }
+    public decimal DiscountPercentage { get; private set; }
     public decimal LineTotal { get; private set; }
 
     private SalesOrderLine() { }
 
-    internal static SalesOrderLine Create(Guid productId, decimal quantity, decimal unitPrice)
+    internal static SalesOrderLine Create(Guid productId, decimal quantity, decimal unitPrice, decimal discountPercentage = 0m)
     {
         if (productId == Guid.Empty)
             throw new ArgumentException("Product id is required.", nameof(productId));
@@ -24,6 +25,8 @@ public sealed class SalesOrderLine
             throw new ArgumentException("Quantity must be greater than zero.", nameof(quantity));
         if (unitPrice < 0)
             throw new ArgumentException("Unit price cannot be negative.", nameof(unitPrice));
+        if (discountPercentage < 0 || discountPercentage > 100)
+            throw new ArgumentException("Discount percentage must be between 0 and 100.", nameof(discountPercentage));
 
         return new SalesOrderLine
         {
@@ -31,7 +34,8 @@ public sealed class SalesOrderLine
             ProductId = productId,
             Quantity = quantity,
             UnitPrice = unitPrice,
-            LineTotal = quantity * unitPrice,
+            DiscountPercentage = discountPercentage,
+            LineTotal = quantity * unitPrice * (1 - discountPercentage / 100m),
         };
     }
 }

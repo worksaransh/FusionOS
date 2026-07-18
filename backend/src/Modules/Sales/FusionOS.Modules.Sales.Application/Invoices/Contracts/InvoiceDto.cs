@@ -1,6 +1,6 @@
 namespace FusionOS.Modules.Sales.Application.Invoices.Contracts;
 
-public sealed record InvoiceLineDto(Guid Id, Guid ProductId, decimal Quantity, decimal UnitPrice, decimal LineTotal);
+public sealed record InvoiceLineDto(Guid Id, Guid ProductId, decimal Quantity, decimal UnitPrice, decimal LineTotal, Guid? TaxRateId = null, decimal TaxAmount = 0m);
 
 public sealed record InvoiceDto(
     Guid Id,
@@ -9,4 +9,5 @@ public sealed record InvoiceDto(
     string Status,
     DateTimeOffset InvoiceDate,
     decimal TotalAmount,
-    IReadOnlyList<InvoiceLineDto> Lines);
+    IReadOnlyList<InvoiceLineDto> Lines,
+    Guid? SalesPersonId);

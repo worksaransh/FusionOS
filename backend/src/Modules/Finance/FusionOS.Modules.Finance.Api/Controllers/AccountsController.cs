@@ -1,4 +1,7 @@
 using FusionOS.Modules.Finance.Application.Accounts.Commands.CreateAccount;
+using FusionOS.Modules.Finance.Application.Accounts.Commands.DeactivateAccount;
+using FusionOS.Modules.Finance.Application.Accounts.Commands.UpdateAccount;
+using FusionOS.Modules.Finance.Application.Accounts.Queries.GetAccountById;
 using FusionOS.Modules.Finance.Application.Accounts.Queries.ListAccounts;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -22,7 +25,17 @@ public sealed class AccountsController : ControllerBase
     {
         var command = new CreateAccountCommand(request.CompanyId, request.Code, request.Name, request.AccountType, request.ParentAccountId);
         var result = await _sender.Send(command, cancellationToken);
-        return CreatedAtAction(nameof(List), new { companyId = request.CompanyId }, result);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id, companyId = request.CompanyId }, result);
+    }
+
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetAccountByIdQuery(companyId, id), cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet]
@@ -32,6 +45,30 @@ public sealed class AccountsController : ControllerBase
         var result = await _sender.Send(new ListAccountsQuery(companyId, search, page, pageSize), cancellationToken);
         return Ok(result);
     }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAccountRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateAccountCommand(request.CompanyId, id, request.Name, request.AccountType, request.ParentAccountId);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/deactivate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Deactivate(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new DeactivateAccountCommand(companyId, id), cancellationToken);
+        return Ok(result);
+    }
 }
 
 public sealed record CreateAccountRequest(Guid CompanyId, string Code, string Name, string AccountType, Guid? ParentAccountId);
+
+public sealed record UpdateAccountRequest(Guid CompanyId, string Name, string AccountType, Guid? ParentAccountId);

@@ -15,6 +15,11 @@ public sealed class PurchaseOrderLineConfiguration : IEntityTypeConfiguration<Pu
         builder.Property(x => x.UnitPrice).HasColumnType("numeric(19,4)").IsRequired();
         builder.Property(x => x.LineTotal).HasColumnType("numeric(19,4)").IsRequired();
         builder.Property(x => x.ReceivedQuantity).HasColumnType("numeric(19,4)").IsRequired();
+        // Optional cross-module Finance TaxRate reference + stored tax amount for this
+        // line (numeric(19,4)). No FK constraint: TaxRateId is opaque, same as ProductId.
+        builder.Property(x => x.TaxRateId);
+        builder.Property(x => x.TaxAmount).HasColumnType("numeric(19,4)").IsRequired();
+        builder.HasIndex(x => x.TaxRateId);
         builder.Ignore(x => x.IsFullyReceived);
     }
 }

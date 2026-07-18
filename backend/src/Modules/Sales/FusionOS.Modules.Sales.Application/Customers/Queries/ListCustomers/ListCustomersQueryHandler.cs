@@ -16,7 +16,7 @@ public sealed class ListCustomersQueryHandler : IRequestHandler<ListCustomersQue
         var total = await _repository.CountAsync(request.CompanyId, request.Search, cancellationToken);
 
         var dtos = customers
-            .Select(c => new CustomerDto(c.Id, c.Name, c.Code, c.ContactEmail, c.CreditLimit, c.IsActive, c.CreatedAt))
+            .Select(c => new CustomerDto(c.Id, c.Name, c.Code, c.ContactEmail, c.CreditLimit, c.IsActive, c.CreatedAt, c.PriceListId))
             .ToList();
 
         return new PagedResult<CustomerDto>(dtos, request.Page, request.PageSize, total);

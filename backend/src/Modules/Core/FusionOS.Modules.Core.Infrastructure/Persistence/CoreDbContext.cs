@@ -4,6 +4,8 @@ using FusionOS.Modules.Core.Domain.Companies;
 using FusionOS.Modules.Core.Domain.Identity;
 using FusionOS.Modules.Core.Domain.Notifications;
 using FusionOS.Modules.Core.Domain.Organizations;
+using FusionOS.Modules.Core.Domain.Settings;
+using FusionOS.Modules.Core.Domain.Workflow;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,6 +31,8 @@ public sealed class CoreDbContext : BaseDbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
+    public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

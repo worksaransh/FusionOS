@@ -16,7 +16,7 @@ public sealed class ListProductsQueryHandler : IRequestHandler<ListProductsQuery
         var total = await _repository.CountAsync(request.CompanyId, request.Search, cancellationToken);
 
         var dtos = products
-            .Select(p => new ProductDto(p.Id, p.Sku, p.Name, p.Description, p.UnitOfMeasure, p.IsActive, p.CreatedAt))
+            .Select(ProductMapper.ToDto)
             .ToList();
 
         return new PagedResult<ProductDto>(dtos, request.Page, request.PageSize, total);

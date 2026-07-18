@@ -11,6 +11,11 @@ public sealed class GoodsReceiptRepository : IGoodsReceiptRepository
 
     public GoodsReceiptRepository(WarehouseDbContext context) => _context = context;
 
+    // .Include(x => x.Lines) is required any time a parent whose child collection is backed by a
+    // private field is queried — without it, Lines comes back empty (same note as PickListRepository).
+    public Task<GoodsReceipt?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _context.GoodsReceipts.Include(r => r.Lines).FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
     public Task<bool> ZoneExistsAsync(Guid companyId, Guid warehouseId, Guid zoneId, CancellationToken cancellationToken = default) =>
         _context.Zones.AnyAsync(z => z.CompanyId == companyId && z.WarehouseId == warehouseId && z.Id == zoneId, cancellationToken);
 

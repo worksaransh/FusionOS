@@ -17,6 +17,7 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Ignore(x => x.DomainEvents);
         builder.HasIndex(x => new { x.CompanyId, x.SalesOrderId });
         builder.HasIndex(x => new { x.CompanyId, x.CustomerId });
+        builder.HasIndex(x => new { x.CompanyId, x.SalesPersonId });
 
         builder.HasMany(x => x.Lines)
             .WithOne()

@@ -5,15 +5,16 @@ using Microsoft.EntityFrameworkCore;
 namespace FusionOS.Modules.Quality.Infrastructure.Persistence;
 
 /// <summary>
-/// Owns the "quality" schema. No entities are mapped yet — this module has not
-/// been implemented (reserved for Phase 5 — Quality & Maintenance). Adding the first entity here also
-/// means adding its IEntityTypeConfiguration and an EF Core migration, per
+/// Owns the "quality" schema. Phase 5 — Quality first slice: Inspections. Adding an entity
+/// here also means adding its IEntityTypeConfiguration and an EF Core migration, per
 /// docs/blueprint/04_DATABASE_GUIDELINES.md §9.
 /// </summary>
 public sealed class QualityDbContext : BaseDbContext
 {
     public QualityDbContext(DbContextOptions<QualityDbContext> options, ICurrentUserContext currentUser)
         : base(options, currentUser) { }
+
+    public DbSet<FusionOS.Modules.Quality.Domain.Inspections.Inspection> Inspections => Set<FusionOS.Modules.Quality.Domain.Inspections.Inspection>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

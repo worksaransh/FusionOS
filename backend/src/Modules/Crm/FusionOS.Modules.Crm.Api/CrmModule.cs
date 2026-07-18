@@ -1,5 +1,11 @@
+using FusionOS.BuildingBlocks.Application;
 using FusionOS.BuildingBlocks.Application.Modularity;
+using FusionOS.BuildingBlocks.EventBus;
+using FusionOS.Modules.Crm.Application.Leads.Commands.CreateLead;
+using FusionOS.Modules.Crm.Application.Leads.Contracts;
+using FusionOS.Modules.Crm.Application.Opportunities.Contracts;
 using FusionOS.Modules.Crm.Infrastructure.Persistence;
+using FusionOS.Modules.Crm.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -8,10 +14,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FusionOS.Modules.Crm.Api;
 
 /// <summary>
-/// Structural registration only — reserved for Phase 4 — CRM & HRMS. Wires the module's (empty)
-/// DbContext and health endpoint into the Host so the modular-monolith shape
-/// (03_SYSTEM_ARCHITECTURE.md) is provable end-to-end today, before any business
-/// logic exists.
+/// Phase 4 — CRM, first slice. Registers the module's DbContext, Leads + Opportunities
+/// CQRS, repositories, and the outbox dispatcher that relays OpportunityWon to Kafka for
+/// Sales to consume (03_SYSTEM_ARCHITECTURE.md §4.2). CRM publishes events but consumes
+/// none, so no IIntegrationEventConsumer is registered here.
 /// </summary>
 public sealed class CrmModule : IModule
 {
@@ -24,7 +30,15 @@ public sealed class CrmModule : IModule
             options.UseNpgsql(configuration.GetConnectionString("Postgres"),
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "crm")));
 
+        services.AddScoped<ILeadRepository, LeadRepository>();
+        services.AddScoped<IOpportunityRepository, OpportunityRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddModuleApplication(typeof(CreateLeadCommand).Assembly);
+
         services.AddControllers().AddApplicationPart(typeof(CrmModule).Assembly);
+
+        services.AddHostedService<OutboxDispatcher<CrmDbContext>>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

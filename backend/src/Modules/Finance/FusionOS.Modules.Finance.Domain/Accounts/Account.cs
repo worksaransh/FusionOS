@@ -40,5 +40,16 @@ public sealed class Account : TenantAggregateRoot
         return account;
     }
 
+    /// <summary>Updates the mutable master-data fields captured at Create time. Code and CompanyId are the tenant-scoped business key and stay immutable after creation.</summary>
+    public void UpdateDetails(string name, AccountType accountType, Guid? parentAccountId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Account name is required.", nameof(name));
+
+        Name = name.Trim();
+        AccountType = accountType;
+        ParentAccountId = parentAccountId;
+    }
+
     public void Deactivate() => IsActive = false;
 }

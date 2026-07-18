@@ -19,6 +19,11 @@ public sealed class ArLedgerRepository : IArLedgerRepository
             .Where(x => x.CompanyId == companyId && x.CustomerId == customerId)
             .SumAsync(x => x.Amount, cancellationToken);
 
+    public Task<decimal> SumAmountByInvoiceAsync(Guid companyId, Guid invoiceId, CancellationToken cancellationToken = default) =>
+        _context.ArLedgerEntries
+            .Where(x => x.CompanyId == companyId && x.InvoiceId == invoiceId)
+            .SumAsync(x => x.Amount, cancellationToken);
+
     public async Task<IReadOnlyList<ArLedgerEntry>> ListAsync(Guid companyId, Guid customerId, int page, int pageSize, CancellationToken cancellationToken = default) =>
         await _context.ArLedgerEntries
             .Where(x => x.CompanyId == companyId && x.CustomerId == customerId)
@@ -29,4 +34,22 @@ public sealed class ArLedgerRepository : IArLedgerRepository
 
     public Task<int> CountAsync(Guid companyId, Guid customerId, CancellationToken cancellationToken = default) =>
         _context.ArLedgerEntries.CountAsync(x => x.CompanyId == companyId && x.CustomerId == customerId, cancellationToken);
+
+    public async Task<IReadOnlyList<(Guid CustomerId, Guid InvoiceId, decimal Balance, DateTimeOffset ChargeDate)>> GetOutstandingInvoiceBalancesAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        var grouped = await _context.ArLedgerEntries
+            .Where(x => x.CompanyId == companyId)
+            .GroupBy(x => new { x.CustomerId, x.InvoiceId })
+            .Select(g => new
+            {
+                g.Key.CustomerId,
+                g.Key.InvoiceId,
+                Balance = g.Sum(x => x.Amount),
+                ChargeDate = g.Min(x => x.TransactionDate),
+            })
+            .Where(g => g.Balance != 0)
+            .ToListAsync(cancellationToken);
+
+        return grouped.Select(g => (g.CustomerId, g.InvoiceId, g.Balance, g.ChargeDate)).ToList();
+    }
 }

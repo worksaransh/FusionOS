@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../FusionOS.Modules.BusinessIntelligence.Infrastructure/FusionOS.Modules.BusinessIntelligence.Infrastructure.csproj" />
+    <ProjectReference Include="../../../Shared/FusionOS.BuildingBlocks.EventBus/FusionOS.BuildingBlocks.EventBus.csproj" />
   </ItemGroup>
 
 </Project>

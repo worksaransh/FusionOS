@@ -1,3 +1,5 @@
+using System.Text;
+using FusionOS.BuildingBlocks.Application.Csv;
 using FusionOS.Modules.Finance.Application.JournalEntries.Commands.CreateJournalEntry;
 using FusionOS.Modules.Finance.Application.JournalEntries.Commands.PostJournalEntry;
 using FusionOS.Modules.Finance.Application.JournalEntries.Queries.ListJournalEntries;
@@ -30,9 +32,14 @@ public sealed class JournalEntriesController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] string? format = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(new ListJournalEntriesQuery(companyId, page, pageSize), cancellationToken);
+        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+        {
+            var csv = CsvWriter.Write(result.Data);
+            return File(Encoding.UTF8.GetBytes(csv), "text/csv", "journal-entries.csv");
+        }
         return Ok(result);
     }
 

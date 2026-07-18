@@ -14,6 +14,7 @@ public sealed class CreateSalesOrderValidator : AbstractValidator<CreateSalesOrd
             line.RuleFor(l => l.ProductId).NotEmpty();
             line.RuleFor(l => l.Quantity).GreaterThan(0);
             line.RuleFor(l => l.UnitPrice).GreaterThanOrEqualTo(0);
+            line.RuleFor(l => l.DiscountPercentage).InclusiveBetween(0, 100);
         });
     }
 }

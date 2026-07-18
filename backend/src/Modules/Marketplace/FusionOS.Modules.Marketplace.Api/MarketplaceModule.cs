@@ -1,5 +1,11 @@
+using FusionOS.BuildingBlocks.Application;
 using FusionOS.BuildingBlocks.Application.Modularity;
+using FusionOS.BuildingBlocks.EventBus;
+using FusionOS.Modules.Marketplace.Application.PluginInstallations.Contracts;
+using FusionOS.Modules.Marketplace.Application.PluginListings.Commands.CreatePluginListing;
+using FusionOS.Modules.Marketplace.Application.PluginListings.Contracts;
 using FusionOS.Modules.Marketplace.Infrastructure.Persistence;
+using FusionOS.Modules.Marketplace.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -8,10 +14,11 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FusionOS.Modules.Marketplace.Api;
 
 /// <summary>
-/// Structural registration only — reserved for Phase 8 — Marketplace & Ecosystem. Wires the module's (empty)
-/// DbContext and health endpoint into the Host so the modular-monolith shape
-/// (03_SYSTEM_ARCHITECTURE.md) is provable end-to-end today, before any business
-/// logic exists.
+/// Phase 8 — Marketplace, first slice (2026-07-18). Registers the module's DbContext,
+/// PluginListings + PluginInstallations CQRS, repositories, and the outbox dispatcher
+/// that relays PluginListingCreated/PluginInstalled to Kafka (03_SYSTEM_ARCHITECTURE.md
+/// §4.2). Marketplace publishes events but consumes none this slice, so no
+/// IIntegrationEventConsumer is registered here.
 /// </summary>
 public sealed class MarketplaceModule : IModule
 {
@@ -24,7 +31,15 @@ public sealed class MarketplaceModule : IModule
             options.UseNpgsql(configuration.GetConnectionString("Postgres"),
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "marketplace")));
 
+        services.AddScoped<IPluginListingRepository, PluginListingRepository>();
+        services.AddScoped<IPluginInstallationRepository, PluginInstallationRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddModuleApplication(typeof(CreatePluginListingCommand).Assembly);
+
         services.AddControllers().AddApplicationPart(typeof(MarketplaceModule).Assembly);
+
+        services.AddHostedService<OutboxDispatcher<MarketplaceDbContext>>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

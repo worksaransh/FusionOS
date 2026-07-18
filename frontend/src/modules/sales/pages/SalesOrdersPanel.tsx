@@ -16,6 +16,7 @@ const lineSchema = z.object({
   productId: z.string().uuid('Pick a product'),
   quantity: z.string().refine((v) => Number(v) > 0, 'Quantity must be greater than zero'),
   unitPrice: z.string().refine((v) => Number(v) >= 0, 'Unit price cannot be negative'),
+  discountPercentage: z.string().refine((v) => Number(v) >= 0 && Number(v) <= 100, 'Discount must be between 0 and 100'),
 });
 
 const schema = z.object({
@@ -29,6 +30,7 @@ interface SalesOrderLineDto {
   productId: string;
   quantity: number;
   unitPrice: number;
+  discountPercentage: number;
   lineTotal: number;
 }
 
@@ -44,6 +46,9 @@ interface SalesOrderDto {
 /**
  * Sales Orders — next slice after Customer (05_MODULE_ROADMAP.md Phase 1).
  * Customer and each line's Product are picked via the shared EntityCombobox.
+ * Each line also carries an optional discount percentage (docs/IMPLEMENTATION_PLAN.md
+ * Phase 10 item 10) — a line discount over the backend's documented 20% threshold
+ * is rejected with a validation error surfaced below the form.
  */
 export function SalesOrdersPanel() {
   const { companyId } = useActiveCompany();
@@ -54,7 +59,7 @@ export function SalesOrdersPanel() {
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { customerId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0' }] },
+    defaultValues: { customerId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0', discountPercentage: '0' }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
 
@@ -69,10 +74,15 @@ export function SalesOrdersPanel() {
       apiClient.post<SalesOrderDto>('/sales/sales-orders', {
         companyId,
         customerId: values.customerId,
-        lines: values.lines.map((l) => ({ productId: l.productId, quantity: Number(l.quantity), unitPrice: Number(l.unitPrice) })),
+        lines: values.lines.map((l) => ({
+          productId: l.productId,
+          quantity: Number(l.quantity),
+          unitPrice: Number(l.unitPrice),
+          discountPercentage: Number(l.discountPercentage),
+        })),
       }),
     onSuccess: () => {
-      reset({ customerId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0' }] });
+      reset({ customerId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0', discountPercentage: '0' }] });
       queryClient.invalidateQueries({ queryKey: ['sales-orders', companyId] });
     },
   });
@@ -151,6 +161,16 @@ export function SalesOrdersPanel() {
                     )}
                   />
                 </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  Discount %
+                  <Controller
+                    control={control}
+                    name={`lines.${index}.discountPercentage`}
+                    render={({ field: lineField }) => (
+                      <input className="w-20 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
+                    )}
+                  />
+                </label>
                 <Button type="button" variant="secondary" onClick={() => remove(index)} disabled={fields.length === 1}>
                   <Trash2 size={16} />
                 </Button>
@@ -159,7 +179,7 @@ export function SalesOrdersPanel() {
             {errors.lines && typeof errors.lines.message === 'string' && (
               <span className="text-xs text-danger">{errors.lines.message}</span>
             )}
-            <Button type="button" variant="secondary" onClick={() => append({ productId: '', quantity: '1', unitPrice: '0' })} className="w-fit">
+            <Button type="button" variant="secondary" onClick={() => append({ productId: '', quantity: '1', unitPrice: '0', discountPercentage: '0' })} className="w-fit">
               <Plus size={16} className="mr-1" /> Add line
             </Button>
           </div>

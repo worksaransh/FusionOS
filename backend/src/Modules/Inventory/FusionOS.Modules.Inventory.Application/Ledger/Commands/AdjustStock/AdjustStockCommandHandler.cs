@@ -18,11 +18,11 @@ public sealed class AdjustStockCommandHandler : IRequestHandler<AdjustStockComma
     public async Task<InventoryLedgerEntryDto> Handle(AdjustStockCommand request, CancellationToken cancellationToken)
     {
         var entry = Domain.Ledger.InventoryLedgerEntry.RecordAdjustment(
-            request.CompanyId, request.ProductId, request.WarehouseId, request.QuantityDelta, request.Reason, request.UnitCost);
+            request.CompanyId, request.ProductId, request.WarehouseId, request.QuantityDelta, request.Reason, request.UnitCost, request.BatchNumber, request.SerialNumber);
 
         await _repository.AddAsync(entry, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new InventoryLedgerEntryDto(entry.Id, entry.ProductId, entry.WarehouseId, entry.QuantityDelta, entry.UnitCost, entry.Reason, entry.TransactionDate);
+        return new InventoryLedgerEntryDto(entry.Id, entry.ProductId, entry.WarehouseId, entry.QuantityDelta, entry.UnitCost, entry.BatchNumber, entry.SerialNumber, entry.Reason, entry.TransactionDate);
     }
 }

@@ -39,4 +39,19 @@ public sealed class Warehouse : TenantAggregateRoot
     }
 
     public void Deactivate() => IsActive = false;
+
+    /// <summary>
+    /// Covers the same fields Create accepts, excluding Code — the warehouse
+    /// code is the business key (uniqueness-checked at creation) and stays
+    /// immutable after creation, matching Product.Sku/Zone.Code.
+    /// </summary>
+    public void UpdateDetails(Guid? branchId, string name, string? address)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Warehouse name is required.", nameof(name));
+
+        BranchId = branchId;
+        Name = name.Trim();
+        Address = address;
+    }
 }

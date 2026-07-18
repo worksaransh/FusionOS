@@ -36,7 +36,7 @@ public sealed class SalesOrder : TenantAggregateRoot
         };
 
         foreach (var line in lines)
-            order._lines.Add(SalesOrderLine.Create(line.ProductId, line.Quantity, line.UnitPrice));
+            order._lines.Add(SalesOrderLine.Create(line.ProductId, line.Quantity, line.UnitPrice, line.DiscountPercentage));
 
         order.Raise(new SalesOrderCreated(order.Id, companyId, customerId, order.TotalAmount));
         return order;

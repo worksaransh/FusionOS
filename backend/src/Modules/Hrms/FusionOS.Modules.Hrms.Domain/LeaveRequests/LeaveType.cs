@@ -1,0 +1,9 @@
+namespace FusionOS.Modules.Hrms.Domain.LeaveRequests;
+
+/// <summary>Stored as text via EF value conversion, never a native PostgreSQL enum (04_DATABASE_GUIDELINES.md §10).</summary>
+public enum LeaveType
+{
+    Annual,
+    Sick,
+    Unpaid,
+}

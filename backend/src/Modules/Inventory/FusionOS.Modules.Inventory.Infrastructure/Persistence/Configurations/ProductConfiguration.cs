@@ -18,5 +18,14 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Ignore(p => p.RowVersion);
         builder.HasIndex(p => new { p.CompanyId, p.Sku }).IsUnique();
         builder.Ignore(p => p.DomainEvents);
+
+        // M9-remaining e: Multi-UOM (2026-07-16) — entity-with-own-Id child collection,
+        // mirroring GoodsReceiptLine's HasMany/WithOne shape (no OwnsMany precedent in this codebase).
+        builder.HasMany(p => p.UnitOfMeasureConversions)
+            .WithOne()
+            .HasForeignKey("ProductId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(p => p.UnitOfMeasureConversions).HasField("_unitOfMeasureConversions").UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

@@ -40,4 +40,17 @@ public sealed class Company : AuditableAggregateRoot
     }
 
     public void Deactivate() => IsActive = false;
+
+    /// <summary>Renames/updates the company's own details (Phase I) — same validation style as Create.</summary>
+    public void UpdateDetails(string name, string legalName, string? taxId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Company name is required.", nameof(name));
+        if (string.IsNullOrWhiteSpace(legalName))
+            throw new ArgumentException("Company legal name is required.", nameof(legalName));
+
+        Name = name.Trim();
+        LegalName = legalName.Trim();
+        TaxId = taxId;
+    }
 }

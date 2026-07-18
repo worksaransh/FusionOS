@@ -11,7 +11,8 @@ public sealed class ManufacturingHealthController : ControllerBase
     public IActionResult Get() => Ok(new
     {
         module = "Manufacturing",
-        status = "scaffolded",
+        status = "active",
         roadmapPhase = "Phase 3 — Manufacturing ERP",
+        slices = new[] { "bills-of-materials", "work-orders" },
     });
 }

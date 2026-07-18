@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../../shared/api/client';
 import { useAuthStore, type AuthSession } from '../../../shared/auth/authStore';
@@ -17,10 +17,10 @@ type FormValues = z.infer<typeof schema>;
 
 /**
  * The one screen every other page (RequireAuth) now gates on — 07_SECURITY.md.
- * There is deliberately no "sign up" link here: creating a brand-new company's
- * first user is a distinct bootstrap action (POST /core/auth/register with no
- * signed-in caller yet) that belongs on the Companies page next to "Create
- * company," not folded into login. See README known-gaps for that follow-up.
+ * The "Create one" link below goes to RegisterPage (Phase H5, 2026-07-14
+ * sprint) — creating a brand-new company's first user is still a distinct
+ * bootstrap action (POST /core/auth/register with no signed-in caller yet),
+ * it just now has a dedicated screen instead of living only on Companies.
  */
 export function LoginPage() {
   const navigate = useNavigate();
@@ -28,6 +28,8 @@ export function LoginPage() {
   const setSession = useAuthStore((s) => s.setSession);
   const setCompanyId = useActiveCompany((s) => s.setCompanyId);
   const [serverError, setServerError] = useState<string | null>(null);
+
+  const registered = Boolean((location.state as { registered?: boolean } | null)?.registered);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -53,6 +55,12 @@ export function LoginPage() {
           <div className="text-lg font-semibold">FusionOS</div>
           <p className="mt-1 text-sm text-text-muted">Sign in to continue</p>
         </div>
+
+        {registered && (
+          <p role="status" className="mb-4 rounded-md bg-surface-muted p-2 text-center text-sm text-text">
+            Account created — sign in below.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit((values) => login.mutate(values))} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm">
@@ -94,6 +102,13 @@ export function LoginPage() {
             {isSubmitting || login.isPending ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-text-muted">
+          Don&apos;t have an account?{' '}
+          <Link to="/register" className="font-medium text-primary underline underline-offset-2">
+            Create one
+          </Link>
+        </p>
       </div>
     </div>
   );

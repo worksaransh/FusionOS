@@ -11,6 +11,9 @@ public sealed class ZoneRepository : IZoneRepository
 
     public ZoneRepository(WarehouseDbContext context) => _context = context;
 
+    public Task<Zone?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _context.Zones.FirstOrDefaultAsync(z => z.Id == id, cancellationToken);
+
     public Task<bool> WarehouseExistsAsync(Guid companyId, Guid warehouseId, CancellationToken cancellationToken = default) =>
         _context.Warehouses.AnyAsync(w => w.CompanyId == companyId && w.Id == warehouseId, cancellationToken);
 

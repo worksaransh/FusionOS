@@ -1,0 +1,28 @@
+using FusionOS.Modules.Finance.Application.Accounts.Commands.CreateAccount;
+using FusionOS.Modules.Finance.Application.Accounts.Contracts;
+using MediatR;
+
+namespace FusionOS.Modules.Finance.Application.Accounts.Commands.DeactivateAccount;
+
+public sealed class DeactivateAccountCommandHandler : IRequestHandler<DeactivateAccountCommand, AccountDto>
+{
+    private readonly IAccountRepository _repository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public DeactivateAccountCommandHandler(IAccountRepository repository, IUnitOfWork unitOfWork)
+    {
+        _repository = repository;
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<AccountDto> Handle(DeactivateAccountCommand request, CancellationToken cancellationToken)
+    {
+        var account = await _repository.GetByIdAsync(request.CompanyId, request.AccountId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Account '{request.AccountId}' was not found.");
+
+        account.Deactivate();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return CreateAccountCommandHandler.MapToDto(account);
+    }
+}

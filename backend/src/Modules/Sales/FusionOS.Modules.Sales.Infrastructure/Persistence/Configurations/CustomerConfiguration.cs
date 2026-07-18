@@ -16,6 +16,7 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Domain.Cust
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md — SQL Server IsRowVersion() idiom fixed)
         builder.Ignore(x => x.RowVersion);
         builder.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique();
+        builder.HasIndex(x => x.PriceListId);
         builder.Ignore(x => x.DomainEvents);
     }
 }

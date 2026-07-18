@@ -146,6 +146,22 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.SharedKernel", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.Modules.Finance.Tests", "tests\FusionOS.Modules.Finance.Tests\FusionOS.Modules.Finance.Tests.csproj", "{6D88863B-3D43-457D-A042-2897FDFAC5D1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.Modules.Manufacturing.Tests", "tests\FusionOS.Modules.Manufacturing.Tests\FusionOS.Modules.Manufacturing.Tests.csproj", "{DF564707-6D75-4BFA-9EC3-00502A04E610}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.Modules.Crm.Tests", "tests\FusionOS.Modules.Crm.Tests\FusionOS.Modules.Crm.Tests.csproj", "{C64DAA91-8183-45DB-98B9-7F11764DC64F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.Modules.Quality.Tests", "tests\FusionOS.Modules.Quality.Tests\FusionOS.Modules.Quality.Tests.csproj", "{3DC4B56A-349B-4C01-BB1D-703680F556EA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.Modules.Maintenance.Tests", "tests\FusionOS.Modules.Maintenance.Tests\FusionOS.Modules.Maintenance.Tests.csproj", "{269A285F-9A8B-4FDC-94A9-A03BCFD7E9F0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.Modules.Hrms.Tests", "tests\FusionOS.Modules.Hrms.Tests\FusionOS.Modules.Hrms.Tests.csproj", "{7F93F59C-E4AA-4129-93F7-0B61A1ACB764}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.Modules.BusinessIntelligence.Tests", "tests\FusionOS.Modules.BusinessIntelligence.Tests\FusionOS.Modules.BusinessIntelligence.Tests.csproj", "{AAFFAE0A-6480-4A92-95EE-4C9B719080B1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.Modules.Ai.Tests", "tests\FusionOS.Modules.Ai.Tests\FusionOS.Modules.Ai.Tests.csproj", "{D7E9F549-6A12-49C3-86B3-03A751EC923C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.Modules.Marketplace.Tests", "tests\FusionOS.Modules.Marketplace.Tests\FusionOS.Modules.Marketplace.Tests.csproj", "{A5CBB449-6672-4853-9615-790B32F943AC}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FusionOS.IntegrationTests", "tests\FusionOS.IntegrationTests\FusionOS.IntegrationTests.csproj", "{DDB34C44-5BB3-448E-BDD6-F29DF38A04B5}"
 EndProject
 Global
@@ -442,12 +458,37 @@ Global
 		{6D88863B-3D43-457D-A042-2897FDFAC5D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6D88863B-3D43-457D-A042-2897FDFAC5D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6D88863B-3D43-457D-A042-2897FDFAC5D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF564707-6D75-4BFA-9EC3-00502A04E610}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF564707-6D75-4BFA-9EC3-00502A04E610}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF564707-6D75-4BFA-9EC3-00502A04E610}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF564707-6D75-4BFA-9EC3-00502A04E610}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C64DAA91-8183-45DB-98B9-7F11764DC64F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C64DAA91-8183-45DB-98B9-7F11764DC64F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C64DAA91-8183-45DB-98B9-7F11764DC64F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C64DAA91-8183-45DB-98B9-7F11764DC64F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DC4B56A-349B-4C01-BB1D-703680F556EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DC4B56A-349B-4C01-BB1D-703680F556EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DC4B56A-349B-4C01-BB1D-703680F556EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DC4B56A-349B-4C01-BB1D-703680F556EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{269A285F-9A8B-4FDC-94A9-A03BCFD7E9F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{269A285F-9A8B-4FDC-94A9-A03BCFD7E9F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{269A285F-9A8B-4FDC-94A9-A03BCFD7E9F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{269A285F-9A8B-4FDC-94A9-A03BCFD7E9F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F93F59C-E4AA-4129-93F7-0B61A1ACB764}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F93F59C-E4AA-4129-93F7-0B61A1ACB764}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F93F59C-E4AA-4129-93F7-0B61A1ACB764}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F93F59C-E4AA-4129-93F7-0B61A1ACB764}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AAFFAE0A-6480-4A92-95EE-4C9B719080B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AAFFAE0A-6480-4A92-95EE-4C9B719080B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AAFFAE0A-6480-4A92-95EE-4C9B719080B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AAFFAE0A-6480-4A92-95EE-4C9B719080B1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7E9F549-6A12-49C3-86B3-03A751EC923C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7E9F549-6A12-49C3-86B3-03A751EC923C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7E9F549-6A12-49C3-86B3-03A751EC923C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7E9F549-6A12-49C3-86B3-03A751EC923C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5CBB449-6672-4853-9615-790B32F943AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5CBB449-6672-4853-9615-790B32F943AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5CBB449-6672-4853-9615-790B32F943AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5CBB449-6672-4853-9615-790B32F943AC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DDB34C44-5BB3-448E-BDD6-F29DF38A04B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DDB34C44-5BB3-448E-BDD6-F29DF38A04B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DDB34C44-5BB3-448E-BDD6-F29DF38A04B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DDB34C44-5BB3-448E-BDD6-F29DF38A04B5}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
-	EndGlobalSection
-EndGlobal
+		{DDB34C44-5BB3-448E-BDD6-F29DF38A04B5}.

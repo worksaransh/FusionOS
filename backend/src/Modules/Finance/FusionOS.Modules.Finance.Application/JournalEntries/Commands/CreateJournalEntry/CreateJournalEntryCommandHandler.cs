@@ -1,5 +1,6 @@
 using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Finance.Application.Accounts.Contracts;
+using FusionOS.Modules.Finance.Application.CostCenters.Contracts;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using MediatR;
 
@@ -9,12 +10,14 @@ public sealed class CreateJournalEntryCommandHandler : IRequestHandler<CreateJou
 {
     private readonly IJournalEntryRepository _repository;
     private readonly IAccountRepository _accountRepository;
+    private readonly ICostCenterRepository _costCenterRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public CreateJournalEntryCommandHandler(IJournalEntryRepository repository, IAccountRepository accountRepository, IUnitOfWork unitOfWork)
+    public CreateJournalEntryCommandHandler(IJournalEntryRepository repository, IAccountRepository accountRepository, ICostCenterRepository costCenterRepository, IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _accountRepository = accountRepository;
+        _costCenterRepository = costCenterRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -27,6 +30,15 @@ public sealed class CreateJournalEntryCommandHandler : IRequestHandler<CreateJou
                 throw new ValidationException(new[]
                 {
                     new FluentValidation.Results.ValidationFailure(nameof(line.AccountId), $"Account '{line.AccountId}' does not exist for this company."),
+                });
+            }
+
+            if (line.CostCenterId is { } costCenterId
+                && await _costCenterRepository.GetByIdAsync(request.CompanyId, costCenterId, cancellationToken) is null)
+            {
+                throw new ValidationException(new[]
+                {
+                    new FluentValidation.Results.ValidationFailure(nameof(line.CostCenterId), $"Cost center '{costCenterId}' does not exist for this company."),
                 });
             }
         }
@@ -46,5 +58,5 @@ public sealed class CreateJournalEntryCommandHandler : IRequestHandler<CreateJou
         entry.EntryDate,
         entry.TotalDebit,
         entry.TotalCredit,
-        entry.Lines.Select(l => new JournalEntryLineDto(l.Id, l.AccountId, l.Debit, l.Credit, l.Description)).ToList());
+        entry.Lines.Select(l => new JournalEntryLineDto(l.Id, l.AccountId, l.Debit, l.Credit, l.Description, l.CostCenterId)).ToList());
 }

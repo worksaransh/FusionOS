@@ -30,7 +30,36 @@ public sealed class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceC
             });
         }
 
-        var invoice = Domain.Invoices.Invoice.Create(request.CompanyId, request.SalesOrderId, request.CustomerId, request.Lines);
+        // 2026-07-14 coverage-audit follow-up: previously nothing compared the
+        // requested invoice lines to what the sales order actually ordered, or to
+        // what had already been invoiced against it - an order could be invoiced
+        // for any quantity, any number of times. Reject any line that would push
+        // the cumulative invoiced quantity for that product past what was ordered.
+        var failures = new List<FluentValidation.Results.ValidationFailure>();
+        foreach (var line in request.Lines)
+        {
+            var orderLine = salesOrder.Lines.FirstOrDefault(l => l.ProductId == line.ProductId);
+            if (orderLine is null)
+            {
+                failures.Add(new FluentValidation.Results.ValidationFailure(
+                    nameof(request.Lines), $"Product {line.ProductId} is not part of sales order {request.SalesOrderId}."));
+                continue;
+            }
+
+            var alreadyInvoiced = await _repository.GetInvoicedQuantityAsync(request.CompanyId, request.SalesOrderId, line.ProductId, cancellationToken);
+            if (alreadyInvoiced + line.Quantity > orderLine.Quantity)
+            {
+                failures.Add(new FluentValidation.Results.ValidationFailure(
+                    nameof(request.Lines),
+                    $"Product {line.ProductId}: invoicing {line.Quantity} would exceed the sales order's remaining invoiceable quantity " +
+                    $"({orderLine.Quantity - alreadyInvoiced} of {orderLine.Quantity} left, {alreadyInvoiced} already invoiced)."));
+            }
+        }
+
+        if (failures.Count > 0)
+            throw new ValidationException(failures);
+
+        var invoice = Domain.Invoices.Invoice.Create(request.CompanyId, request.SalesOrderId, request.CustomerId, request.Lines, request.SalesPersonId);
 
         await _repository.AddAsync(invoice, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -45,5 +74,6 @@ public sealed class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceC
         invoice.Status.ToString(),
         invoice.InvoiceDate,
         invoice.TotalAmount,
-        invoice.Lines.Select(l => new InvoiceLineDto(l.Id, l.ProductId, l.Quantity, l.UnitPrice, l.LineTotal)).ToList());
+        invoice.Lines.Select(l => new InvoiceLineDto(l.Id, l.ProductId, l.Quantity, l.UnitPrice, l.LineTotal, l.TaxRateId, l.TaxAmount)).ToList(),
+        invoice.SalesPersonId);
 }

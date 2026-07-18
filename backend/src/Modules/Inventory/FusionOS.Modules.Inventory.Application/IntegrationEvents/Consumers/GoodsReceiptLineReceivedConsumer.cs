@@ -53,7 +53,9 @@ public sealed class GoodsReceiptLineReceivedConsumer : IIntegrationEventConsumer
             payload.WarehouseId,
             payload.QuantityReceived,
             $"Goods receipt {payload.GoodsReceiptId}",
-            payload.UnitCost);
+            payload.UnitCost,
+            payload.BatchNumber,
+            payload.SerialNumber);
 
         await _ledgerRepository.AddAsync(entry, cancellationToken);
         _processedEvents.MarkProcessed(eventId, EventType);
@@ -72,5 +74,7 @@ public sealed class GoodsReceiptLineReceivedConsumer : IIntegrationEventConsumer
         Guid ZoneId,
         decimal QuantityReceived,
         decimal? UnitCost,
-        Guid PurchaseOrderId);
+        Guid PurchaseOrderId,
+        string? BatchNumber,
+        string? SerialNumber);
 }

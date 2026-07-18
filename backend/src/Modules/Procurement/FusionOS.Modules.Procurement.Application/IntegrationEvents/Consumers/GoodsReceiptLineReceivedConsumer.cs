@@ -47,7 +47,7 @@ public sealed class GoodsReceiptLineReceivedConsumer : IIntegrationEventConsumer
         if (payload.PurchaseOrderId != Guid.Empty)
         {
             var purchaseOrder = await _purchaseOrderRepository.GetByIdAsync(payload.CompanyId, payload.PurchaseOrderId, cancellationToken);
-            purchaseOrder?.RecordGoodsReceipt(payload.ProductId, payload.QuantityReceived);
+            purchaseOrder?.RecordGoodsReceipt(payload.ProductId, payload.QuantityReceived, payload.UnitCost);
         }
 
         _processedEvents.MarkProcessed(eventId, EventType);

@@ -4,6 +4,8 @@ using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
 using FusionOS.Modules.Procurement.Application.IntegrationEvents.Consumers;
 using FusionOS.Modules.Procurement.Application.PurchaseOrders.Contracts;
+using FusionOS.Modules.Procurement.Application.Rfqs.Contracts;
+using FusionOS.Modules.Procurement.Application.SupplierContracts.Contracts;
 using FusionOS.Modules.Procurement.Application.Suppliers.Commands.CreateSupplier;
 using FusionOS.Modules.Procurement.Application.Suppliers.Contracts;
 using FusionOS.Modules.Procurement.Infrastructure.Persistence;
@@ -29,6 +31,8 @@ public sealed class ProcurementModule : IModule
 
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
+        services.AddScoped<IRfqRepository, RfqRepository>();
+        services.AddScoped<ISupplierContractRepository, SupplierContractRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProcessedIntegrationEventStore, EfProcessedIntegrationEventStore<ProcurementDbContext>>();
 

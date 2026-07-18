@@ -38,7 +38,7 @@ public sealed class PurchaseOrder : TenantAggregateRoot
         };
 
         foreach (var line in lines)
-            order._lines.Add(PurchaseOrderLine.Create(line.ProductId, line.Quantity, line.UnitPrice));
+            order._lines.Add(PurchaseOrderLine.Create(line.ProductId, line.Quantity, line.UnitPrice, line.TaxRateId, line.TaxAmount));
 
         order.Raise(new PurchaseOrderCreated(order.Id, companyId, supplierId, order.TotalAmount));
         return order;
@@ -63,8 +63,17 @@ public sealed class PurchaseOrder : TenantAggregateRoot
     /// A no-op if no line matches (the receipt wasn't actually for this PO's
     /// product mix) rather than throwing, since a Kafka consumer must never fail
     /// a whole redelivery over a shape mismatch it can't fully control.
+    ///
+    /// <b>unitCost (2026-07-18, closes the ApLedgerEntry blocker):</b> when the
+    /// triggering receipt line carried a real UnitCost, raises
+    /// PurchaseOrderGoodsReceiptCosted so Finance can auto-charge Accounts
+    /// Payable without ever needing a cross-module lookup back into this
+    /// aggregate — SupplierId travels with the event instead. Not raised when
+    /// unitCost is null (the receiving Warehouse didn't know a cost), which
+    /// simply means that receipt still needs a manual RecordBillChargeCommand,
+    /// same as before this event existed.
     /// </summary>
-    public void RecordGoodsReceipt(Guid productId, decimal quantityReceived)
+    public void RecordGoodsReceipt(Guid productId, decimal quantityReceived, decimal? unitCost = null)
     {
         var line = _lines.FirstOrDefault(l => l.ProductId == productId);
         if (line is null)
@@ -76,5 +85,11 @@ public sealed class PurchaseOrder : TenantAggregateRoot
             Status = PurchaseOrderStatus.FullyReceived;
         else if (_lines.Any(l => l.ReceivedQuantity > 0) && Status != PurchaseOrderStatus.FullyReceived)
             Status = PurchaseOrderStatus.PartiallyReceived;
+
+        if (unitCost.HasValue)
+        {
+            Raise(new PurchaseOrderGoodsReceiptCosted(
+                Id, CompanyId, SupplierId, productId, quantityReceived, unitCost.Value, quantityReceived * unitCost.Value));
+        }
     }
 }

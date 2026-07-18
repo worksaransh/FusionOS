@@ -9,7 +9,7 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
-import { useCustomerOptions, useProductOptions, useSalesOrderOptions } from '../../../shared/api/entityOptions';
+import { useCustomerOptions, useProductOptions, useSalesOrderOptions, useUserOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
 const lineSchema = z.object({
@@ -21,6 +21,7 @@ const lineSchema = z.object({
 const schema = z.object({
   salesOrderId: z.string().uuid('Pick a sales order'),
   customerId: z.string().uuid('Pick a customer'),
+  salesPersonId: z.string().uuid().optional().or(z.literal('')),
   lines: z.array(lineSchema).min(1, 'At least one line is required'),
 });
 type FormValues = z.infer<typeof schema>;
@@ -41,14 +42,19 @@ interface InvoiceDto {
   invoiceDate: string;
   totalAmount: number;
   lines: InvoiceLineDto[];
+  salesPersonId: string | null;
 }
 
 /**
  * Invoices — next slice after Sales Order (05_MODULE_ROADMAP.md Phase 1: Sales
  * capability list — "Invoice"). Sales Order, Customer, and each line's Product
- * are picked via the shared EntityCombobox. The actual General Ledger/Accounts
- * Receivable posting from this is Finance's job (not built yet — see the doc
- * comment on InvoiceIssued).
+ * are picked via the shared EntityCombobox. Salesperson is optional (opaque
+ * cross-module reference into Core's User, never existence-validated — same
+ * convention as ProductId — feeds the Sales Commissions summary report,
+ * docs/IMPLEMENTATION_PLAN.md Phase 10 item 11) and reuses the same
+ * useUserOptions hook as the Approvals page. The actual General Ledger/
+ * Accounts Receivable posting from this is Finance's job (not built yet —
+ * see the doc comment on InvoiceIssued).
  */
 export function InvoicesPanel() {
   const { companyId } = useActiveCompany();
@@ -57,10 +63,11 @@ export function InvoicesPanel() {
   const salesOrderOptions = useSalesOrderOptions(companyId);
   const customerOptions = useCustomerOptions(companyId);
   const productOptions = useProductOptions(companyId);
+  const userOptions = useUserOptions(companyId);
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { salesOrderId: '', customerId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0' }] },
+    defaultValues: { salesOrderId: '', customerId: '', salesPersonId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0' }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
 
@@ -76,10 +83,11 @@ export function InvoicesPanel() {
         companyId,
         salesOrderId: values.salesOrderId,
         customerId: values.customerId,
+        salesPersonId: values.salesPersonId || null,
         lines: values.lines.map((l) => ({ productId: l.productId, quantity: Number(l.quantity), unitPrice: Number(l.unitPrice) })),
       }),
     onSuccess: () => {
-      reset({ salesOrderId: '', customerId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0' }] });
+      reset({ salesOrderId: '', customerId: '', salesPersonId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0' }] });
       queryClient.invalidateQueries({ queryKey: ['invoices', companyId] });
     },
   });
@@ -132,6 +140,24 @@ export function InvoicesPanel() {
                 )}
               />
               {errors.customerId && <span className="text-xs text-danger">{errors.customerId.message}</span>}
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Salesperson (optional)
+              <Controller
+                control={control}
+                name="salesPersonId"
+                render={({ field }) => (
+                  <EntityCombobox
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    options={userOptions.options}
+                    isLoading={userOptions.isLoading}
+                    onSearchChange={userOptions.onSearchChange}
+                    placeholder="Search users…"
+                  />
+                )}
+              />
+              {errors.salesPersonId && <span className="text-xs text-danger">{errors.salesPersonId.message}</span>}
             </label>
           </div>
 

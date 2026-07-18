@@ -12,7 +12,7 @@ public sealed class ProductRepository : IProductRepository
     public ProductRepository(InventoryDbContext context) => _context = context;
 
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _context.Products.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        _context.Products.Include(p => p.UnitOfMeasureConversions).FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 
     public Task<bool> SkuExistsAsync(Guid companyId, string sku, CancellationToken cancellationToken = default) =>
         _context.Products.AnyAsync(p => p.CompanyId == companyId && p.Sku == sku.Trim().ToUpper(), cancellationToken);
@@ -33,7 +33,7 @@ public sealed class ProductRepository : IProductRepository
     // Matches on SKU or name — the two fields a picker's search box would reasonably type into.
     private IQueryable<Product> Filtered(Guid companyId, string? search)
     {
-        var query = _context.Products.Where(p => p.CompanyId == companyId);
+        var query = _context.Products.Include(p => p.UnitOfMeasureConversions).Where(p => p.CompanyId == companyId);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var pattern = $"%{search.Trim()}%";

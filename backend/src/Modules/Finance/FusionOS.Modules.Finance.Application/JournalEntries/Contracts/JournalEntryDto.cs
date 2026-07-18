@@ -1,6 +1,6 @@
 namespace FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 
-public sealed record JournalEntryLineDto(Guid Id, Guid AccountId, decimal Debit, decimal Credit, string? Description);
+public sealed record JournalEntryLineDto(Guid Id, Guid AccountId, decimal Debit, decimal Credit, string? Description, Guid? CostCenterId = null);
 
 public sealed record JournalEntryDto(
     Guid Id,

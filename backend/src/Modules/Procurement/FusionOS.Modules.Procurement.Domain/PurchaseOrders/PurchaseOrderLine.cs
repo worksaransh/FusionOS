@@ -27,9 +27,20 @@ public sealed class PurchaseOrderLine
 
     public bool IsFullyReceived => ReceivedQuantity >= Quantity;
 
+    /// <summary>
+    /// Optional cross-module reference to Finance's TaxRate aggregate (opaque, never
+    /// existence-validated here — same convention as ProductId). When set,
+    /// <see cref="TaxAmount"/> carries the tax computed for this line's net total; the
+    /// amount is supplied by the caller (via Finance's CalculateLineTaxQuery) rather
+    /// than derived here, keeping tax computation on the Finance side that owns the
+    /// rate. TaxAmount is 0 when no tax applies.
+    /// </summary>
+    public Guid? TaxRateId { get; private set; }
+    public decimal TaxAmount { get; private set; }
+
     private PurchaseOrderLine() { }
 
-    internal static PurchaseOrderLine Create(Guid productId, decimal quantity, decimal unitPrice)
+    internal static PurchaseOrderLine Create(Guid productId, decimal quantity, decimal unitPrice, Guid? taxRateId = null, decimal taxAmount = 0m)
     {
         if (productId == Guid.Empty)
             throw new ArgumentException("Product id is required.", nameof(productId));
@@ -37,6 +48,12 @@ public sealed class PurchaseOrderLine
             throw new ArgumentException("Quantity must be greater than zero.", nameof(quantity));
         if (unitPrice < 0)
             throw new ArgumentException("Unit price cannot be negative.", nameof(unitPrice));
+        if (taxRateId == Guid.Empty)
+            throw new ArgumentException("Tax rate id, when supplied, cannot be empty.", nameof(taxRateId));
+        if (taxAmount < 0)
+            throw new ArgumentException("Tax amount cannot be negative.", nameof(taxAmount));
+        if (taxRateId is null && taxAmount != 0m)
+            throw new ArgumentException("Tax amount must be zero when no tax rate is set.", nameof(taxAmount));
 
         return new PurchaseOrderLine
         {
@@ -45,6 +62,8 @@ public sealed class PurchaseOrderLine
             Quantity = quantity,
             UnitPrice = unitPrice,
             LineTotal = quantity * unitPrice,
+            TaxRateId = taxRateId,
+            TaxAmount = taxAmount,
         };
     }
 
@@ -53,6 +72,14 @@ public sealed class PurchaseOrderLine
     /// over-receipt (quantityReceived pushing ReceivedQuantity past Quantity) —
     /// that is a real-world occurrence (supplier ships extra), not a data error,
     /// and rejecting it would drop a legitimate goods receipt on the floor.
+    ///
+    /// <b>Reviewed 2026-07-17 (a proposed over-receipt guard was considered and
+    /// rejected):</b> this method is invoked from GoodsReceiptLineReceivedConsumer,
+    /// an at-least-once Kafka consumer. Throwing here would not merely block extra
+    /// shipments — it would fail the consumer, leaving the event un-acked and
+    /// redelivered forever (a poison message). Any future over-receipt control must
+    /// therefore be a tolerance/exception-flag on the receipt, decided upstream, not
+    /// a hard throw on this event-driven path.
     /// </summary>
     internal void RecordReceipt(decimal quantityReceived)
     {

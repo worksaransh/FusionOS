@@ -88,4 +88,37 @@ public class PurchaseOrderTests
 
         order.Status.Should().Be(PurchaseOrderStatus.Approved);
     }
+
+    [Fact]
+    public void RecordGoodsReceipt_WithUnitCost_RaisesGoodsReceiptCostedEvent()
+    {
+        var supplierId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var order = PurchaseOrder.Create(Guid.NewGuid(), supplierId, new[] { new PurchaseOrderLineInput(productId, 10m, 25.50m) });
+        order.Approve();
+        order.ClearDomainEvents();
+
+        order.RecordGoodsReceipt(productId, 4m, 20m);
+
+        var raised = order.DomainEvents.Should().ContainSingle(e => e is Events.PurchaseOrderGoodsReceiptCosted)
+            .Which.Should().BeOfType<Events.PurchaseOrderGoodsReceiptCosted>().Subject;
+        raised.SupplierId.Should().Be(supplierId);
+        raised.ProductId.Should().Be(productId);
+        raised.QuantityReceived.Should().Be(4m);
+        raised.UnitCost.Should().Be(20m);
+        raised.LineAmount.Should().Be(80m);
+    }
+
+    [Fact]
+    public void RecordGoodsReceipt_WithNoUnitCost_DoesNotRaiseGoodsReceiptCostedEvent()
+    {
+        var productId = Guid.NewGuid();
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), new[] { new PurchaseOrderLineInput(productId, 10m, 25.50m) });
+        order.Approve();
+        order.ClearDomainEvents();
+
+        order.RecordGoodsReceipt(productId, 4m);
+
+        order.DomainEvents.Should().NotContain(e => e is Events.PurchaseOrderGoodsReceiptCosted);
+    }
 }

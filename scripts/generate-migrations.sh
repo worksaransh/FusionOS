@@ -25,12 +25,11 @@ if ! dotnet tool list --global | grep -q dotnet-ef; then
   dotnet tool install --global dotnet-ef
 fi
 
-# Module -> DbContext, matched 1:1 with the six modules that have real
-# EF configurations today (04_DATABASE_GUIDELINES.md §1). The other nine
-# modules (Ai, BusinessIntelligence, Crm, Hrms, IntegrationHub, Maintenance,
-# Manufacturing, Marketplace, Quality) have zero DbSets — running migrations
-# against them would produce empty, meaningless migrations, so they are
-# deliberately excluded until each gets a real vertical slice.
+# Module -> DbContext, matched 1:1 with the modules that have real EF
+# configurations today (04_DATABASE_GUIDELINES.md §1). IntegrationHub is the
+# only remaining module with zero DbSets — running migrations against it
+# would produce an empty, meaningless migration, so it is deliberately
+# excluded until it gets a real vertical slice.
 declare -A MODULE_CONTEXTS=(
   [Core]="CoreDbContext"
   [Inventory]="InventoryDbContext"
@@ -38,6 +37,14 @@ declare -A MODULE_CONTEXTS=(
   [Procurement]="ProcurementDbContext"
   [Sales]="SalesDbContext"
   [Finance]="FinanceDbContext"
+  [Manufacturing]="ManufacturingDbContext"
+  [Crm]="CrmDbContext"
+  [Quality]="QualityDbContext"
+  [Maintenance]="MaintenanceDbContext"
+  [Hrms]="HrmsDbContext"
+  [BusinessIntelligence]="BusinessIntelligenceDbContext"
+  [Ai]="AiDbContext"
+  [Marketplace]="MarketplaceDbContext"
 )
 
 for module in "${!MODULE_CONTEXTS[@]}"; do

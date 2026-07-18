@@ -1,5 +1,8 @@
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
+using FusionOS.Modules.Warehouse.Domain.Bins;
+using FusionOS.Modules.Warehouse.Domain.CycleCounts;
 using FusionOS.Modules.Warehouse.Domain.GoodsReceipts;
+using FusionOS.Modules.Warehouse.Domain.PickLists;
 using FusionOS.Modules.Warehouse.Domain.Zones;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +18,9 @@ public sealed class WarehouseDbContext : BaseDbContext
     public DbSet<Domain.Warehouses.Warehouse> Warehouses => Set<Domain.Warehouses.Warehouse>();
     public DbSet<Zone> Zones => Set<Zone>();
     public DbSet<GoodsReceipt> GoodsReceipts => Set<GoodsReceipt>();
+    public DbSet<Bin> Bins => Set<Bin>();
+    public DbSet<CycleCount> CycleCounts => Set<CycleCount>();
+    public DbSet<PickList> PickLists => Set<PickList>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

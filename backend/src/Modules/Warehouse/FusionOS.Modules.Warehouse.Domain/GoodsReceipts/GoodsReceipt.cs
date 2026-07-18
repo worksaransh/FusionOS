@@ -56,7 +56,7 @@ public sealed class GoodsReceipt : TenantAggregateRoot
         };
 
         foreach (var line in lines)
-            receipt._lines.Add(GoodsReceiptLine.Create(line.ProductId, line.QuantityReceived, line.UnitCost));
+            receipt._lines.Add(GoodsReceiptLine.Create(line.ProductId, line.QuantityReceived, line.UnitCost, line.BatchNumber, line.SerialNumber));
 
         foreach (var line in receipt._lines)
         {
@@ -68,9 +68,42 @@ public sealed class GoodsReceipt : TenantAggregateRoot
                 zoneId,
                 line.QuantityReceived,
                 line.UnitCost,
-                purchaseOrderId ?? Guid.Empty));
+                purchaseOrderId ?? Guid.Empty,
+                line.BatchNumber,
+                line.SerialNumber));
         }
 
         return receipt;
+    }
+
+    /// <summary>
+    /// Records a system-suggested putaway bin for one line (docs/IMPLEMENTATION_PLAN.md
+    /// item 12). A hint only — no event, no state transition, and never a
+    /// precondition for <see cref="ConfirmPutaway"/>; the caller (the command
+    /// handler) is responsible for picking a real, active Bin within this
+    /// receipt's own Zone before calling this.
+    /// </summary>
+    public void SuggestBin(Guid lineId, Guid binId)
+    {
+        var line = _lines.FirstOrDefault(l => l.Id == lineId)
+            ?? throw new ArgumentException($"Line '{lineId}' was not found on this goods receipt.", nameof(lineId));
+
+        line.SuggestBin(binId);
+    }
+
+    /// <summary>
+    /// Confirms the bin a line's goods were actually put away into. The caller is
+    /// responsible for validating the Bin exists and belongs to this receipt's own
+    /// Zone (same-module reference, unlike the opaque ProductId/PurchaseOrderId/
+    /// SupplierId references) — this aggregate only enforces that the line exists.
+    /// </summary>
+    public void ConfirmPutaway(Guid lineId, Guid binId)
+    {
+        var line = _lines.FirstOrDefault(l => l.Id == lineId)
+            ?? throw new ArgumentException($"Line '{lineId}' was not found on this goods receipt.", nameof(lineId));
+
+        line.ConfirmPutaway(binId);
+
+        Raise(new GoodsReceiptLinePutAway(Id, CompanyId, lineId, line.ProductId, binId));
     }
 }

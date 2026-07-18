@@ -1,5 +1,7 @@
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
 using FusionOS.Modules.Procurement.Domain.PurchaseOrders;
+using FusionOS.Modules.Procurement.Domain.Rfqs;
+using FusionOS.Modules.Procurement.Domain.SupplierContracts;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +15,8 @@ public sealed class ProcurementDbContext : BaseDbContext
 
     public DbSet<Domain.Suppliers.Supplier> Suppliers => Set<Domain.Suppliers.Supplier>();
     public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<RequestForQuotation> Rfqs => Set<RequestForQuotation>();
+    public DbSet<SupplierContract> SupplierContracts => Set<SupplierContract>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -41,8 +41,17 @@ public sealed class RegisterUserCommandHandler : IRequestHandler<RegisterUserCom
         var user = User.Register(request.Email, request.FullName, _passwordHasher.Hash(request.Password));
         await _users.AddAsync(user, cancellationToken);
 
-        var ownerRoleId = await _users.GetOrCreateCompanyOwnerRoleAsync(request.CompanyId, cancellationToken);
-        await _users.LinkUserToCompanyAsync(user.Id, request.CompanyId, ownerRoleId, branchId: null, cancellationToken);
+        // Phase H3 (2026-07-14 sprint audit): only a brand-new company's very
+        // first user is the bootstrap "Owner" - every registration after that
+        // used to silently get the same all-permissions role too, with no way
+        // to invite a teammate at a lesser privilege. Now it lands on the
+        // zero-permission "Member" role instead; an existing Owner promotes
+        // them from there via RolesPage (core.role.manage /
+        // SetRolePermissionsCommand / AssignUserRoleCommand).
+        var roleId = companyAlreadyHasUsers
+            ? await _users.GetOrCreateDefaultMemberRoleAsync(request.CompanyId, cancellationToken)
+            : await _users.GetOrCreateCompanyOwnerRoleAsync(request.CompanyId, cancellationToken);
+        await _users.LinkUserToCompanyAsync(user.Id, request.CompanyId, roleId, branchId: null, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

@@ -30,4 +30,36 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
 
     public Task<int> CountAsync(Guid companyId, CancellationToken cancellationToken = default) =>
         _context.PurchaseOrders.CountAsync(x => x.CompanyId == companyId, cancellationToken);
+
+    public async Task<IReadOnlyList<(PurchaseOrderStatus Status, int Count)>> CountByStatusAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        var grouped = await _context.PurchaseOrders
+            .Where(x => x.CompanyId == companyId)
+            .GroupBy(x => x.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        return grouped.Select(g => (g.Status, g.Count)).ToList();
+    }
+
+    public async Task<IReadOnlyList<(Guid SupplierId, int OrderCount, decimal TotalOrderValue, int FullyReceivedCount)>> GetSupplierOrderStatsAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        // TotalAmount is EF-Ignore()'d (computed in-memory from _lines.Sum(...)),
+        // so it can't be summed via SQL translation — materialize matching orders
+        // first, then group/sum in memory. Same fix already documented on
+        // InvoiceRepository.GetIssuedInvoiceTotalsBySalesPersonAsync.
+        var orders = await _context.PurchaseOrders
+            .Include(x => x.Lines)
+            .Where(x => x.CompanyId == companyId)
+            .ToListAsync(cancellationToken);
+
+        return orders
+            .GroupBy(o => o.SupplierId)
+            .Select(g => (
+                SupplierId: g.Key,
+                OrderCount: g.Count(),
+                TotalOrderValue: g.Sum(o => o.TotalAmount),
+                FullyReceivedCount: g.Count(o => o.Status == PurchaseOrderStatus.FullyReceived)))
+            .ToList();
+    }
 }

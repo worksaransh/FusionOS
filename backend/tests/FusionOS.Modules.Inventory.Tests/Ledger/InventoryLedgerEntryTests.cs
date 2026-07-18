@@ -30,4 +30,31 @@ public class InventoryLedgerEntryTests
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void RecordAdjustment_WithBatchAndSerialNumber_TrimsAndStoresBoth()
+    {
+        var entry = InventoryLedgerEntry.RecordAdjustment(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 10m, "Goods receipt", 5m, "  LOT-42  ", "  SN-001  ");
+
+        entry.BatchNumber.Should().Be("LOT-42");
+        entry.SerialNumber.Should().Be("SN-001");
+    }
+
+    [Fact]
+    public void RecordAdjustment_WithoutBatchOrSerialNumber_LeavesBothNull()
+    {
+        var entry = InventoryLedgerEntry.RecordAdjustment(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 10m, "Goods receipt");
+
+        entry.BatchNumber.Should().BeNull();
+        entry.SerialNumber.Should().BeNull();
+    }
+
+    [Fact]
+    public void RecordAdjustment_WithWhitespaceOnlyBatchNumber_TreatsItAsNull()
+    {
+        var entry = InventoryLedgerEntry.RecordAdjustment(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 10m, "Goods receipt", 5m, "   ");
+
+        entry.BatchNumber.Should().BeNull();
+    }
 }

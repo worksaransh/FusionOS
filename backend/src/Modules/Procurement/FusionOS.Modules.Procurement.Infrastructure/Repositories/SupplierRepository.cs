@@ -10,8 +10,8 @@ public sealed class SupplierRepository : ISupplierRepository
 
     public SupplierRepository(ProcurementDbContext context) => _context = context;
 
-    public Task<Domain.Suppliers.Supplier?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _context.Suppliers.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    public Task<Domain.Suppliers.Supplier?> GetByIdAsync(Guid companyId, Guid id, CancellationToken cancellationToken = default) =>
+        _context.Suppliers.FirstOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
 
     public Task<bool> ExistsAsync(Guid companyId, Guid supplierId, CancellationToken cancellationToken = default) =>
         _context.Suppliers.AnyAsync(x => x.CompanyId == companyId && x.Id == supplierId, cancellationToken);

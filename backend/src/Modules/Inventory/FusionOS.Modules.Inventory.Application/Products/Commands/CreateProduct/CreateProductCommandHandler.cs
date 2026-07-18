@@ -31,6 +31,6 @@ public sealed class CreateProductCommandHandler : IRequestHandler<CreateProductC
         await _repository.AddAsync(product, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new ProductDto(product.Id, product.Sku, product.Name, product.Description, product.UnitOfMeasure, product.IsActive, product.CreatedAt);
+        return ProductMapper.ToDto(product);
     }
 }

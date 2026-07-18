@@ -47,5 +47,5 @@ public sealed class CreateGoodsReceiptCommandHandler : IRequestHandler<CreateGoo
         receipt.PurchaseOrderId,
         receipt.SupplierId,
         receipt.ReceivedDate,
-        receipt.Lines.Select(l => new GoodsReceiptLineDto(l.Id, l.ProductId, l.QuantityReceived, l.UnitCost)).ToList());
+        receipt.Lines.Select(l => new GoodsReceiptLineDto(l.Id, l.ProductId, l.QuantityReceived, l.UnitCost, l.BatchNumber, l.SerialNumber, l.SuggestedBinId, l.PutAwayBinId, l.IsPutAway)).ToList());
 }

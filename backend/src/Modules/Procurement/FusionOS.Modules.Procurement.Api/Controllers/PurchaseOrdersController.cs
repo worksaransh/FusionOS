@@ -1,3 +1,5 @@
+using System.Text;
+using FusionOS.BuildingBlocks.Application.Csv;
 using FusionOS.Modules.Procurement.Application.PurchaseOrders.Commands.ApprovePurchaseOrder;
 using FusionOS.Modules.Procurement.Application.PurchaseOrders.Commands.CreatePurchaseOrder;
 using FusionOS.Modules.Procurement.Application.PurchaseOrders.Queries.ListPurchaseOrders;
@@ -37,9 +39,14 @@ public sealed class PurchaseOrdersController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] string? format = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(new ListPurchaseOrdersQuery(companyId, page, pageSize), cancellationToken);
+        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+        {
+            var csv = CsvWriter.Write(result.Data);
+            return File(Encoding.UTF8.GetBytes(csv), "text/csv", "purchase-orders.csv");
+        }
         return Ok(result);
     }
 }

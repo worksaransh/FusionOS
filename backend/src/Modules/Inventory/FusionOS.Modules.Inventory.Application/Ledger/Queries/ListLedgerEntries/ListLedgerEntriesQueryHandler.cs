@@ -16,7 +16,7 @@ public sealed class ListLedgerEntriesQueryHandler : IRequestHandler<ListLedgerEn
         var total = await _repository.CountAsync(request.CompanyId, request.ProductId, cancellationToken);
 
         var dtos = entries
-            .Select(e => new InventoryLedgerEntryDto(e.Id, e.ProductId, e.WarehouseId, e.QuantityDelta, e.UnitCost, e.Reason, e.TransactionDate))
+            .Select(e => new InventoryLedgerEntryDto(e.Id, e.ProductId, e.WarehouseId, e.QuantityDelta, e.UnitCost, e.BatchNumber, e.SerialNumber, e.Reason, e.TransactionDate))
             .ToList();
 
         return new PagedResult<InventoryLedgerEntryDto>(dtos, request.Page, request.PageSize, total);

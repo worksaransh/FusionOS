@@ -24,6 +24,16 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
         {
             ValidationException => (StatusCodes.Status400BadRequest, "One or more validation errors occurred."),
             ForbiddenException => (StatusCodes.Status403Forbidden, "You do not have permission to perform this action."),
+            // Added in the 2026-07-14 coverage audit follow-up: InvalidOperationException is this
+            // codebase's existing convention for domain-state-invariant violations (see
+            // PurchaseOrder.Approve()'s "only Draft can be approved" check, JournalEntry.Post()'s
+            // "only Draft can be posted" check, and ApprovePurchaseOrderCommandHandler's
+            // self-approval rejection) - all of these were previously falling through to a bare
+            // 500 instead of a real 409 Conflict. KeyNotFoundException is this codebase's existing
+            // convention for "the referenced entity does not exist" (see AssignUserRoleCommandHandler,
+            // GetRolePermissionsQueryHandler) - previously also a bare 500 instead of 404.
+            InvalidOperationException => (StatusCodes.Status409Conflict, "The request conflicts with the current state of the resource."),
+            KeyNotFoundException => (StatusCodes.Status404NotFound, "The requested resource was not found."),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred."),
         };
 

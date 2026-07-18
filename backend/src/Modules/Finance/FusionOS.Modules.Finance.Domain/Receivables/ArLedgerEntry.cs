@@ -18,11 +18,11 @@ namespace FusionOS.Modules.Finance.Domain.Receivables;
 /// foreign key, same documented pattern used everywhere else in this
 /// codebase for cross-module references.
 ///
-/// Only "charge" entries (positive Amount, one per issued invoice) exist
-/// today. Recording customer payments (negative Amount, reducing the
-/// balance) is a real, distinct follow-up slice — not built here — since it
-/// needs its own command/endpoint and does not arrive via any existing
-/// integration event.
+/// "Charge" entries (positive Amount, one per issued invoice) are created by
+/// InvoiceIssuedConsumer. "Payment" entries (negative Amount) are created
+/// directly by RecordPaymentCommand (Phase M4, 2026-07-15) — a customer
+/// payment doesn't arrive via any integration event, so it needs its own
+/// command/endpoint rather than a consumer.
 /// </summary>
 public sealed class ArLedgerEntry : TenantAggregateRoot
 {
@@ -50,6 +50,70 @@ public sealed class ArLedgerEntry : TenantAggregateRoot
             InvoiceId = invoiceId,
             Amount = amount,
             Description = $"Invoice {invoiceId}",
+            TransactionDate = DateTimeOffset.UtcNow,
+        };
+    }
+
+    /// <summary>
+    /// Records a customer payment against a specific invoice as a negative
+    /// ledger entry — since the balance is always the sum of every entry's
+    /// Amount (see class doc comment), a payment just needs the opposite
+    /// sign of a charge, not a separate "reduce balance" operation.
+    /// RecordPaymentCommandHandler is responsible for checking the payment
+    /// doesn't exceed that invoice's current outstanding balance before
+    /// calling this factory — this factory only enforces shape, not that
+    /// cross-entry business rule (mirrors RecordInvoiceCharge, which also
+    /// only validates its own inputs).
+    /// </summary>
+    public static ArLedgerEntry RecordPayment(Guid companyId, Guid customerId, Guid invoiceId, decimal amount, string? reference, DateTimeOffset? transactionDate = null)
+    {
+        if (customerId == Guid.Empty)
+            throw new ArgumentException("Customer id is required.", nameof(customerId));
+        if (invoiceId == Guid.Empty)
+            throw new ArgumentException("Invoice id is required.", nameof(invoiceId));
+        if (amount <= 0)
+            throw new ArgumentException("A payment amount must be positive.", nameof(amount));
+
+        var description = string.IsNullOrWhiteSpace(reference)
+            ? $"Payment against invoice {invoiceId}"
+            : $"Payment against invoice {invoiceId} ({reference.Trim()})";
+
+        return new ArLedgerEntry
+        {
+            CompanyId = companyId,
+            CustomerId = customerId,
+            InvoiceId = invoiceId,
+            Amount = -amount,
+            Description = description,
+            TransactionDate = transactionDate ?? DateTimeOffset.UtcNow,
+        };
+    }
+
+    /// <summary>
+    /// Records a credit note issued against a specific invoice as a negative
+    /// ledger entry — distinguished from RecordPayment only by Description text,
+    /// same "same factory shape, different Reason text" restraint used for
+    /// Inventory adjustments (manual/GoodsReceipt/CycleCount all reuse
+    /// InventoryLedgerEntry.RecordAdjustment). Created by CreditNoteIssuedConsumer
+    /// reacting to Sales' CreditNoteIssued event, the same shape as
+    /// InvoiceIssuedConsumer creating a RecordInvoiceCharge entry.
+    /// </summary>
+    public static ArLedgerEntry RecordCreditNote(Guid companyId, Guid customerId, Guid invoiceId, Guid creditNoteId, decimal amount)
+    {
+        if (customerId == Guid.Empty)
+            throw new ArgumentException("Customer id is required.", nameof(customerId));
+        if (invoiceId == Guid.Empty)
+            throw new ArgumentException("Invoice id is required.", nameof(invoiceId));
+        if (amount <= 0)
+            throw new ArgumentException("A credit note amount must be positive.", nameof(amount));
+
+        return new ArLedgerEntry
+        {
+            CompanyId = companyId,
+            CustomerId = customerId,
+            InvoiceId = invoiceId,
+            Amount = -amount,
+            Description = $"Credit note {creditNoteId} against invoice {invoiceId}",
             TransactionDate = DateTimeOffset.UtcNow,
         };
     }

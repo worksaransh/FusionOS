@@ -1,7 +1,10 @@
 using FusionOS.BuildingBlocks.Application;
 using FusionOS.BuildingBlocks.Application.Modularity;
 using FusionOS.BuildingBlocks.EventBus;
+using FusionOS.Modules.Warehouse.Application.Bins.Contracts;
+using FusionOS.Modules.Warehouse.Application.CycleCounts.Contracts;
 using FusionOS.Modules.Warehouse.Application.GoodsReceipts.Contracts;
+using FusionOS.Modules.Warehouse.Application.PickLists.Contracts;
 using FusionOS.Modules.Warehouse.Application.Warehouses.Commands.CreateWarehouse;
 using FusionOS.Modules.Warehouse.Application.Warehouses.Contracts;
 using FusionOS.Modules.Warehouse.Application.Zones.Contracts;
@@ -28,6 +31,9 @@ public sealed class WarehouseModule : IModule
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
         services.AddScoped<IZoneRepository, ZoneRepository>();
         services.AddScoped<IGoodsReceiptRepository, GoodsReceiptRepository>();
+        services.AddScoped<IBinRepository, BinRepository>();
+        services.AddScoped<ICycleCountRepository, CycleCountRepository>();
+        services.AddScoped<IPickListRepository, PickListRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddModuleApplication(typeof(CreateWarehouseCommand).Assembly);

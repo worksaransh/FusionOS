@@ -17,6 +17,9 @@ public sealed class AccountRepository : IAccountRepository
     public Task<bool> ExistsAsync(Guid companyId, Guid accountId, CancellationToken cancellationToken = default) =>
         _context.Accounts.AnyAsync(a => a.CompanyId == companyId && a.Id == accountId, cancellationToken);
 
+    public Task<Account?> GetByIdAsync(Guid companyId, Guid accountId, CancellationToken cancellationToken = default) =>
+        _context.Accounts.FirstOrDefaultAsync(a => a.CompanyId == companyId && a.Id == accountId, cancellationToken);
+
     public async Task AddAsync(Account account, CancellationToken cancellationToken = default) =>
         await _context.Accounts.AddAsync(account, cancellationToken);
 

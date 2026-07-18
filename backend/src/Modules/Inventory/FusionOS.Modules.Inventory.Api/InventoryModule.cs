@@ -41,6 +41,10 @@ public sealed class InventoryModule : IModule
         // generically by KafkaConsumerHostedService at startup.
         services.AddScoped<IIntegrationEventConsumer, GoodsReceiptLineReceivedConsumer>();
         services.AddScoped<IIntegrationEventConsumer, DispatchLineDispatchedConsumer>();
+        services.AddScoped<IIntegrationEventConsumer, CycleCountVarianceRecordedConsumer>();
+        // Manufacturing's completed work orders move stock too: consume components,
+        // produce the parent product (03_SYSTEM_ARCHITECTURE.md §4.2).
+        services.AddScoped<IIntegrationEventConsumer, WorkOrderCompletedConsumer>();
 
         services.AddControllers().AddApplicationPart(typeof(InventoryModule).Assembly);
 

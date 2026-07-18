@@ -143,6 +143,24 @@ export function useZoneOptions(companyId: string | undefined, warehouseId: strin
   );
 }
 
+interface BinLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+const BIN_OPTIONS_PAGE_SIZE = 200;
+
+/** Bins nest under Zone one level deeper than Zone nests under Warehouse (Phase M9, 2026-07-15) — same no-search-yet, one-page pattern as useZoneOptions. */
+export function useBinOptions(companyId: string | undefined, warehouseId: string | undefined, zoneId: string | undefined) {
+  return useEntityOptionsWithoutSearch<BinLite>(
+    ['bin-options', companyId, warehouseId, zoneId],
+    `/warehouse/warehouses/${warehouseId}/zones/${zoneId}/bins?companyId=${companyId}&page=1&pageSize=${BIN_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId && warehouseId && zoneId),
+    (b) => ({ id: b.id, label: `${b.code} — ${b.name}` }),
+  );
+}
+
 interface AccountLite {
   id: string;
   code: string;
@@ -155,6 +173,134 @@ export function useAccountOptions(companyId: string | undefined) {
     '/finance/accounts',
     companyId,
     (a) => ({ id: a.id, label: `${a.code} — ${a.name}` }),
+  );
+}
+
+interface LeadLite {
+  id: string;
+  name: string;
+  status: string;
+}
+
+/** Backs OpportunitiesPanel's lead picker (CRM frontend, 2026-07-18) — leads' list endpoint supports `search`, same server-side pattern as useAccountOptions. */
+export function useLeadOptions(companyId: string | undefined) {
+  return useEntityOptions<LeadLite>(
+    'lead-options',
+    '/crm/leads',
+    companyId,
+    (l) => ({ id: l.id, label: `${l.name} (${l.status})` }),
+  );
+}
+
+interface BillOfMaterialsLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs WorkOrdersPanel's bill-of-materials picker (Manufacturing frontend, 2026-07-18) — bills-of-materials' list endpoint supports `search`, same server-side pattern as useAccountOptions. */
+export function useBillOfMaterialsOptions(companyId: string | undefined) {
+  return useEntityOptions<BillOfMaterialsLite>(
+    'bill-of-materials-options',
+    '/manufacturing/bills-of-materials',
+    companyId,
+    (b) => ({ id: b.id, label: `${b.code} — ${b.name}` }),
+  );
+}
+
+interface KpiDefinitionLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs KpiSnapshotsPanel's KPI picker (Business Intelligence frontend, 2026-07-18) — kpi-definitions' list endpoint supports `search`, same server-side pattern as useAccountOptions. */
+export function useKpiDefinitionOptions(companyId: string | undefined) {
+  return useEntityOptions<KpiDefinitionLite>(
+    'kpi-definition-options',
+    '/bi/kpi-definitions',
+    companyId,
+    (k) => ({ id: k.id, label: `${k.code} — ${k.name}` }),
+  );
+}
+
+interface EmployeeLite {
+  id: string;
+  code: string;
+  fullName: string;
+}
+
+/** Backs LeaveRequestsPanel's employee picker (HRMS frontend, 2026-07-18) — employees' list endpoint supports `search`, same server-side pattern as useAccountOptions. */
+export function useEmployeeOptions(companyId: string | undefined) {
+  return useEntityOptions<EmployeeLite>(
+    'employee-options',
+    '/hrms/employees',
+    companyId,
+    (e) => ({ id: e.id, label: `${e.code} — ${e.fullName}` }),
+  );
+}
+
+interface AssetLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs MaintenanceRequestsPanel's asset picker (Maintenance frontend, 2026-07-18) — assets' list endpoint supports `search`, same server-side pattern as useAccountOptions. */
+export function useAssetOptions(companyId: string | undefined) {
+  return useEntityOptions<AssetLite>(
+    'asset-options',
+    '/maintenance/assets',
+    companyId,
+    (a) => ({ id: a.id, label: `${a.code} — ${a.name}` }),
+  );
+}
+
+interface CostCenterLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs BudgetsPanel's cost-center picker (M8f, 2026-07-17) — cost-centers' list endpoint supports `search`, same server-side pattern as useAccountOptions. First hook for CostCenter — no earlier M8a frontend work added one. */
+export function useCostCenterOptions(companyId: string | undefined) {
+  return useEntityOptions<CostCenterLite>(
+    'cost-center-options',
+    '/finance/cost-centers',
+    companyId,
+    (c) => ({ id: c.id, label: `${c.code} — ${c.name}` }),
+  );
+}
+
+interface TaxJurisdictionLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs TaxRatesPanel's jurisdiction picker (M8b, 2026-07-17) — tax-jurisdictions' list endpoint supports `search`, same server-side pattern as useAccountOptions. */
+export function useTaxJurisdictionOptions(companyId: string | undefined) {
+  return useEntityOptions<TaxJurisdictionLite>(
+    'tax-jurisdiction-options',
+    '/finance/tax-jurisdictions',
+    companyId,
+    (j) => ({ id: j.id, label: `${j.code} — ${j.name}` }),
+  );
+}
+
+interface BankAccountLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs BankStatementLinesPanel's bank-account picker (M8d, 2026-07-17) — bank-accounts' list endpoint supports `search`, same server-side pattern as useAccountOptions/useTaxJurisdictionOptions. */
+export function useBankAccountOptions(companyId: string | undefined) {
+  return useEntityOptions<BankAccountLite>(
+    'bank-account-options',
+    '/finance/bank-accounts',
+    companyId,
+    (b) => ({ id: b.id, label: `${b.code} — ${b.name}` }),
   );
 }
 
@@ -189,4 +335,85 @@ export function usePurchaseOrderOptions(companyId: string | undefined) {
       label: `${new Date(o.orderDate).toLocaleDateString()} · ${o.status} · ${o.totalAmount.toLocaleString()}`,
     }),
   );
+}
+
+interface InvoiceLite {
+  id: string;
+  invoiceDate: string;
+  status: string;
+  totalAmount: number;
+}
+
+const INVOICE_OPTIONS_PAGE_SIZE = 200;
+
+/** Sales' invoice list endpoint has no `search` param yet, same as Sales Order/Purchase Order above — one page, client-side filtered by EntityCombobox. */
+export function useInvoiceOptions(companyId: string | undefined) {
+  return useEntityOptionsWithoutSearch<InvoiceLite>(
+    ['invoice-options', companyId],
+    `/sales/invoices?companyId=${companyId}&page=1&pageSize=${INVOICE_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId),
+    (i) => ({
+      id: i.id,
+      label: `${new Date(i.invoiceDate).toLocaleDateString()} · ${i.status} · ${i.totalAmount.toLocaleString()}`,
+    }),
+  );
+}
+
+interface JournalEntryLite {
+  id: string;
+  reference: string | null;
+  entryDate: string;
+  totalDebit: number;
+}
+
+const JOURNAL_ENTRY_OPTIONS_PAGE_SIZE = 200;
+
+/** Backs BankStatementLinesPanel's optional "matched journal entry" picker (M8d, 2026-07-17) — journal-entries' list endpoint has no `search` param yet, same one-page/client-filtered pattern as useSalesOrderOptions/usePurchaseOrderOptions. */
+export function useJournalEntryOptions(companyId: string | undefined) {
+  return useEntityOptionsWithoutSearch<JournalEntryLite>(
+    ['journal-entry-options', companyId],
+    `/finance/journal-entries?companyId=${companyId}&page=1&pageSize=${JOURNAL_ENTRY_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId),
+    (j) => ({
+      id: j.id,
+      label: j.reference
+        ? `${j.reference} · ${new Date(j.entryDate).toLocaleDateString()} · ${j.totalDebit.toLocaleString()}`
+        : `${new Date(j.entryDate).toLocaleDateString()} · ${j.totalDebit.toLocaleString()}`,
+    }),
+  );
+}
+
+interface CompanyUserLite {
+  userId: string;
+  email: string;
+  fullName: string;
+}
+
+/**
+ * Backs the approver picker on ApprovalsPage (Phase M7, 2026-07-15). Users'
+ * list endpoint (`/core/users`) returns a plain array, not a PagedResult
+ * (ListCompanyUsersQuery has no pagination today — a company's user roster
+ * is small), so this can't reuse useEntityOptions' PagedResult-shaped
+ * machinery; it's a small bespoke hook instead.
+ */
+export function useUserOptions(companyId: string | undefined) {
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const enabled = Boolean(companyId);
+
+  const query = useQuery({
+    queryKey: ['user-options', companyId, debouncedSearch],
+    queryFn: () => {
+      const params = new URLSearchParams({ companyId: companyId! });
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
+      return apiClient.get<CompanyUserLite[]>(`/core/users?${params.toString()}`);
+    },
+    enabled,
+  });
+
+  return {
+    options: (query.data ?? []).map((u) => ({ id: u.userId, label: `${u.fullName} (${u.email})` })),
+    isLoading: query.isLoading,
+    onSearchChange: setSearch,
+  };
 }

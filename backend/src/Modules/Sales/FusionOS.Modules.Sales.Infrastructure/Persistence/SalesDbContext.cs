@@ -1,6 +1,10 @@
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
+using FusionOS.Modules.Sales.Domain.Commissions;
+using FusionOS.Modules.Sales.Domain.CreditNotes;
 using FusionOS.Modules.Sales.Domain.Dispatches;
 using FusionOS.Modules.Sales.Domain.Invoices;
+using FusionOS.Modules.Sales.Domain.PriceLists;
+using FusionOS.Modules.Sales.Domain.Quotations;
 using FusionOS.Modules.Sales.Domain.SalesOrders;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +21,10 @@ public sealed class SalesDbContext : BaseDbContext
     public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Dispatch> Dispatches => Set<Dispatch>();
+    public DbSet<CreditNote> CreditNotes => Set<CreditNote>();
+    public DbSet<Quotation> Quotations => Set<Quotation>();
+    public DbSet<PriceList> PriceLists => Set<PriceList>();
+    public DbSet<SalesCommissionRate> SalesCommissionRates => Set<SalesCommissionRate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

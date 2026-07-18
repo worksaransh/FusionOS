@@ -22,5 +22,11 @@ public sealed class JournalEntryLineConfiguration : IEntityTypeConfiguration<Jou
         builder.Property(x => x.Debit).HasColumnType("numeric(19,4)").IsRequired();
         builder.Property(x => x.Credit).HasColumnType("numeric(19,4)").IsRequired();
         builder.Property(x => x.Description).HasMaxLength(500);
+        // Optional same-module cost-center reference (nullable). Indexed to support
+        // the cost-center-filtered Budget vs-actual sum without a full table scan.
+        // No FK constraint declared: existence is validated in the command handler,
+        // keeping the reference consistent with how AccountId is treated on this line.
+        builder.Property(x => x.CostCenterId);
+        builder.HasIndex(x => x.CostCenterId);
     }
 }

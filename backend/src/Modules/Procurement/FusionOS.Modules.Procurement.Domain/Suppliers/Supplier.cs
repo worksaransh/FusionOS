@@ -40,5 +40,18 @@ public sealed class Supplier : TenantAggregateRoot
         return supplier;
     }
 
+    /// <summary>Updates the mutable master-data fields captured at Create time. Code and CompanyId are the tenant-scoped business key and stay immutable after creation.</summary>
+    public void UpdateDetails(string name, string? contactEmail, string? contactPhone)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Supplier name is required.", nameof(name));
+        if (contactEmail is not null && !contactEmail.Contains('@'))
+            throw new ArgumentException("Contact email must be a valid email address.", nameof(contactEmail));
+
+        Name = name.Trim();
+        ContactEmail = contactEmail?.Trim().ToLowerInvariant();
+        ContactPhone = contactPhone;
+    }
+
     public void Deactivate() => IsActive = false;
 }

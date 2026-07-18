@@ -24,4 +24,18 @@ public class AdjustStockCommandHandlerTests
         await repository.Received(1).AddAsync(Arg.Any<InventoryLedgerEntry>(), Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Handle_WithBatchAndSerialNumber_PassesThemThroughToTheLedgerEntryAndDto()
+    {
+        var repository = Substitute.For<IInventoryLedgerRepository>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var handler = new AdjustStockCommandHandler(repository, unitOfWork);
+        var command = new AdjustStockCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 10m, "Goods receipt", 5m, "LOT-42", "SN-001");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.BatchNumber.Should().Be("LOT-42");
+        result.SerialNumber.Should().Be("SN-001");
+    }
 }

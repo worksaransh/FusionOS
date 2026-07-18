@@ -22,12 +22,23 @@ public sealed class InventoryLedgerEntry : TenantAggregateRoot
     public Guid WarehouseId { get; private set; }
     public decimal QuantityDelta { get; private set; }
     public decimal? UnitCost { get; private set; }
+    public string? BatchNumber { get; private set; }
+    public string? SerialNumber { get; private set; }
     public string Reason { get; private set; } = default!;
     public DateTimeOffset TransactionDate { get; private set; }
 
     private InventoryLedgerEntry() { }
 
-    public static InventoryLedgerEntry RecordAdjustment(Guid companyId, Guid productId, Guid warehouseId, decimal quantityDelta, string reason, decimal? unitCost = null)
+    /// <summary>
+    /// <c>batchNumber</c>/<c>serialNumber</c> (M9 remaining — Batch/Lot/Serial tracking,
+    /// 2026-07-16) are opaque, unvalidated free-text captured at the point of movement —
+    /// same restraint as <see cref="Reason"/> and as GoodsReceiptLine's own BatchNumber/
+    /// SerialNumber, which this factory's two producing call sites
+    /// (GoodsReceiptLineReceivedConsumer, AdjustStockCommandHandler) pass straight
+    /// through unchanged. A stock-out entry carrying a batch/serial is meaningful too
+    /// (which lot/unit left) — this is not receipt-only.
+    /// </summary>
+    public static InventoryLedgerEntry RecordAdjustment(Guid companyId, Guid productId, Guid warehouseId, decimal quantityDelta, string reason, decimal? unitCost = null, string? batchNumber = null, string? serialNumber = null)
     {
         if (productId == Guid.Empty)
             throw new ArgumentException("Product id is required.", nameof(productId));
@@ -45,6 +56,8 @@ public sealed class InventoryLedgerEntry : TenantAggregateRoot
             WarehouseId = warehouseId,
             QuantityDelta = quantityDelta,
             UnitCost = unitCost,
+            BatchNumber = string.IsNullOrWhiteSpace(batchNumber) ? null : batchNumber.Trim(),
+            SerialNumber = string.IsNullOrWhiteSpace(serialNumber) ? null : serialNumber.Trim(),
             Reason = reason.Trim(),
             TransactionDate = DateTimeOffset.UtcNow,
         };
