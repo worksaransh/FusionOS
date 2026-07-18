@@ -44,4 +44,13 @@ public interface IJournalEntryRepository
     /// SumPostedAmountByAccountAsync.
     /// </summary>
     Task<IReadOnlyList<(Guid AccountId, decimal TotalDebit, decimal TotalCredit)>> GetPostedBalancesByAccountAsOfAsync(Guid companyId, DateTimeOffset asOfDate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Backs GetProfitAndLossReportQuery (Phase 2 closeout, 2026-07-18). Same shape as
+    /// GetPostedBalancesByAccountAsOfAsync but scoped to a period [dateFrom, dateTo]
+    /// inclusive rather than "since inception through a date" — a P&amp;L reports Revenue/
+    /// Expense activity for a period, not a cumulative balance the way a Balance Sheet's
+    /// Asset/Liability/Equity snapshot does.
+    /// </summary>
+    Task<IReadOnlyList<(Guid AccountId, decimal TotalDebit, decimal TotalCredit)>> GetPostedBalancesByAccountInRangeAsync(Guid companyId, DateTimeOffset dateFrom, DateTimeOffset dateTo, CancellationToken cancellationToken = default);
 }

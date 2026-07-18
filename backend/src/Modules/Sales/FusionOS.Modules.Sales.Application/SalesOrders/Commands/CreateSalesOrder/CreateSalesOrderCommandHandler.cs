@@ -66,5 +66,5 @@ public sealed class CreateSalesOrderCommandHandler : IRequestHandler<CreateSales
         order.Status.ToString(),
         order.OrderDate,
         order.TotalAmount,
-        order.Lines.Select(l => new SalesOrderLineDto(l.Id, l.ProductId, l.Quantity, l.UnitPrice, l.DiscountPercentage, l.LineTotal)).ToList());
+        order.Lines.Select(l => new SalesOrderLineDto(l.Id, l.ProductId, l.Quantity, l.UnitPrice, l.DiscountPercentage, l.LineTotal, l.IsBackordered, l.BackorderedQuantity)).ToList());
 }

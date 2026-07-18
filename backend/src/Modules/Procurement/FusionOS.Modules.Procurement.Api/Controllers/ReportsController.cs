@@ -1,4 +1,5 @@
 using FusionOS.Modules.Procurement.Application.Reports.Queries.GetPoStatusSummaryReport;
+using FusionOS.Modules.Procurement.Application.Reports.Queries.GetPriceHistoryReport;
 using FusionOS.Modules.Procurement.Application.Reports.Queries.GetSupplierScorecardReport;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +28,14 @@ public sealed class ReportsController : ControllerBase
     public async Task<IActionResult> GetSupplierScorecard([FromQuery] Guid companyId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetSupplierScorecardReportQuery(companyId), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("price-history")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPriceHistory([FromQuery] Guid companyId, [FromQuery] Guid productId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetPriceHistoryReportQuery(companyId, productId), cancellationToken);
         return Ok(result);
     }
 }

@@ -19,6 +19,7 @@ public sealed class GetInventoryValuationReportQueryHandler : IRequestHandler<Ge
             .Select(r =>
             {
                 var snapshot = WeightedAverageCostCalculator.Calculate(r.Entries);
+                var fifoSnapshot = FifoCostCalculator.Calculate(r.Entries);
                 return new InventoryValuationLineDto(
                     r.ProductId,
                     r.Sku,
@@ -26,7 +27,10 @@ public sealed class GetInventoryValuationReportQueryHandler : IRequestHandler<Ge
                     snapshot.OnHandQuantity,
                     snapshot.WeightedAverageUnitCost,
                     snapshot.TotalValuation,
-                    snapshot.CumulativeCostOfGoodsSold);
+                    snapshot.CumulativeCostOfGoodsSold,
+                    fifoSnapshot.CurrentUnitCost,
+                    fifoSnapshot.TotalValuation,
+                    fifoSnapshot.CumulativeCostOfGoodsSold);
             })
             .OrderBy(l => l.Sku)
             .ToList();
@@ -34,6 +38,8 @@ public sealed class GetInventoryValuationReportQueryHandler : IRequestHandler<Ge
         return new InventoryValuationReportDto(
             lines,
             lines.Sum(l => l.TotalValuation),
-            lines.Sum(l => l.CumulativeCostOfGoodsSold));
+            lines.Sum(l => l.CumulativeCostOfGoodsSold),
+            lines.Sum(l => l.FifoTotalValuation),
+            lines.Sum(l => l.FifoCumulativeCostOfGoodsSold));
     }
 }

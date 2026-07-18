@@ -1,6 +1,7 @@
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
 using FusionOS.Modules.Sales.Domain.Commissions;
 using FusionOS.Modules.Sales.Domain.CreditNotes;
+using FusionOS.Modules.Sales.Domain.Discounts;
 using FusionOS.Modules.Sales.Domain.Dispatches;
 using FusionOS.Modules.Sales.Domain.Invoices;
 using FusionOS.Modules.Sales.Domain.PriceLists;
@@ -25,6 +26,7 @@ public sealed class SalesDbContext : BaseDbContext
     public DbSet<Quotation> Quotations => Set<Quotation>();
     public DbSet<PriceList> PriceLists => Set<PriceList>();
     public DbSet<SalesCommissionRate> SalesCommissionRates => Set<SalesCommissionRate>();
+    public DbSet<DiscountRule> DiscountRules => Set<DiscountRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

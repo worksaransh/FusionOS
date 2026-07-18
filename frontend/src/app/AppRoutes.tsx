@@ -25,6 +25,8 @@ const AssetsPage = lazy(() => import('../modules/maintenance/pages/AssetsPage').
 const EmployeesPage = lazy(() => import('../modules/hrms/pages/EmployeesPage').then((m) => ({ default: m.EmployeesPage })));
 const KpiDefinitionsPage = lazy(() => import('../modules/bi/pages/KpiDefinitionsPage').then((m) => ({ default: m.KpiDefinitionsPage })));
 const RecommendationsPage = lazy(() => import('../modules/ai/pages/RecommendationsPage').then((m) => ({ default: m.RecommendationsPage })));
+const PluginListingsPage = lazy(() => import('../modules/marketplace/pages/PluginListingsPage').then((m) => ({ default: m.PluginListingsPage })));
+const IntegrationConnectorsPage = lazy(() => import('../modules/integration_hub/pages/IntegrationConnectorsPage').then((m) => ({ default: m.IntegrationConnectorsPage })));
 
 function RouteFallback() {
   return <p className="p-6 text-sm text-text-muted">Loading…</p>;
@@ -218,6 +220,22 @@ export function AppRoutes() {
             element={
               <Suspense fallback={<RouteFallback />}>
                 <RecommendationsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/marketplace"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <PluginListingsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/integration_hub"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <IntegrationConnectorsPage />
               </Suspense>
             }
           />

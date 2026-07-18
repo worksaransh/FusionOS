@@ -62,4 +62,21 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
                 FullyReceivedCount: g.Count(o => o.Status == PurchaseOrderStatus.FullyReceived)))
             .ToList();
     }
+
+    public async Task<IReadOnlyList<(Guid PurchaseOrderId, Guid SupplierId, DateTimeOffset OrderDate, decimal UnitPrice, decimal Quantity)>> GetPriceHistoryAsync(Guid companyId, Guid productId, CancellationToken cancellationToken = default)
+    {
+        // Same "materialize then project in memory" fix as GetSupplierOrderStatsAsync above —
+        // Lines is a navigation collection, not something SQL can flatten alongside OrderDate/Id in one translated query.
+        var orders = await _context.PurchaseOrders
+            .Include(x => x.Lines)
+            .Where(x => x.CompanyId == companyId && x.Lines.Any(l => l.ProductId == productId))
+            .OrderBy(x => x.OrderDate)
+            .ToListAsync(cancellationToken);
+
+        return orders
+            .SelectMany(o => o.Lines
+                .Where(l => l.ProductId == productId)
+                .Select(l => (PurchaseOrderId: o.Id, SupplierId: o.SupplierId, OrderDate: o.OrderDate, UnitPrice: l.UnitPrice, Quantity: l.Quantity)))
+            .ToList();
+    }
 }

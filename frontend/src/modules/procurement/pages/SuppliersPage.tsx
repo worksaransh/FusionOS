@@ -9,9 +9,11 @@ import { Card } from '../../../shared/ui/Card';
 import { CrudListPage } from '../../../shared/ui/CrudListPage';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import type { PagedResult } from '../../../shared/api/types';
+import { PriceHistoryPanel } from './PriceHistoryPanel';
 import { PurchaseOrdersPanel } from './PurchaseOrdersPanel';
 import { RfqsPanel } from './RfqsPanel';
 import { SupplierContractsPanel } from './SupplierContractsPanel';
+import { VendorReturnsPanel } from './VendorReturnsPanel';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required').max(200),
@@ -163,6 +165,8 @@ export function SuppliersPage() {
       <PurchaseOrdersPanel />
       <RfqsPanel />
       <SupplierContractsPanel />
+      <VendorReturnsPanel />
+      <PriceHistoryPanel />
     </div>
   );
 }

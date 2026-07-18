@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,6 +33,8 @@ interface SalesOrderLineDto {
   unitPrice: number;
   discountPercentage: number;
   lineTotal: number;
+  isBackordered: boolean;
+  backorderedQuantity: number;
 }
 
 interface SalesOrderDto {
@@ -53,6 +56,8 @@ interface SalesOrderDto {
 export function SalesOrdersPanel() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [backorderInputs, setBackorderInputs] = useState<Record<string, string>>({});
 
   const customerOptions = useCustomerOptions(companyId);
   const productOptions = useProductOptions(companyId);
@@ -89,6 +94,18 @@ export function SalesOrdersPanel() {
 
   const confirmOrder = useMutation({
     mutationFn: (id: string) => apiClient.post(`/sales/sales-orders/${id}/confirm?companyId=${companyId}`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sales-orders', companyId] }),
+  });
+
+  const flagBackorder = useMutation({
+    mutationFn: ({ orderId, lineId, backorderedQuantity }: { orderId: string; lineId: string; backorderedQuantity: number }) =>
+      apiClient.post(`/sales/sales-orders/${orderId}/lines/${lineId}/flag-backordered`, { companyId, backorderedQuantity }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sales-orders', companyId] }),
+  });
+
+  const clearBackorder = useMutation({
+    mutationFn: ({ orderId, lineId }: { orderId: string; lineId: string }) =>
+      apiClient.post(`/sales/sales-orders/${orderId}/lines/${lineId}/clear-backorder?companyId=${companyId}`, {}),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sales-orders', companyId] }),
   });
 
@@ -200,12 +217,21 @@ export function SalesOrdersPanel() {
               { header: 'Total', render: (order: SalesOrderDto) => order.totalAmount.toLocaleString() },
               {
                 header: '',
-                render: (order: SalesOrderDto) =>
-                  order.status === 'Draft' ? (
-                    <Button variant="secondary" onClick={() => confirmOrder.mutate(order.id)} disabled={confirmOrder.isPending}>
-                      Confirm
+                render: (order: SalesOrderDto) => (
+                  <div className="flex items-center gap-2">
+                    {order.status === 'Draft' && (
+                      <Button variant="secondary" onClick={() => confirmOrder.mutate(order.id)} disabled={confirmOrder.isPending}>
+                        Confirm
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                    >
+                      {expandedOrderId === order.id ? 'Hide lines' : 'Lines'}
                     </Button>
-                  ) : null,
+                  </div>
+                ),
               },
             ]}
             rows={ordersQuery.data.data}
@@ -215,6 +241,56 @@ export function SalesOrdersPanel() {
           />
         </Card>
       )}
+
+      {expandedOrderId && (() => {
+        const expandedOrder = ordersQuery.data?.data.find((o) => o.id === expandedOrderId);
+        if (!expandedOrder) return null;
+        return (
+          <Card className="mt-4">
+            <h3 className="mb-3 text-sm font-semibold text-text">
+              Lines for order {expandedOrder.id.slice(0, 8)}… — backorder management
+            </h3>
+            <div className="flex flex-col gap-2">
+              {expandedOrder.lines.map((line) => (
+                <div key={line.id} className="flex flex-wrap items-center gap-3 rounded-md border border-border p-2 text-sm">
+                  <span className="w-40 shrink-0 text-text-muted">Product {line.productId.slice(0, 8)}…</span>
+                  <span className="w-24 shrink-0">Qty {line.quantity.toLocaleString()}</span>
+                  <span className={line.isBackordered ? 'w-56 shrink-0 text-danger' : 'w-56 shrink-0 text-text-muted'}>
+                    {line.isBackordered ? `Backordered: ${line.backorderedQuantity.toLocaleString()}` : 'Not backordered'}
+                  </span>
+                  <input
+                    className="w-24 rounded-md border border-border bg-surface px-2 py-1"
+                    placeholder="Qty"
+                    value={backorderInputs[line.id] ?? ''}
+                    onChange={(e) => setBackorderInputs((prev) => ({ ...prev, [line.id]: e.target.value }))}
+                  />
+                  <Button
+                    variant="secondary"
+                    disabled={flagBackorder.isPending || !Number(backorderInputs[line.id]) || Number(backorderInputs[line.id]) <= 0}
+                    onClick={() =>
+                      flagBackorder.mutate({ orderId: expandedOrder.id, lineId: line.id, backorderedQuantity: Number(backorderInputs[line.id]) })
+                    }
+                  >
+                    Flag backordered
+                  </Button>
+                  {line.isBackordered && (
+                    <Button
+                      variant="danger"
+                      disabled={clearBackorder.isPending}
+                      onClick={() => clearBackorder.mutate({ orderId: expandedOrder.id, lineId: line.id })}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {(flagBackorder.isError || clearBackorder.isError) && (
+              <p role="alert" className="mt-2 text-sm text-danger">Could not update that line's backorder status.</p>
+            )}
+          </Card>
+        );
+      })()}
       {createOrder.isError && createOrder.error instanceof ApiError && (
         <p role="alert" className="mt-2 text-sm text-danger">{createOrder.error.problem.title}</p>
       )}

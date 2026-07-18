@@ -42,6 +42,40 @@ public class GetInventoryValuationReportQueryHandlerTests
         line.CumulativeCostOfGoodsSold.Should().Be(200m);
         result.GrandTotalValuation.Should().Be(300m);
         result.GrandTotalCostOfGoodsSold.Should().Be(200m);
+        // Only one layer exists (@5), so FIFO and WAC agree here — the divergence case is covered below.
+        line.FifoUnitCost.Should().Be(5m);
+        line.FifoTotalValuation.Should().Be(300m);
+        line.FifoCumulativeCostOfGoodsSold.Should().Be(200m);
+        result.GrandTotalFifoValuation.Should().Be(300m);
+        result.GrandTotalFifoCostOfGoodsSold.Should().Be(200m);
+    }
+
+    [Fact]
+    public async Task Handle_WithMultipleCostLayers_FifoColumnsDivergeFromWeightedAverage()
+    {
+        // 100 @ 5 then 100 @ 7, issue 100 -> WAC blends to 6; FIFO drains the 5-cost layer
+        // entirely and leaves only the 7-cost layer, so FIFO's remaining cost is 7.
+        var productId = Guid.NewGuid();
+        var repository = Substitute.For<IInventoryLedgerRepository>();
+        repository.GetLedgerEntriesByProductAsync(CompanyId, Arg.Any<CancellationToken>())
+            .Returns(new List<(Guid, string, string, IReadOnlyList<InventoryLedgerEntry>)>
+            {
+                (productId, "SKU-1", "Widget", new List<InventoryLedgerEntry>
+                {
+                    Entry(productId, 100m, 5m),
+                    Entry(productId, 100m, 7m),
+                    Entry(productId, -100m, null),
+                }),
+            });
+        var handler = new GetInventoryValuationReportQueryHandler(repository);
+
+        var result = await handler.Handle(new GetInventoryValuationReportQuery(CompanyId), CancellationToken.None);
+
+        var line = result.Lines[0];
+        line.WeightedAverageUnitCost.Should().Be(6m);
+        line.FifoUnitCost.Should().Be(7m);
+        line.FifoTotalValuation.Should().Be(700m);
+        line.FifoCumulativeCostOfGoodsSold.Should().Be(500m);
     }
 
     [Fact]

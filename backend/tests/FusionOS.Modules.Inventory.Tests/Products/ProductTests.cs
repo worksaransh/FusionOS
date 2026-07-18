@@ -78,4 +78,58 @@ public class ProductTests
 
         act.Should().Throw<ArgumentException>();
     }
+
+    // Phase 1 closeout (2026-07-18): Variants
+    [Fact]
+    public void AddVariant_WithValidData_AddsNormalizedVariant()
+    {
+        var product = Product.Create(Guid.NewGuid(), "TSHIRT", "T-Shirt", "PCS");
+
+        product.AddVariant(" tshirt-red-m ", "Color: Red, Size: M");
+
+        product.Variants.Should().ContainSingle(v => v.VariantSku == "TSHIRT-RED-M" && v.Attributes == "Color: Red, Size: M" && v.IsActive);
+    }
+
+    [Fact]
+    public void AddVariant_SameAsBaseSku_Throws()
+    {
+        var product = Product.Create(Guid.NewGuid(), "TSHIRT", "T-Shirt", "PCS");
+
+        var act = () => product.AddVariant("tshirt", "Color: Red");
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void AddVariant_WhenSkuAlreadyExists_Throws()
+    {
+        var product = Product.Create(Guid.NewGuid(), "TSHIRT", "T-Shirt", "PCS");
+        product.AddVariant("TSHIRT-RED-M", "Color: Red, Size: M");
+
+        var act = () => product.AddVariant("TSHIRT-RED-M", "Color: Red, Size: M (dup)");
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void DeactivateVariant_WhenExists_MarksInactive()
+    {
+        var product = Product.Create(Guid.NewGuid(), "TSHIRT", "T-Shirt", "PCS");
+        product.AddVariant("TSHIRT-RED-M", "Color: Red, Size: M");
+        var variantId = product.Variants[0].Id;
+
+        product.DeactivateVariant(variantId);
+
+        product.Variants.Should().ContainSingle(v => v.Id == variantId && !v.IsActive);
+    }
+
+    [Fact]
+    public void DeactivateVariant_WhenNotFound_Throws()
+    {
+        var product = Product.Create(Guid.NewGuid(), "TSHIRT", "T-Shirt", "PCS");
+
+        var act = () => product.DeactivateVariant(Guid.NewGuid());
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

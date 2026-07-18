@@ -13,5 +13,8 @@ public static class ProductMapper
         product.CreatedAt,
         product.UnitOfMeasureConversions
             .Select(c => new UnitOfMeasureConversionDto(c.AlternateUnitOfMeasure, c.ConversionFactor))
+            .ToList(),
+        product.Variants
+            .Select(v => new ProductVariantDto(v.Id, v.VariantSku, v.Attributes, v.IsActive))
             .ToList());
 }

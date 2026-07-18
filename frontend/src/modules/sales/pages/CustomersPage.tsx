@@ -16,6 +16,7 @@ import { CreditNotesPanel } from './CreditNotesPanel';
 import { QuotationsPanel } from './QuotationsPanel';
 import { PriceListsPanel, type PriceListDto } from './PriceListsPanel';
 import { CommissionsPanel } from './CommissionsPanel';
+import { DiscountRulesPanel } from './DiscountRulesPanel';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required').max(200),
@@ -177,6 +178,7 @@ export function CustomersPage() {
       <DispatchesPanel />
       <CreditNotesPanel />
       <PriceListsPanel />
+      <DiscountRulesPanel />
       <CommissionsPanel />
     </div>
   );

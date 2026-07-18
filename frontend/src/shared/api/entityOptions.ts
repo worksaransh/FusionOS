@@ -208,6 +208,38 @@ export function useBillOfMaterialsOptions(companyId: string | undefined) {
   );
 }
 
+interface IntegrationConnectorLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs ConnectorConnectionsPanel's connector picker (Integration Hub frontend, 2026-07-18) — connectors' list endpoint supports `search`, same server-side pattern as useAccountOptions. */
+export function useIntegrationConnectorOptions(companyId: string | undefined) {
+  return useEntityOptions<IntegrationConnectorLite>(
+    'integration-connector-options',
+    '/integration-hub/connectors',
+    companyId,
+    (c) => ({ id: c.id, label: `${c.code} — ${c.name}` }),
+  );
+}
+
+interface PluginListingLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs PluginInstallationsPanel's listing picker (Marketplace frontend, 2026-07-18) — plugin-listings' list endpoint supports `search`, same server-side pattern as useAccountOptions. */
+export function usePluginListingOptions(companyId: string | undefined) {
+  return useEntityOptions<PluginListingLite>(
+    'plugin-listing-options',
+    '/marketplace/plugin-listings',
+    companyId,
+    (p) => ({ id: p.id, label: `${p.code} — ${p.name}` }),
+  );
+}
+
 interface KpiDefinitionLite {
   id: string;
   code: string;

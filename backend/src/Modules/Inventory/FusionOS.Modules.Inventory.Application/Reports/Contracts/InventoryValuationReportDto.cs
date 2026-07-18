@@ -8,6 +8,13 @@ namespace FusionOS.Modules.Inventory.Application.Reports.Contracts;
 /// this report supersedes that one's valuation number with a real weighted average
 /// instead of "most recent cost," and additionally surfaces cumulative COGS.
 /// </summary>
+/// <summary>
+/// FifoUnitCost/FifoTotalValuation/FifoCumulativeCostOfGoodsSold (Phase 1 closeout, 2026-07-18)
+/// are the same product's history folded through FifoCostCalculator instead — computed
+/// alongside WAC in the same handler pass rather than behind a query-method switch, so a caller
+/// can compare both methods side by side without a second round trip. See FifoCostCalculator's
+/// own doc comment for how FIFO layering differs from WAC's single running average.
+/// </summary>
 public sealed record InventoryValuationLineDto(
     Guid ProductId,
     string Sku,
@@ -15,9 +22,14 @@ public sealed record InventoryValuationLineDto(
     decimal OnHandQuantity,
     decimal WeightedAverageUnitCost,
     decimal TotalValuation,
-    decimal CumulativeCostOfGoodsSold);
+    decimal CumulativeCostOfGoodsSold,
+    decimal FifoUnitCost,
+    decimal FifoTotalValuation,
+    decimal FifoCumulativeCostOfGoodsSold);
 
 public sealed record InventoryValuationReportDto(
     IReadOnlyList<InventoryValuationLineDto> Lines,
     decimal GrandTotalValuation,
-    decimal GrandTotalCostOfGoodsSold);
+    decimal GrandTotalCostOfGoodsSold,
+    decimal GrandTotalFifoValuation,
+    decimal GrandTotalFifoCostOfGoodsSold);

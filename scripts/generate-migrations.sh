@@ -25,11 +25,11 @@ if ! dotnet tool list --global | grep -q dotnet-ef; then
   dotnet tool install --global dotnet-ef
 fi
 
-# Module -> DbContext, matched 1:1 with the modules that have real EF
-# configurations today (04_DATABASE_GUIDELINES.md §1). IntegrationHub is the
-# only remaining module with zero DbSets — running migrations against it
-# would produce an empty, meaningless migration, so it is deliberately
-# excluded until it gets a real vertical slice.
+# Module -> DbContext, matched 1:1 with every module that has real EF
+# configurations today (04_DATABASE_GUIDELINES.md §1). Every module in
+# 05_MODULE_ROADMAP.md's catalog is now listed below — Mobile Apps and SAP
+# Migration are the only ones excluded, since neither exists as a folder in
+# this codebase at all yet.
 declare -A MODULE_CONTEXTS=(
   [Core]="CoreDbContext"
   [Inventory]="InventoryDbContext"
@@ -45,6 +45,7 @@ declare -A MODULE_CONTEXTS=(
   [BusinessIntelligence]="BusinessIntelligenceDbContext"
   [Ai]="AiDbContext"
   [Marketplace]="MarketplaceDbContext"
+  [IntegrationHub]="IntegrationHubDbContext"
 )
 
 for module in "${!MODULE_CONTEXTS[@]}"; do

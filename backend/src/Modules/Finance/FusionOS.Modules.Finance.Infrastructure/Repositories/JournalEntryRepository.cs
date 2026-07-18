@@ -78,4 +78,20 @@ public sealed class JournalEntryRepository : IJournalEntryRepository
 
         return grouped.Select(g => (g.AccountId, g.TotalDebit, g.TotalCredit)).ToList();
     }
+
+    public async Task<IReadOnlyList<(Guid AccountId, decimal TotalDebit, decimal TotalCredit)>> GetPostedBalancesByAccountInRangeAsync(Guid companyId, DateTimeOffset dateFrom, DateTimeOffset dateTo, CancellationToken cancellationToken = default)
+    {
+        var grouped = await (
+            from entry in _context.JournalEntries
+            where entry.CompanyId == companyId
+                  && entry.Status == JournalEntryStatus.Posted
+                  && entry.EntryDate >= dateFrom
+                  && entry.EntryDate <= dateTo
+            from line in entry.Lines
+            group line by line.AccountId into g
+            select new { AccountId = g.Key, TotalDebit = g.Sum(l => l.Debit), TotalCredit = g.Sum(l => l.Credit) })
+            .ToListAsync(cancellationToken);
+
+        return grouped.Select(g => (g.AccountId, g.TotalDebit, g.TotalCredit)).ToList();
+    }
 }

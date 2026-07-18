@@ -10,6 +10,7 @@ using FusionOS.Modules.Finance.Domain.FixedAssets;
 using FusionOS.Modules.Finance.Domain.JournalEntries;
 using FusionOS.Modules.Finance.Domain.Payables;
 using FusionOS.Modules.Finance.Domain.Receivables;
+using FusionOS.Modules.Finance.Domain.Settings;
 using FusionOS.Modules.Finance.Domain.TaxJurisdictions;
 using FusionOS.Modules.Finance.Domain.TaxRates;
 using FusionOS.SharedKernel.Context;
@@ -62,6 +63,7 @@ public sealed class FinanceDbContext : BaseDbContext
     public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<BudgetLine> BudgetLines => Set<BudgetLine>();
     public DbSet<FixedAsset> FixedAssets => Set<FixedAsset>();
+    public DbSet<FinanceSettings> FinanceSettings => Set<FinanceSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

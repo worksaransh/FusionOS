@@ -22,6 +22,22 @@ interface ArAgingReportDto {
   grandTotal: number;
 }
 
+interface ApAgingLineDto {
+  supplierId: string;
+  balance: number;
+  oldestChargeDate: string;
+  daysOutstanding: number;
+  bucket: string;
+}
+interface ApAgingReportDto {
+  lines: ApAgingLineDto[];
+  bucket0To30Total: number;
+  bucket31To60Total: number;
+  bucket61To90Total: number;
+  bucket90PlusTotal: number;
+  grandTotal: number;
+}
+
 interface StockValuationLineDto {
   productId: string;
   sku: string;
@@ -118,6 +134,12 @@ export function DashboardPage() {
     enabled: Boolean(companyId),
   });
 
+  const apAgingQuery = useQuery({
+    queryKey: ['dashboard-ap-aging', companyId],
+    queryFn: () => apiClient.get<ApAgingReportDto>(`/finance/reports/ap-aging?companyId=${companyId}`),
+    enabled: Boolean(companyId),
+  });
+
   if (!companyId) {
     return <p className="text-sm text-text-muted">Set an active company (top right) to see the dashboard.</p>;
   }
@@ -149,6 +171,11 @@ export function DashboardPage() {
           label="AR Outstanding"
           value={arAgingQuery.isLoading ? '…' : (arAgingQuery.data?.grandTotal ?? 0).toLocaleString()}
           hint={`${arAgingQuery.data?.lines.length ?? 0} open invoice balances`}
+        />
+        <KpiCard
+          label="AP Outstanding"
+          value={apAgingQuery.isLoading ? '…' : (apAgingQuery.data?.grandTotal ?? 0).toLocaleString()}
+          hint={`${apAgingQuery.data?.lines.length ?? 0} open supplier balances`}
         />
       </div>
 
@@ -187,6 +214,42 @@ export function DashboardPage() {
               isLoading={arAgingQuery.isLoading}
               emptyMessage="No outstanding invoice balances."
               rowKey={(l) => l.invoiceId}
+            />
+          </Card>
+
+          <h2 className="mb-3 mt-6 text-lg font-semibold text-text">AP Aging</h2>
+          <Card className="mb-4">
+            <div className="grid grid-cols-4 gap-2 text-center text-sm">
+              <div>
+                <p className="text-text-muted">0-30</p>
+                <p className="font-semibold text-text">{(apAgingQuery.data?.bucket0To30Total ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-text-muted">31-60</p>
+                <p className="font-semibold text-text">{(apAgingQuery.data?.bucket31To60Total ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-text-muted">61-90</p>
+                <p className="font-semibold text-text">{(apAgingQuery.data?.bucket61To90Total ?? 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-text-muted">90+</p>
+                <p className="font-semibold text-text">{(apAgingQuery.data?.bucket90PlusTotal ?? 0).toLocaleString()}</p>
+              </div>
+            </div>
+          </Card>
+          <Card>
+            <DataTable
+              columns={[
+                { header: 'Supplier ID', render: (l: ApAgingLineDto) => l.supplierId },
+                { header: 'Days', render: (l: ApAgingLineDto) => String(l.daysOutstanding) },
+                { header: 'Bucket', render: (l: ApAgingLineDto) => l.bucket },
+                { header: 'Balance', render: (l: ApAgingLineDto) => l.balance.toLocaleString() },
+              ]}
+              rows={apAgingQuery.data?.lines}
+              isLoading={apAgingQuery.isLoading}
+              emptyMessage="No outstanding supplier balances."
+              rowKey={(l) => l.supplierId}
             />
           </Card>
         </div>

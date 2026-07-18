@@ -6,6 +6,8 @@ using FusionOS.Modules.Inventory.Application.IntegrationEvents.Consumers;
 using FusionOS.Modules.Inventory.Application.Ledger.Contracts;
 using FusionOS.Modules.Inventory.Application.Products.Commands.CreateProduct;
 using FusionOS.Modules.Inventory.Application.Products.Contracts;
+using FusionOS.Modules.Inventory.Application.Reservations.Contracts;
+using FusionOS.Modules.Inventory.Application.Transfers.Contracts;
 using FusionOS.Modules.Inventory.Infrastructure.Persistence;
 using FusionOS.Modules.Inventory.Infrastructure.Repositories;
 using FusionOS.SharedKernel.Events;
@@ -30,6 +32,8 @@ public sealed class InventoryModule : IModule
 
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IInventoryLedgerRepository, InventoryLedgerRepository>();
+        services.AddScoped<IReservationRepository, ReservationRepository>();
+        services.AddScoped<ITransferRepository, TransferRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProcessedIntegrationEventStore, EfProcessedIntegrationEventStore<InventoryDbContext>>();
 
@@ -45,6 +49,10 @@ public sealed class InventoryModule : IModule
         // Manufacturing's completed work orders move stock too: consume components,
         // produce the parent product (03_SYSTEM_ARCHITECTURE.md §4.2).
         services.AddScoped<IIntegrationEventConsumer, WorkOrderCompletedConsumer>();
+        // Phase 1 closeout (2026-07-18): Procurement's completed Vendor Returns
+        // debit stock here — Procurement has no project reference to Inventory,
+        // so this is the only way it can reach the ledger.
+        services.AddScoped<IIntegrationEventConsumer, VendorReturnCompletedConsumer>();
 
         services.AddControllers().AddApplicationPart(typeof(InventoryModule).Assembly);
 

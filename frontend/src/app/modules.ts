@@ -25,6 +25,6 @@ export const MODULES: ModuleNavEntry[] = [
   { name: 'maintenance', label: 'Maintenance', schema: 'maintenance', phase: 'Phase 5 — Quality & Maintenance', implemented: true },
   { name: 'bi', label: 'Business Intelligence', schema: 'bi', phase: 'Phase 6 — Business Intelligence', implemented: true },
   { name: 'ai', label: 'AI Platform', schema: 'ai', phase: 'Phase 7 — AI Platform', implemented: true },
-  { name: 'marketplace', label: 'Marketplace', schema: 'marketplace', phase: 'Phase 8 — Marketplace & Ecosystem', implemented: false },
-  { name: 'integration_hub', label: 'Integration Hub', schema: 'integration_hub', phase: 'Phase 9 — Integrations & Mobile', implemented: false },
+  { name: 'marketplace', label: 'Marketplace', schema: 'marketplace', phase: 'Phase 8 — Marketplace & Ecosystem', implemented: true },
+  { name: 'integration_hub', label: 'Integration Hub', schema: 'integration_hub', phase: 'Phase 9 — Integrations & Mobile', implemented: true },
 ];

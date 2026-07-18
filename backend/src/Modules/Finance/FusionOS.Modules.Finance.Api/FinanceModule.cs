@@ -15,6 +15,7 @@ using FusionOS.Modules.Finance.Application.IntegrationEvents.Consumers;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using FusionOS.Modules.Finance.Application.Payables.Contracts;
 using FusionOS.Modules.Finance.Application.Receivables.Contracts;
+using FusionOS.Modules.Finance.Application.Settings.Contracts;
 using FusionOS.Modules.Finance.Application.TaxJurisdictions.Contracts;
 using FusionOS.Modules.Finance.Application.TaxRates.Contracts;
 using FusionOS.Modules.Finance.Infrastructure.Persistence;
@@ -74,6 +75,7 @@ public sealed class FinanceModule : IModule
         services.AddScoped<IBudgetRepository, BudgetRepository>();
         services.AddScoped<IBudgetLineRepository, BudgetLineRepository>();
         services.AddScoped<IFixedAssetRepository, FixedAssetRepository>();
+        services.AddScoped<IFinanceSettingsRepository, FinanceSettingsRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProcessedIntegrationEventStore, EfProcessedIntegrationEventStore<FinanceDbContext>>();
 

@@ -1,6 +1,8 @@
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
 using FusionOS.Modules.Inventory.Domain.Ledger;
 using FusionOS.Modules.Inventory.Domain.Products;
+using FusionOS.Modules.Inventory.Domain.Reservations;
+using FusionOS.Modules.Inventory.Domain.Transfers;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +16,8 @@ public sealed class InventoryDbContext : BaseDbContext
 
     public DbSet<Product> Products => Set<Product>();
     public DbSet<InventoryLedgerEntry> LedgerEntries => Set<InventoryLedgerEntry>();
+    public DbSet<Reservation> Reservations => Set<Reservation>();
+    public DbSet<Transfer> Transfers => Set<Transfer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -29,4 +29,21 @@ public sealed class ApLedgerRepository : IApLedgerRepository
 
     public Task<int> CountAsync(Guid companyId, Guid supplierId, CancellationToken cancellationToken = default) =>
         _context.ApLedgerEntries.CountAsync(x => x.CompanyId == companyId && x.SupplierId == supplierId, cancellationToken);
+
+    public async Task<IReadOnlyList<(Guid SupplierId, decimal Balance, DateTimeOffset OldestChargeDate)>> GetOutstandingSupplierBalancesAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        var grouped = await _context.ApLedgerEntries
+            .Where(x => x.CompanyId == companyId)
+            .GroupBy(x => x.SupplierId)
+            .Select(g => new
+            {
+                SupplierId = g.Key,
+                Balance = g.Sum(x => x.Amount),
+                OldestChargeDate = g.Min(x => x.TransactionDate),
+            })
+            .Where(g => g.Balance != 0)
+            .ToListAsync(cancellationToken);
+
+        return grouped.Select(g => (g.SupplierId, g.Balance, g.OldestChargeDate)).ToList();
+    }
 }

@@ -33,6 +33,12 @@ public sealed class AccountRepository : IAccountRepository
     public Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default) =>
         Filtered(companyId, search).CountAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Account>> ListAllAsync(Guid companyId, CancellationToken cancellationToken = default) =>
+        await _context.Accounts
+            .Where(a => a.CompanyId == companyId)
+            .OrderBy(a => a.Code)
+            .ToListAsync(cancellationToken);
+
     private IQueryable<Account> Filtered(Guid companyId, string? search)
     {
         var query = _context.Accounts.Where(a => a.CompanyId == companyId);

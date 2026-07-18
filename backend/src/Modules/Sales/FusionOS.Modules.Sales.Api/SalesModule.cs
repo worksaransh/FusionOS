@@ -8,6 +8,7 @@ using FusionOS.Modules.Sales.Application.Commissions.Contracts;
 using FusionOS.Modules.Sales.Application.CreditNotes.Contracts;
 using FusionOS.Modules.Sales.Application.Customers.Commands.CreateCustomer;
 using FusionOS.Modules.Sales.Application.Customers.Contracts;
+using FusionOS.Modules.Sales.Application.Discounts.Contracts;
 using FusionOS.Modules.Sales.Application.Dispatches.Contracts;
 using FusionOS.Modules.Sales.Application.Invoices.Contracts;
 using FusionOS.Modules.Sales.Application.PriceLists.Contracts;
@@ -41,6 +42,7 @@ public sealed class SalesModule : IModule
         services.AddScoped<IQuotationRepository, QuotationRepository>();
         services.AddScoped<IPriceListRepository, PriceListRepository>();
         services.AddScoped<ISalesCommissionRateRepository, SalesCommissionRateRepository>();
+        services.AddScoped<IDiscountRuleRepository, DiscountRuleRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddModuleApplication(typeof(CreateCustomerCommand).Assembly);

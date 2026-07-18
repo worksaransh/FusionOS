@@ -22,4 +22,17 @@ public interface IApLedgerRepository
     Task<IReadOnlyList<Domain.Payables.ApLedgerEntry>> ListAsync(Guid companyId, Guid supplierId, int page, int pageSize, CancellationToken cancellationToken = default);
 
     Task<int> CountAsync(Guid companyId, Guid supplierId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// One row per supplier with a nonzero net balance, for the AP aging report
+    /// (Phase 2 closeout, 2026-07-18). Grouped by SupplierId rather than by
+    /// PurchaseOrderId the way AR's equivalent groups by InvoiceId — unlike
+    /// ArLedgerEntry.InvoiceId (mandatory, one row per invoice),
+    /// ApLedgerEntry.PurchaseOrderId is optional (an ad-hoc bill has none), so
+    /// it isn't a reliable "one row per bill" grouping key here; supplier is
+    /// the only key every entry always has. OldestChargeDate is the earliest
+    /// entry recorded for that supplier, same "days outstanding computed
+    /// entirely from Finance's own data" approximation AR's aging report uses.
+    /// </summary>
+    Task<IReadOnlyList<(Guid SupplierId, decimal Balance, DateTimeOffset OldestChargeDate)>> GetOutstandingSupplierBalancesAsync(Guid companyId, CancellationToken cancellationToken = default);
 }

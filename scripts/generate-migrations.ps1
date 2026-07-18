@@ -35,6 +35,7 @@ $ModuleContexts = @{
     "BusinessIntelligence" = "BusinessIntelligenceDbContext"
     "Ai"            = "AiDbContext"
     "Marketplace"   = "MarketplaceDbContext"
+    "IntegrationHub" = "IntegrationHubDbContext"
 }
 
 foreach ($item in $ModuleContexts.GetEnumerator()) {

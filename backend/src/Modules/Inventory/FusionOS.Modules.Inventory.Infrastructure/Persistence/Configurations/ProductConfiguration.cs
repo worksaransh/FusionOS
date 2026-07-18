@@ -27,5 +27,13 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(p => p.UnitOfMeasureConversions).HasField("_unitOfMeasureConversions").UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Phase 1 closeout (2026-07-18): Variants — same entity-with-own-Id child collection shape as UnitOfMeasureConversions above.
+        builder.HasMany(p => p.Variants)
+            .WithOne()
+            .HasForeignKey("ProductId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(p => p.Variants).HasField("_variants").UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

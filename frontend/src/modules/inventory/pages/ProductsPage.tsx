@@ -11,6 +11,8 @@ import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import type { PagedResult } from '../../../shared/api/types';
 import { StockLedgerPanel } from './StockLedgerPanel';
 import { InventoryValuationPanel } from './InventoryValuationPanel';
+import { ReservationsPanel } from './ReservationsPanel';
+import { TransfersPanel } from './TransfersPanel';
 
 const schema = z.object({
   sku: z.string().min(1, 'SKU is required').max(50),
@@ -35,6 +37,13 @@ interface UnitOfMeasureConversionDto {
   conversionFactor: number;
 }
 
+interface ProductVariantDto {
+  id: string;
+  variantSku: string;
+  attributes: string;
+  isActive: boolean;
+}
+
 interface ProductDto {
   id: string;
   sku: string;
@@ -44,6 +53,7 @@ interface ProductDto {
   isActive: boolean;
   createdAt: string;
   unitOfMeasureConversions: UnitOfMeasureConversionDto[];
+  variants: ProductVariantDto[];
 }
 
 // M9-remaining e: Multi-UOM. This is a small standalone schema/form for the
@@ -57,6 +67,15 @@ const uomConversionSchema = z.object({
     .refine((v) => !Number.isNaN(Number(v)) && Number(v) > 0, 'Must be greater than zero'),
 });
 type UomConversionFormValues = z.infer<typeof uomConversionSchema>;
+
+// Phase 1 closeout (2026-07-18): Variants. Small standalone schema/form for
+// the add-variant input inside ProductEditPanel, same separation from
+// editSchema as uomConversionSchema above.
+const variantSchema = z.object({
+  variantSku: z.string().min(1, 'Required').max(50),
+  attributes: z.string().min(1, 'Required').max(500),
+});
+type VariantFormValues = z.infer<typeof variantSchema>;
 
 /** Phase 1 slice — see backend/src/Modules/Inventory for the full CQRS handler. */
 export function ProductsPage() {
@@ -177,6 +196,8 @@ export function ProductsPage() {
 
       <StockLedgerPanel />
       <InventoryValuationPanel />
+      <ReservationsPanel />
+      <TransfersPanel />
     </div>
   );
 }
@@ -245,6 +266,7 @@ function ProductEditPanel({ companyId, product, onClose }: ProductEditPanelProps
       </form>
 
       <UnitOfMeasureConversionsPanel companyId={companyId} product={product} />
+      <ProductVariantsPanel companyId={companyId} product={product} />
     </Card>
   );
 }
@@ -350,6 +372,113 @@ function UnitOfMeasureConversionsPanel({ companyId, product }: UnitOfMeasureConv
       )}
       {removeConversion.isError && (
         <p role="alert" className="mt-2 text-sm text-danger">Could not remove that unit conversion.</p>
+      )}
+    </div>
+  );
+}
+
+interface ProductVariantsPanelProps {
+  companyId: string;
+  product: ProductDto;
+}
+
+// Phase 1 closeout (2026-07-18): Variants — records each sellable variation
+// of this product (e.g. a color/size combination) as its own variant SKU.
+// Attributes is a free-form description, not a structured attribute set (see
+// ProductVariant.cs doc comment); deactivating a variant never removes the
+// row (soft-deactivate only, same convention as the product itself).
+function ProductVariantsPanel({ companyId, product }: ProductVariantsPanelProps) {
+  const queryClient = useQueryClient();
+
+  const { register, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<VariantFormValues>({
+    resolver: zodResolver(variantSchema),
+  });
+
+  const addVariant = useMutation({
+    mutationFn: (values: VariantFormValues) =>
+      apiClient.post<ProductDto>(`/inventory/products/${product.id}/variants`, {
+        companyId,
+        variantSku: values.variantSku,
+        attributes: values.attributes,
+      }),
+    onSuccess: () => {
+      reset();
+      queryClient.invalidateQueries({ queryKey: ['products', companyId] });
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.problem.errors) {
+        for (const [field, messages] of Object.entries(error.problem.errors)) {
+          setError(field as keyof VariantFormValues, { message: messages[0] });
+        }
+      }
+    },
+  });
+
+  const deactivateVariant = useMutation({
+    mutationFn: (variantId: string) =>
+      apiClient.post<ProductDto>(`/inventory/products/${product.id}/variants/${variantId}/deactivate`, { companyId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products', companyId] }),
+  });
+
+  return (
+    <div className="mt-6 border-t border-border pt-4">
+      <h3 className="mb-2 text-sm font-semibold text-text">Variants</h3>
+      {product.variants.length === 0 ? (
+        <p className="text-sm text-text-muted">No variants recorded yet.</p>
+      ) : (
+        <table className="mb-3 w-full text-sm">
+          <thead>
+            <tr className="text-left text-text-muted">
+              <th className="pb-1">Variant SKU</th>
+              <th className="pb-1">Attributes</th>
+              <th className="pb-1">Status</th>
+              <th className="pb-1"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {product.variants.map((v) => (
+              <tr key={v.id} className="border-t border-border">
+                <td className="py-1">{v.variantSku}</td>
+                <td className="py-1">{v.attributes}</td>
+                <td className="py-1">{v.isActive ? 'Active' : 'Inactive'}</td>
+                <td className="py-1 text-right">
+                  {v.isActive && (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      disabled={deactivateVariant.isPending && deactivateVariant.variables === v.id}
+                      onClick={() => deactivateVariant.mutate(v.id)}
+                    >
+                      Deactivate
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <form
+        onSubmit={handleSubmit((values) => addVariant.mutate(values))}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end"
+      >
+        <label className="flex flex-col gap-1 text-sm">
+          Variant SKU
+          <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder={`${product.sku}-RED-M`} {...register('variantSku')} />
+          {errors.variantSku && <span className="text-xs text-danger">{errors.variantSku.message}</span>}
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Attributes
+          <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="Color: Red, Size: M" {...register('attributes')} />
+          {errors.attributes && <span className="text-xs text-danger">{errors.attributes.message}</span>}
+        </label>
+        <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Add variant'}</Button>
+      </form>
+      {addVariant.isError && (
+        <p role="alert" className="mt-2 text-sm text-danger">Could not save that variant.</p>
+      )}
+      {deactivateVariant.isError && (
+        <p role="alert" className="mt-2 text-sm text-danger">Could not deactivate that variant.</p>
       )}
     </div>
   );

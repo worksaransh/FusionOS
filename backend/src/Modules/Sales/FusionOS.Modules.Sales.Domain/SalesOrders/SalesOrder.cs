@@ -51,4 +51,21 @@ public sealed class SalesOrder : TenantAggregateRoot
         Status = SalesOrderStatus.Confirmed;
         Raise(new SalesOrderConfirmed(Id, CompanyId, CustomerId, TotalAmount));
     }
+
+    /// <summary>Manually flags one line as backordered — see SalesOrderLine's own class doc comment for why this is a manual flag, not an automatic availability check.</summary>
+    public void FlagLineBackordered(Guid lineId, decimal backorderedQuantity)
+    {
+        var line = _lines.SingleOrDefault(l => l.Id == lineId)
+            ?? throw new ArgumentException($"Line '{lineId}' does not belong to this sales order.", nameof(lineId));
+
+        line.FlagBackordered(backorderedQuantity);
+    }
+
+    public void ClearLineBackorder(Guid lineId)
+    {
+        var line = _lines.SingleOrDefault(l => l.Id == lineId)
+            ?? throw new ArgumentException($"Line '{lineId}' does not belong to this sales order.", nameof(lineId));
+
+        line.ClearBackorder();
+    }
 }

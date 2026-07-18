@@ -12,6 +12,7 @@ namespace FusionOS.Modules.Inventory.Domain.Products;
 public sealed class Product : TenantAggregateRoot
 {
     private readonly List<ProductUnitOfMeasureConversion> _unitOfMeasureConversions = new();
+    private readonly List<ProductVariant> _variants = new();
 
     public string Sku { get; private set; } = default!;
     public string Name { get; private set; } = default!;
@@ -19,6 +20,7 @@ public sealed class Product : TenantAggregateRoot
     public string UnitOfMeasure { get; private set; } = default!;
     public bool IsActive { get; private set; } = true;
     public IReadOnlyList<ProductUnitOfMeasureConversion> UnitOfMeasureConversions => _unitOfMeasureConversions.AsReadOnly();
+    public IReadOnlyList<ProductVariant> Variants => _variants.AsReadOnly();
 
     private Product() { }
 
@@ -88,5 +90,25 @@ public sealed class Product : TenantAggregateRoot
             ?? throw new ArgumentException($"No unit-of-measure conversion found for '{alternateUnitOfMeasure}'.", nameof(alternateUnitOfMeasure));
 
         _unitOfMeasureConversions.Remove(existing);
+    }
+
+    /// <summary>Adds a new variant SKU (e.g. a specific color/size combination) — see ProductVariant's own doc comment for why Attributes is free-form.</summary>
+    public void AddVariant(string variantSku, string attributes)
+    {
+        var variant = ProductVariant.Create(variantSku, attributes);
+        if (variant.VariantSku == Sku)
+            throw new ArgumentException("Variant SKU cannot be the same as the product's own base SKU.", nameof(variantSku));
+        if (_variants.Any(v => v.VariantSku == variant.VariantSku))
+            throw new ArgumentException($"Variant SKU '{variant.VariantSku}' already exists on this product.", nameof(variantSku));
+
+        _variants.Add(variant);
+    }
+
+    public void DeactivateVariant(Guid variantId)
+    {
+        var variant = _variants.FirstOrDefault(v => v.Id == variantId)
+            ?? throw new ArgumentException($"No variant found with id '{variantId}'.", nameof(variantId));
+
+        variant.Deactivate();
     }
 }

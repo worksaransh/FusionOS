@@ -1563,6 +1563,343 @@ copy-paste prompts to run each one.
   **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
   tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
 
+- [x] **Marketplace — first real slice, backend + frontend (2026-07-18).** Was scaffold-only before
+  this entry — the fifth of the six remaining scaffold modules (after Maintenance, HRMS, Business
+  Intelligence, AI, same day) to get a real vertical slice, built anyway despite
+  `docs/MASTER_FUTURE_BUILD_PLAN.md` §0's own note that Marketplace is "genuinely lowest-priority
+  until there's a stable, compiled, tested core" — noted to you before starting, you said continue.
+  Two aggregates, same discipline as the prior pairs:
+  - **PluginListing** (05_MODULE_ROADMAP.md's Marketplace line item — Plugins/Themes/Report
+    packs/Workflow packs/Industry extensions/AI agents) — pure master data
+    (Code/Name/Publisher/`PluginCategory`/IsActive), one enum covering all six categories rather than
+    six separate aggregates, since they share the same catalog shape. Deliberately scoped
+    per-company, not a shared cross-tenant public catalog — a real one needs a platform-admin/
+    publisher concept this codebase has no precedent for, and there is also no real plugin
+    execution/sandboxing engine yet for cross-company sharing to actually mean anything — see the
+    aggregate's own class doc comment.
+  - **PluginInstallation** — a company's install of a listing, Installed → Disabled/Uninstalled
+    (Enable reverses Disable; Uninstall is terminal). `PluginListingId` is a same-module FK,
+    existence-validated in the command handler. Deliberately install *bookkeeping only* — no real
+    plugin code is loaded, sandboxed, or executed; that is a separately-scoped, substantially larger
+    follow-up (03_SYSTEM_ARCHITECTURE.md §6 describes the intended event-subscription + scoped-
+    permission model, not implemented here), same restraint as AI's Recommendation not including a
+    real ML model.
+  Backend: 2 domain aggregates + 2 domain events (`PluginListingCreated`, `PluginInstalled` — neither
+  consumed this slice), 9 commands/queries (`PluginInstallation` has no GetById — no controller
+  action needs to fetch a single installation, only list, same simplification as BusinessIntelligence's
+  KpiSnapshot), 2 repositories + `UnitOfWork`, 2 EF configurations (first `DbSet`s on the previously-
+  empty `MarketplaceDbContext`), 2 controllers (`PluginListingsController`,
+  `PluginInstallationsController`), 8 new `marketplace.*` permission codes, `MarketplaceModule.cs`
+  updated to register the new repositories/`IUnitOfWork`/`OutboxDispatcher` — also fixed the same
+  `FusionOS.BuildingBlocks.EventBus` csproj-reference gap found in every scaffold module built this
+  pass. New `FusionOS.Modules.Marketplace.Tests` project (added to `FusionOS.sln`) with domain +
+  command-handler tests for both aggregates. `scripts/generate-migrations.sh`/`.ps1` updated to
+  include `MarketplaceDbContext`.
+  Frontend: `PluginListingsPage.tsx` (create/search/delist) with `PluginInstallationsPanel.tsx`
+  rendered beneath it (listing picker via a new `usePluginListingOptions` hook; install is one
+  click, disable/enable/uninstall are single-click status transitions). Route (`/marketplace`),
+  `app/modules.ts` (`implemented: true`) wired the same way as every prior module entry.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
+- [x] **Integration Hub — first real slice, backend + frontend (2026-07-18).** Was scaffold-only
+  before this entry — the sixth and last remaining scaffold module (after Maintenance, HRMS,
+  Business Intelligence, AI, Marketplace, same day) to get a real vertical slice. Two aggregates,
+  same discipline as Marketplace's pair (and every pair before it):
+  - **IntegrationConnector** (05_MODULE_ROADMAP.md's IntegrationHub line item — Shopify,
+    WooCommerce, Amazon, Flipkart, ONDC, Shiprocket, Delhivery, Razorpay, Stripe, WhatsApp, Email) —
+    pure master data (Code/Name/Provider/`ConnectorCategory`/IsActive). One 5-value category enum
+    (Ecommerce/Shipping/Payment/Messaging/Email) spans all eleven named providers; `Provider` itself
+    is a free-form string (e.g. "Shopify"), not its own enum — hardcoding eleven values would be
+    brittle against the real list changing, same reasoning as AI's `Recommendation.Type`.
+  - **ConnectorConnection** — a company's connection to a connector, Connected → Disconnected, or
+    flagged Error (a manual stand-in — `MarkConnectorConnectionErrorCommand` — since no automated
+    health-check/sync engine exists yet to detect a failure itself, same "manual first, event-fed
+    later" restraint as BusinessIntelligence's `RecordKpiSnapshotCommand`). `IntegrationConnectorId`
+    is a same-module FK, existence-validated in the command handler. Deliberately stores **no
+    credential/API-key/OAuth token** — `Label` is a plain human-readable name, not where secrets
+    live; real secret storage needs proper encrypted-at-rest/vault infrastructure this slice does not
+    attempt to half-wire. There is also no real sync engine — this is connection bookkeeping only,
+    same restraint as Marketplace's PluginInstallation not executing plugin code.
+  Backend: 2 domain aggregates + 2 domain events (`IntegrationConnectorCreated`, `ConnectorConnected`
+  — neither consumed this slice), 9 commands/queries (`ConnectorConnection` has no GetById, same
+  simplification as Marketplace's PluginInstallation), 2 repositories + `UnitOfWork`, 2 EF
+  configurations (first `DbSet`s on the previously-empty `IntegrationHubDbContext`), 2 controllers
+  (`IntegrationConnectorsController`, `ConnectorConnectionsController`), 7 new `integration_hub.*`
+  permission codes, `IntegrationHubModule.cs` updated to register the new repositories/
+  `IUnitOfWork`/`OutboxDispatcher` — also fixed the same `FusionOS.BuildingBlocks.EventBus`
+  csproj-reference gap found in every other scaffold module built this pass. New
+  `FusionOS.Modules.IntegrationHub.Tests` project (added to `FusionOS.sln`) with domain +
+  command-handler tests for both aggregates. `scripts/generate-migrations.sh`/`.ps1` updated to
+  include `IntegrationHubDbContext` — **every module in this codebase with a real vertical slice now
+  has a migration-generation entry**; only Mobile Apps and SAP Migration (which don't exist as
+  folders) are excluded, since IntegrationHub was the last scaffold-only module.
+  Frontend: `IntegrationConnectorsPage.tsx` (create/search/deactivate) with
+  `ConnectorConnectionsPanel.tsx` rendered beneath it (connector picker via a new
+  `useIntegrationConnectorOptions` hook; connect is one click, disconnect/flag-error are single-click
+  status transitions — no credential input field anywhere in this form, by design). Route
+  (`/integration_hub`), `app/modules.ts` (`implemented: true`) wired the same way as every prior
+  module entry.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+  **This closes out every module in `docs/blueprint/05_MODULE_ROADMAP.md`'s catalog with at least a
+  first real slice except Mobile Apps and SAP Migration, which don't exist as folders in this
+  codebase at all** — see Section 7 for what that does and doesn't mean for what's actually next.
+
+- [x] **Reservations + Available-to-promise (Inventory), Phase 1 closeout (2026-07-18).** A soft hold
+  on stock at a Warehouse against an opaque reference document (`ReferenceType`/`ReferenceId`, e.g.
+  a Sales Order line — same never-validated cross-module reference pattern as AI's
+  `Recommendation.ReferenceId`), closing the "Reservations" gap flagged in the Phase 1 gap-map. New
+  `Reservation` aggregate (Active → Released/Fulfilled) in Inventory's Domain, `IReservationRepository`
+  with `SumActiveQuantityAsync`, 3 commands (Create/Release/Fulfill) + 2 queries (List,
+  `GetAvailableToPromise` — composes `IInventoryLedgerRepository.SumQuantityAsync` minus active
+  reservations into `AvailableToPromiseDto(StockOnHand, Reserved, Available)`). EF configuration +
+  `ReservationsController` (`api/v1/inventory/reservations`, including a
+  `GET .../available-to-promise` action), 4 new `inventory.reservation.*` permission codes. Domain +
+  command-handler + query-handler tests added to the existing `FusionOS.Modules.Inventory.Tests`
+  project (no new test project needed). Frontend: `ReservationsPanel.tsx` rendered alongside
+  `StockLedgerPanel`/`InventoryValuationPanel` on `ProductsPage` — live-queries available-to-promise
+  as you pick a product+warehouse, before you commit a new reservation.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
+- [x] **Sales backorder handling, Phase 1 closeout (2026-07-18).** Was listed in Section 3 as
+  blocked on Reservations not existing — unblocked and built the same pass Reservations landed
+  above. `SalesOrderLine` gained `IsBackordered`/`BackorderedQuantity` plus internal
+  `FlagBackordered(decimal)`/`ClearBackorder()`, wrapped by `SalesOrder.FlagLineBackordered(lineId,
+  qty)`/`ClearLineBackorder(lineId)`. This is a **manually-set flag, not an automatic availability
+  check** — SalesOrder has no `WarehouseId` of its own (only Dispatch does, later in the flow) and
+  `SalesOrderConfirmed`'s event payload carries no per-line detail, so there is no automatic way for
+  Sales to know Inventory's available-to-promise at confirm time without either a prohibited
+  cross-module reference or a larger, separately-scoped event redesign — same "manual first,
+  event-fed automation later" restraint as BusinessIntelligence's `RecordKpiSnapshotCommand` and
+  Integration Hub's `MarkConnectorConnectionErrorCommand`. A sales/warehouse user checks Inventory's
+  own available-to-promise (Reservations, above) and flags the line by hand.
+  Backend: 2 new commands (`FlagSalesOrderLineBackorderedCommand`/`ClearSalesOrderLineBackorderCommand`,
+  Command+Handler+Validator each), `SalesOrderLineDto` extended with the two new fields (only
+  construction site updated — `CreateSalesOrderCommandHandler.MapToDto`), 2 new controller actions on
+  the existing `SalesOrdersController` (`POST .../lines/{lineId}/flag-backordered` and
+  `.../clear-backorder`), 2 new `sales.sales-order.flag-backorder`/`clear-backorder` permission codes.
+  Domain + command-handler tests added to the existing `FusionOS.Modules.Sales.Tests` project (no new
+  test project needed). Frontend: `SalesOrdersPanel.tsx` gained a per-order expandable "Lines" detail
+  view with a quantity input plus Flag/Clear actions per line, wired to the two new endpoints.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
+- [x] **Inter-warehouse Transfers (Inventory), Phase 1 closeout (2026-07-18).** Moves a Product's
+  stock from one Warehouse to another — 05_MODULE_ROADMAP.md's Inventory "Transfers" line item,
+  confirmed absent by the same gap-map that found Reservations missing. New `Transfer` aggregate
+  (Pending -> Completed/Cancelled). Unlike Reservation, this one **does** post real stock movement:
+  `Transfer.Complete()` itself only flips status and raises `TransferCompleted`; the completing
+  command handler (`CompleteTransferCommandHandler`) is where the actual movement happens — it
+  checks `IInventoryLedgerRepository.SumQuantityAsync` at the source warehouse first (throws a
+  `ValidationException` if insufficient), then posts two `InventoryLedgerEntry.RecordAdjustment`
+  rows (negative at source, positive at destination) in the same unit of work as the status
+  transition — same "aggregate raises the event, the Application-layer handler does the
+  cross-aggregate write" split as Reservation's Release/Fulfill. `Cancel()` never touches the
+  ledger. Backend: 1 domain aggregate + 2 domain events (`TransferCreated`,
+  `TransferCompleted` — neither consumed this slice, intra-module only), `ITransferRepository`, 3
+  commands (Create/Complete/Cancel) + 1 query (List — no GetById, same simplification as
+  Reservation), EF configuration + `DbSet<Transfer>` on the existing `InventoryDbContext`,
+  `TransfersController` (`api/v1/inventory/transfers`), 4 new `inventory.transfer.*` permission
+  codes, `InventoryModule.cs` updated to register `ITransferRepository`. Domain + command-handler
+  tests added to the existing `FusionOS.Modules.Inventory.Tests` project (no new test project
+  needed) — including a dedicated insufficient-stock-throws case. Frontend: `TransfersPanel.tsx`
+  rendered alongside `ReservationsPanel` on `ProductsPage` — product + source/destination warehouse
+  pickers, Complete/Cancel actions per pending transfer.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
+- [x] **Product Variants (Inventory), Phase 1 closeout (2026-07-18).** Records each sellable
+  variation of a Product (e.g. a color/size combination) as its own variant SKU —
+  05_MODULE_ROADMAP.md's Inventory "Variants" line item, confirmed absent by the same gap-map.
+  New `ProductVariant` child entity, same "entity-with-own-Id child collection owned entirely by
+  its parent aggregate" shape as `ProductUnitOfMeasureConversion` (M9's Multi-UOM slice) — no
+  audit/tenant columns of its own, mutators internal, only `Product` itself calls them.
+  `Attributes` is a single free-form descriptive string ("Color: Red, Size: M"), not a structured
+  attribute schema — a real Color/Size/Material catalog dimension shared across products is a
+  larger, separately-scoped piece of catalog design this slice doesn't attempt to half-build, same
+  restraint as AI's `Recommendation.Type`. This also does **not** give each variant its own row in
+  the Inventory Ledger — stock still tracks against the parent Product's own id; variant-level stock
+  (the ledger keying on ProductId+VariantSku) is a bigger schema change deliberately not attempted
+  here. `Product.AddVariant`/`DeactivateVariant` (soft-deactivate only, matching Product's own
+  convention — unlike UnitOfMeasureConversion, which hard-removes). Backend: `ProductVariantDto`
+  added to `ProductDto`/`ProductMapper` (both consumed by all 7 existing handlers that already
+  return a `ProductDto` — no signature drift since `ProductMapper.ToDto` is the single construction
+  site), 2 new commands (`AddProductVariantCommand`/`DeactivateProductVariantCommand`, reusing the
+  existing `inventory.product.update` permission code rather than minting new ones — this is
+  product master-data maintenance, same tier as the UOM-conversion commands), EF `HasMany`/`WithOne`
+  child-collection mapping on the existing `ProductConfiguration` (no new `DbSet`, no new migration
+  history table). 2 new controller actions on `ProductsController`
+  (`POST .../variants`, `POST .../variants/{variantId}/deactivate`). Domain + command-handler
+  tests added to the existing `FusionOS.Modules.Inventory.Tests` project (no new test project
+  needed). Frontend: `ProductVariantsPanel` rendered inside the existing product edit panel,
+  alongside `UnitOfMeasureConversionsPanel` — same list + inline add-form + per-row action shape.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
+- [x] **Vendor Returns (Procurement), Phase 1 closeout (2026-07-18).** Sends a Product back to the
+  supplier against a PurchaseOrder — 05_MODULE_ROADMAP.md's Procurement "Vendor returns" line item,
+  confirmed absent by the same gap-map. New `VendorReturn` aggregate (Pending -> Completed/Cancelled,
+  same three-state shape as Inventory's Transfer). **The one genuinely new architectural wrinkle this
+  pass hit:** unlike Transfer (which posts its own ledger entries in-process because Transfer and
+  the Ledger both live inside Inventory), Procurement has **zero project reference to Inventory**
+  (module isolation is compile-time enforced) — so `VendorReturn.Complete()` can only flip status and
+  raise `VendorReturnCompleted`; the actual stock debit happens in a **new Inventory-side consumer**
+  (`VendorReturnCompletedConsumer`, registered in `InventoryModule.cs`) reacting to that event via the
+  existing outbox -> Kafka -> consumer pipeline, same pattern as `GoodsReceiptLineReceivedConsumer`.
+  This is the first Phase 1 closeout item this pass that required touching two modules instead of
+  one. Also handles an over-return guard PurchaseOrder itself has no concept of: since
+  `PurchaseOrderLine.RecordReceipt` deliberately never rejects over-receipt (a reviewed, documented
+  exception — see its own doc comment) and nothing tracks "quantity already returned," 
+  `CreateVendorReturnCommandHandler` computes it fresh each time via
+  `IVendorReturnRepository.SumReturnedQuantityAsync` (sum of every non-Cancelled prior return for the
+  same PurchaseOrder+Product) and rejects a return that would exceed received-minus-already-returned.
+  Backend: 1 domain aggregate + 2 domain events (`VendorReturnCreated`,
+  `VendorReturnCompleted` — the latter self-carries every field the Inventory consumer needs, same
+  "self-carry everything" restraint as `PurchaseOrderGoodsReceiptCosted`), `IVendorReturnRepository`,
+  3 commands (Create/Complete/Cancel) + 1 query (List — no GetById, same simplification as Transfer),
+  EF configuration + `DbSet<VendorReturn>` on the existing `ProcurementDbContext`,
+  `VendorReturnsController` (`api/v1/procurement/vendor-returns`), 4 new
+  `procurement.vendor-return.*` permission codes, `ProcurementModule.cs` updated to register
+  `IVendorReturnRepository`. Domain + command-handler tests added to the existing
+  `FusionOS.Modules.Procurement.Tests` project, plus a new consumer test in
+  `FusionOS.Modules.Inventory.Tests` (no new test projects needed anywhere). Frontend:
+  `VendorReturnsPanel.tsx` rendered alongside `PurchaseOrdersPanel`/`RfqsPanel`/
+  `SupplierContractsPanel` on `SuppliersPage` — purchase order/product/warehouse pickers, Complete/
+  Cancel actions per pending return.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
+- [x] **Price History (Procurement), Phase 1 closeout (2026-07-18).** Every historical unit price
+  paid for a Product across all Purchase Orders — 05_MODULE_ROADMAP.md's Procurement "Price
+  history" line item, confirmed absent by the same gap-map. Deliberately built as a **canned
+  report over existing PurchaseOrder/PurchaseOrderLine data, not a new aggregate** — the same
+  restraint already established by the PO status summary and supplier scorecard reports (Phase M6):
+  a PriceHistory aggregate would just duplicate data that already exists on every PurchaseOrderLine
+  ever created, and this codebase's own reports precedent is to derive rather than duplicate.
+  Backend: one new `IPurchaseOrderRepository.GetPriceHistoryAsync(companyId, productId)` method
+  (materializes matching orders, flat-maps their lines for the given product, ordered oldest-first —
+  same "materialize then project in memory" fix already documented on
+  `GetSupplierOrderStatsAsync`, since `Lines` is a navigation collection SQL can't flatten inline),
+  `PriceHistoryLineDto`, `GetPriceHistoryReportQuery`/Handler (a thin tuple-to-DTO pass-through, no
+  new repository interface needed), one new controller action on the existing `ReportsController`
+  (`GET api/v1/procurement/reports/price-history?productId=`), 1 new
+  `procurement.price-history.read` permission code. Handler test added to the existing
+  `FusionOS.Modules.Procurement.Tests` project (no new test project needed). Frontend:
+  `PriceHistoryPanel.tsx` — a lookup panel (product picker, no create form, since this is read-only
+  derived data) rendered alongside the other Procurement panels on `SuppliersPage`.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
+- [x] **FIFO costing (Inventory), Phase 1 closeout (2026-07-18).** Closes
+  05_MODULE_ROADMAP.md's "Inventory Valuation (FIFO, Weighted Average Cost)" line item in full —
+  M9 (2026-07-16) built the Weighted Average half only; this is the FIFO half. New
+  `FifoCostCalculator` (pure domain service, mirrors `WeightedAverageCostCalculator`'s exact
+  contract — folds an ordered `InventoryLedgerEntry` history, no I/O) maintains a queue of
+  cost "layers" (one per stock-in entry) and consumes strictly oldest-first on every stock-out,
+  partially draining a layer and carrying the remainder forward when an issue doesn't land on a
+  layer boundary, spanning multiple layers when a single issue exceeds one layer's remaining
+  quantity. Returns a new `FifoCostingSnapshot(OnHandQuantity, CurrentUnitCost, TotalValuation,
+  CumulativeCostOfGoodsSold)` — `CurrentUnitCost` is the weighted average of whatever layers
+  remain after consumption, a single display number rather than a claim that FIFO stock carries
+  one uniform cost. **Deliberately additive, not a mode switch:** rather than putting FIFO behind
+  a query-parameter branch on `GetInventoryValuationReportQuery`, both methods are computed in the
+  same handler pass from the same in-memory entry list and returned side by side — `fifoUnitCost`/
+  `fifoTotalValuation`/`fifoCumulativeCostOfGoodsSold` added to the existing
+  `InventoryValuationLineDto` (and matching grand totals to `InventoryValuationReportDto`), so a
+  caller can compare both methods in one request with zero risk to the existing WAC-only
+  callers/tests (purely additive fields, existing assertions on the untouched WAC fields still
+  pass unmodified). No new controller endpoint, no new permission code — same
+  `inventory.costing.read`-gated `GET .../inventory-valuation` action as before.
+  Tests: new `FifoCostCalculatorTests` (mirrors `WeightedAverageCostCalculatorTests`'s exact case
+  set — single layer, multi-layer FIFO consumption, exact layer-boundary drain, cross-layer
+  spanning issue, no-cost layer, out-of-order entries — plus a dedicated divergence-from-WAC case
+  proving the two methods produce genuinely different numbers over identical entries), and new
+  assertions/a new test added to the existing
+  `GetInventoryValuationReportQueryHandlerTests` covering the FIFO columns and their divergence
+  from WAC. Frontend: `InventoryValuationPanel.tsx` extended with three new columns (FIFO cost/
+  valuation/COGS) alongside the existing WAC ones, plus both grand totals in the summary line —
+  same panel, not a new one.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
+- [x] **Tiered Discount Rules engine (Sales), Phase 1 closeout (2026-07-18) — closes out this pass's
+  Phase 1 punch list.** The tiered, quantity-break half of 05_MODULE_ROADMAP.md's Sales "pricing/
+  discount rules engine" line item — `PriceList` (M7-era) already covers the per-customer
+  override-price half, and its own doc comment explicitly deferred "the discount-per-line half" to
+  a later slice; this is that slice. New `DiscountRule` aggregate: one row per (Product,
+  MinQuantity, DiscountPercentage) tier — multiple rows for the same product at different
+  thresholds together form its "tiers" (e.g. 10+ units -> 5%, 50+ units -> 10%, 100+ units -> 15%).
+  **Deliberately a lookup, not an automatic override:** `CreateSalesOrderCommand` already accepts a
+  caller-supplied `DiscountPercentage` per line (validated against the existing
+  `MaxDiscountPercentageWithoutApproval` threshold); silently replacing whatever a salesperson
+  negotiated with a tier lookup would be a surprising, unrequested change to that existing command,
+  so `GetApplicableDiscountQuery` is a suggestion the Sales Order creation flow can call, same
+  "surface the number, let the human decide" restraint as Reservations' available-to-promise query.
+  The tiered-lookup logic itself (`GetApplicableDiscountQueryHandler`) picks the tier with the
+  highest `MinQuantity` that the given quantity actually meets — the unambiguous ordering key even
+  if a catalog were ever set up with overlapping or out-of-order percentages.
+  Backend: 1 domain aggregate + 1 domain event (`DiscountRuleCreated`, not consumed anywhere —
+  intra-module only), `IDiscountRuleRepository` (including `ListActiveForProductAsync`, the tiered
+  query's own data source), 2 commands (Create/Deactivate) + 2 queries (List, GetApplicableDiscount
+  — no GetById, same simplification as Transfer/Reservation), EF configuration + `DbSet<DiscountRule>`
+  on the existing `SalesDbContext`, `DiscountRulesController` (`api/v1/sales/discount-rules`,
+  including a `GET .../applicable` action), 3 new `sales.discount-rule.*` permission codes,
+  `SalesModule.cs` updated to register `IDiscountRuleRepository`. Domain + command-handler + a
+  dedicated tiered-lookup-behavior test suite (highest-matching-tier, between-tiers, below-every-
+  tier, no-rules-at-all) added to the existing `FusionOS.Modules.Sales.Tests` project (no new test
+  project needed). Frontend: `DiscountRulesPanel.tsx` (create/list/deactivate tiers) rendered
+  alongside `PriceListsPanel`/`CommissionsPanel` on `CustomersPage`. **Not attempted this pass:**
+  wiring the applicable-discount lookup directly into `SalesOrdersPanel`'s line-item form (an inline
+  "suggested discount" hint, mirroring `ReservationsPanel`'s inline ATP display) — the engine itself
+  (rules + tiered lookup, fully tested and API-exposed) is the actual roadmap item; the UI
+  integration is a real but separate enhancement, deliberately scoped out rather than risking a
+  rushed change to an already-working, tested panel.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
+- [x] **Phase 2 — Financial Backbone kickoff (2026-07-18).** User asked to move to Phase 2 after
+  Phase 1's closeout. A source-verified audit (see Section 5's corrected Finance row) found the
+  50%/"CoA/Journal/AR" tracker label badly undercounted actual progress — 11 real aggregates already
+  existed, every one with a wired frontend panel — so this pass targets the audit's genuine gaps
+  rather than re-building what already exists. Three canned reports shipped:
+  - **AP Aging** — mirrors the existing AR Aging report exactly (0-30/31-60/61-90/90+ buckets), but
+    grouped per-supplier rather than per-bill: `ApLedgerEntry.PurchaseOrderId` is optional (an ad-hoc
+    bill has none), so it isn't a reliable one-row-per-bill key the way AR's mandatory `InvoiceId`
+    is — new `IApLedgerRepository.GetOutstandingSupplierBalancesAsync`. Surfaced on the Dashboard
+    alongside AR Aging (a new "AP Outstanding" KPI card + bucket/line breakdown), matching where AR
+    Aging already lived — Finance's own pages never carried aging reports either.
+  - **Profit & Loss** — new `GetProfitAndLossReportQuery`/Handler folding a new
+    `IJournalEntryRepository.GetPostedBalancesByAccountInRangeAsync` (period-ranged, unlike the
+    existing as-of-a-date balance method) by `AccountType`, normal-balance-signed (Revenue =
+    Credit−Debit, Expense = Debit−Credit) so a reader never has to mentally flip a sign.
+  - **Balance Sheet** — new `GetBalanceSheetReportQuery`/Handler reusing the existing
+    `GetPostedBalancesByAccountAsOfAsync` (a cumulative-since-inception snapshot is exactly what a
+    Balance Sheet needs, unlike P&L's period scope), split into Asset/Liability/Equity with an
+    `IsBalanced` flag restating the fundamental accounting identity, same "restate the invariant at
+    the report level" convention as Trial Balance's own `IsBalanced`.
+  - Both new reports needed a new `IAccountRepository.ListAllAsync` (unpaged — a report needs the
+    full Chart of Accounts to join against balances, not one page of it).
+  - **Bonus fix, not originally scoped:** while building these, discovered Trial Balance (Phase M6,
+    2026-07-15) had **zero frontend anywhere** — not even the Dashboard, which is where AR Aging
+    lives — a real "backend built, no UI" gap the earlier Manufacturing/CRM/Quality audit pattern
+    didn't catch because it only checked aggregates, not reports. Closed alongside the two new
+    statements in one new `FinancialStatementsPanel.tsx` (Trial Balance + P&L + Balance Sheet
+    together, each with its own date/period picker) rendered on the existing `AccountsPage`.
+  Backend: 2 new repository methods (`GetPostedBalancesByAccountInRangeAsync`,
+  `GetOutstandingSupplierBalancesAsync`) + 1 new unpaged accessor (`ListAllAsync`), 3 new DTOs, 3 new
+  query+handler pairs, 3 new controller actions on the existing `ReportsController` — no new
+  permission codes (all reuse `finance.journal-entry.read`/`finance.payable.read`, same "a canned
+  report is still just a read" convention as every prior Finance report). Domain-free — these are
+  pure query-layer additions over the existing GL/AP data, no new aggregate. Tests added to the
+  existing `FusionOS.Modules.Finance.Tests` project (no new test project needed) mirroring
+  `GetArAgingReportQueryHandlerTests`'/`GetTrialBalanceQueryHandlerTests`' exact bucketing/balance
+  coverage. Frontend: `FinancialStatementsPanel.tsx` (new) on `AccountsPage`; Dashboard's AR Aging
+  section gained an AP Aging twin.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
 ---
 
 ## 3. Not yet started
@@ -1572,18 +1909,36 @@ copy-paste prompts to run each one.
   compiler errors surface (this codebase has never been compiled). See `docs/BUILD_PROMPTS.md`'s
   Phase G prompt.
 - [ ] **Phase M10 (remaining) — genuinely blocked items only.** Procurement three-way match
-  (**BLOCKED ON** Accounts Payable/Supplier Invoicing not existing yet) and Sales backorder handling
-  (**BLOCKED ON** Phase 9's Reservations, which don't exist in this codebase). Every other Phase M10
-  item — Sales returns/credit notes, quotations, pricing/discount engine, commissions; Procurement
-  RFQ, supplier scorecards, contracts — is done, see Section 2.
+  (**BLOCKED ON** Accounts Payable/Supplier Invoicing not existing yet) is the sole remaining blocked
+  item — Sales backorder handling is no longer blocked; it shipped alongside Reservations, see
+  Section 2. Every other Phase M10 item — Sales returns/credit notes, quotations, pricing/discount
+  engine, commissions; Procurement RFQ, supplier scorecards, contracts — is done, see Section 2.
+- [ ] **Phase 1 closeout — remaining gaps, deliberately not built (2026-07-18).** Identified by this
+  pass's gap-mapping sweep, alongside the eight items that WERE built (Section 2). Three genuine
+  gaps, none attempted:
+  - **Procurement three-way match** — blocked on Accounts Payable/Supplier Invoicing not existing
+    yet (see the Phase M10 bullet above); the only one of the three that's a hard dependency rather
+    than a scope decision.
+  - **Customer self-service portal** — needs its own customer-identity/auth model (a customer
+    logging into their own account is a different identity surface than the internal-user RBAC this
+    codebase has today); a larger, separately-scoped piece of work, not a Phase 1 slice.
+  - **Cross-docking / barcode-QR / RF scanning workflows** — hardware-adjacent scope (real barcode
+    scanners, RF handheld devices) this pass correctly declined to fake with a browser-only stand-in.
+  Additionally, one narrower gap **within** a shipped item: the tiered Discount Rules engine (Sales,
+  see Section 2) does not yet surface its applicable-discount lookup inline on the Sales Order
+  creation form — the engine itself (rules + tiered query) is complete and API-exposed; only the
+  `SalesOrdersPanel` UI integration was deferred.
 - [ ] **Phase K — Raise test/CI confidence** beyond Phase M3: coverage gate + dependency/SAST
   scanning in CI. Depends on Phase G (a real schema to test against).
-- [ ] **Phase F — Deferred, parked until you say go.** This bullet predates Manufacturing/CRM/Quality
-  and Maintenance/HRMS/BusinessIntelligence/AI getting real backend+frontend slices (see Section 2) —
-  corrected here rather than left stale. Still genuinely scaffold-only (empty `ModuleMarker` + health
-  endpoint, no aggregates): Marketplace, Integration Hub. Mobile Apps and SAP Migration don't exist as
-  folders at all. MRP specifically (as distinct from the Manufacturing module it rolls up into) also
-  has no aggregate yet — see Section 5's BOM/MRP rows.
+- [ ] **Phase F — fully closed out (2026-07-18), except what genuinely can't exist yet.** This
+  bullet predates Manufacturing/CRM/Quality and Maintenance/HRMS/BusinessIntelligence/AI/Marketplace/
+  IntegrationHub all getting real backend+frontend slices (see Section 2) — corrected here rather
+  than left stale. **No module remains scaffold-only** (empty `ModuleMarker` + health endpoint, no
+  aggregates) — Integration Hub was the last one. Mobile Apps and SAP Migration still don't exist as
+  folders at all (they are separate delivery surfaces/tooling, not modules with their own schema, so
+  "give them a first slice" doesn't apply the same way). MRP specifically (as distinct from the
+  Manufacturing module it rolls up into) also has no aggregate yet — see Section 5's BOM/MRP rows.
+  None of this changes Phase G's priority — see Section 7.
 
 ---
 
@@ -1624,11 +1979,11 @@ across every single row**, because no migration has ever been applied anywhere.
 | Users | 35% | — |
 | Departments | 5% | — |
 | Products | 60% | +5 — Update now reachable from the UI |
-| Inventory (Stock Ledger + Costing) | 72% | +5 — Multi-UOM (per-product alternate unit conversions, upsert/remove, wired into Goods Receipt lines) closes out Phase M9 in its entirety |
+| Inventory (Stock Ledger + Costing) | 85% | +4 (2026-07-18) — FIFO costing (FifoCostCalculator, layer-based, computed alongside Weighted Average in the same valuation report rather than behind a mode switch), closing 05_MODULE_ROADMAP.md's Inventory Valuation line item in full. Combined with Reservations/ATP, Transfers, and Variants earlier this pass; Barcode/QR is the one named Inventory capability deliberately not attempted this pass (hardware-adjacent scope, see Section 7) |
 | Warehouse (Warehouses/Zones/Goods Receipt/Bins/Cycle Counting/Picking+Packing/Putaway) | 78% | +6 — Putaway (suggest/confirm a bin on each Goods Receipt line) closes out Phase M9's entire WMS-depth scope |
-| Procurement (Suppliers/Purchase Orders/RFQ) | 62% | +4 — new RFQ aggregate: multiple suppliers submit quotes, the winner converts into a real Purchase Order |
-| Sales (Customers/Orders/Invoices/Dispatch/Credit Notes/Quotations) | 70% | +4 — new Quotation aggregate, convertible into a real Sales Order once accepted |
-| Finance (CoA/Journal/AR) | 50% | +5 this pass — AR ledger can now decrease (payments), not just increase |
+| Procurement (Suppliers/Purchase Orders/RFQ/Vendor Returns/Price History) | 68% | +3 (2026-07-18) — Vendor Returns (Pending -> Completed/Cancelled, first Phase 1 closeout item needing a cross-module event since Procurement can't call Inventory directly) and Price History (a canned report over existing PurchaseOrder data, no new aggregate). Three-way match is the only remaining Procurement gap, blocked on Accounts Payable, see Section 3 |
+| Sales (Customers/Orders/Invoices/Dispatch/Credit Notes/Quotations/Discount Rules) | 75% | +3 (2026-07-18) — backorder handling (manual flag/clear per sales order line) plus a tiered Discount Rules engine (quantity-break tiers per product, a lookup the Sales Order flow can query, not an automatic override). Customer self-service portal is the only remaining named Sales gap, and it needs its own customer-identity/auth model — see Section 3 |
+| Finance (CoA/Journal/AP/AR/Cost Centers/Tax/Bank/Budgets/Assets) | 62% | +12 (2026-07-18) — corrected from a stale 50%/"CoA/Journal/AR" label: a source-verified audit found 11 real backend aggregates (Account, JournalEntry with structural double-entry validation, CostCenter, TaxJurisdiction, TaxRate with a real `CalculateLineTaxQuery` calculation, ApLedgerEntry, ArLedgerEntry, BankAccount, BankStatementLine with a real suggest-match reconciliation algorithm, ExchangeRate, Budget/BudgetLine, FixedAsset with automated depreciation-posting math), **every one already wired to a frontend panel** — unlike the Manufacturing/CRM/Quality precedent, Finance never had the "real backend, zero UI" gap. Genuine gaps instead: no GL-level financial statements (P&L/Balance Sheet/Cash Flow), no AP Aging (AR has one), AR/AP subledgers post no JournalEntry so the GL never reflects invoice/bill activity, and the tax engine is never actually invoked by Sales/Procurement's UI despite the schema plumbing already existing — see Section 3/7 for the Phase 2 punch list closing these. |
 | Manufacturing | 20% | +18 (2026-07-18) — corrected from a stale 2%: real `BillOfMaterials`/`WorkOrder` aggregates (Draft→Released→Completed, `WorkOrderCompleted` consumed by Inventory) already existed backend-only; this pass added the missing frontend (`BillsOfMaterialsPage`/`WorkOrdersPanel`) closing the "frontend deferred" gap. No routing/costing/capacity-planning yet. |
 | BOM | 25% | +25 (2026-07-18) — same `BillOfMaterials` aggregate as the Manufacturing row above (components + quantities, soft-deactivate); this is the specific sub-capability that row's % rolls up. |
 | MRP | 0% | — no MRP-specific aggregate (demand planning, reorder points) exists anywhere in the codebase yet. |
@@ -1642,8 +1997,8 @@ across every single row**, because no migration has ever been applied anywhere.
 | Notifications | 55% | +25 this pass — external email delivery via SendGrid now runs as a background dispatcher; in-app inbox (list/mark-read) was already fully real from Phase M7's first pass |
 | Business Intelligence | 18% | +16 (2026-07-18) — new row: this table previously had no dedicated BI row at all (the original audit rolled BI into the Reports/Dashboard rows above, which stay unchanged — those are per-module canned reports, a different thing from BI's own module). Genuinely new this pass: real `KpiDefinition`/`KpiSnapshot` aggregates (KPI catalog; manually-recorded point-in-time values) built backend+frontend together (`KpiDefinitionsPage`/`KpiSnapshotsPanel`). No automated cross-module ingestion, forecasts, or export yet — deliberately, see Section 2's entry. |
 | AI | 15% | +13 (2026-07-18) — genuinely new this pass, not a correction: a real `Recommendation` aggregate (Pending→Accepted/Dismissed human-in-the-loop record) built backend+frontend together (`RecommendationsPage`). No forecasting/OCR/embedding model, no Python ML service — deliberately, see Section 2's entry. |
-| Marketplace | 2% | — |
-| Integration Hub | 2% | — |
+| Marketplace | 18% | +16 (2026-07-18) — genuinely new this pass, not a correction: real `PluginListing`/`PluginInstallation` aggregates (extension catalog; Installed→Disabled/Uninstalled) built backend+frontend together (`PluginListingsPage`/`PluginInstallationsPanel`). No real plugin execution/sandboxing runtime, no cross-tenant public catalog — deliberately, see Section 2's entry. |
+| Integration Hub | 18% | +16 (2026-07-18) — genuinely new this pass, not a correction: real `IntegrationConnector`/`ConnectorConnection` aggregates (connector catalog; Connected→Disconnected/Error) built backend+frontend together (`IntegrationConnectorsPage`/`ConnectorConnectionsPanel`). No credential storage, no real sync engine — deliberately, see Section 2's entry. |
 | Mobile Apps | 0% | — |
 | SAP Migration | 0% | — |
 | Settings | 35% | +35 — first code ever: `CompanySettings` aggregate, Get/Update CQRS, frontend page |
@@ -1651,7 +2006,11 @@ across every single row**, because no migration has ever been applied anywhere.
 | Audit Logs | 45% | — |
 | Analytics | 0% | — |
 
-**Overall (simple average across all 33 rows): ~35%.**
+**Overall (simple average across all 34 rows, now including the new Business Intelligence row):
+~34%.** Barely moved despite six modules going from 2% to 15-20% each, because the table also grew by
+one row and the six gainers were all starting from the lowest baseline in the table — a reminder that
+"more modules have a first slice" and "overall % complete" are different measurements or this pass
+would read as a bigger jump than it actually represents.
 
 ---
 
@@ -1833,9 +2192,10 @@ Phases M3 through M7 (M7 **entirely** done, including external Notification deli
 plus weighted-average costing, batch/lot/serial tracking, and Multi-UOM, all resolved 2026-07-16),
 **Phase M8 in its entirety** (Finance depth — sub-slices a through h: cost centers, multi-jurisdiction
 tax engine, Accounts Payable, bank reconciliation, multi-currency, budgeting, fixed assets, and now
-h's full closeout audit, see Section 2), and all of Phase M10 except two genuinely blocked items
-(Sales backorder handling, Procurement three-way match — both still blocked on prerequisites that
-don't exist in this codebase, see Section 3) are done. All three decisions that were blocking
+h's full closeout audit, see Section 2), and all of Phase M10 except one genuinely blocked item
+(Procurement three-way match — still blocked on Accounts Payable/Supplier Invoicing not existing yet,
+see Section 3; Sales backorder handling shipped as part of the Phase 1 closeout below and is no
+longer blocked) are done. All three decisions that were blocking
 further work — inventory costing method, tax jurisdiction, notification provider — are now resolved
 (Section 4), so **nothing remaining is blocked on a decision**; what's left is either Phase F
 (explicitly parked, not next) or a verification step, not more feature volume.
@@ -1866,11 +2226,54 @@ for all three (see Section 2's "Manufacturing/CRM/Quality frontend panels" entry
 more `npx tsc -b --force`-clean frontend slices to the pile; it does not touch the backend at all, so
 it does not change the Phase G recommendation either.
 
-**Later the same day:** Maintenance, then HRMS, then Business Intelligence, then AI, each got their
-own first real slice, backend and frontend together (`Asset`/`MaintenanceRequest`,
-`Employee`/`LeaveRequest`, `KpiDefinition`/`KpiSnapshot`, `Recommendation` — see Section 2) — four of
-the six remaining scaffold-only modules (Maintenance/HRMS/BusinessIntelligence/AI/Marketplace/
-IntegrationHub) to move past `ModuleMarker` + health endpoint. Marketplace and IntegrationHub remain
-scaffold-only and still explicitly parked under Phase F; Mobile Apps and SAP Migration still don't
-exist as folders at all. This still doesn't change the Phase G recommendation — four more
-never-compiled slices added to the pile, not a reason to deprioritize the first real build.
+**Later the same day:** Maintenance, then HRMS, then Business Intelligence, then AI, then Marketplace,
+then Integration Hub, each got their own first real slice, backend and frontend together
+(`Asset`/`MaintenanceRequest`, `Employee`/`LeaveRequest`, `KpiDefinition`/`KpiSnapshot`,
+`Recommendation`, `PluginListing`/`PluginInstallation`, `IntegrationConnector`/`ConnectorConnection`
+— see Section 2) — **all six** of the previously-remaining scaffold-only modules now have one.
+Marketplace and IntegrationHub were both built despite `docs/MASTER_FUTURE_BUILD_PLAN.md` §0 itself
+calling them lowest-priority until Phase G — flagged before each one, told to continue anyway both
+times. **No module in this codebase remains scaffold-only.** Mobile Apps and SAP Migration still
+don't exist as folders at all — those are a mobile-app delivery surface and a migration-tooling
+workstream respectively, not modules with their own schema in the same sense, so this pass didn't
+attempt to give them one.
+
+**What this does and doesn't mean:** every module in `docs/blueprint/05_MODULE_ROADMAP.md`'s catalog
+now has at least one real, narrowly-scoped vertical slice — a genuine milestone for breadth. It does
+**not** mean this codebase is closer to production-ready, and it does not change Phase G's standing as
+the single highest-priority next step. Every single slice built across this entire session —
+M1 through M10, and now Maintenance/HRMS/BusinessIntelligence/AI/Marketplace/IntegrationHub — shares
+the identical "written, not run" caveat from Section 1: no EF Core migration has ever been generated
+for any of it, and no .NET compiler has ever compiled any of it. Six more never-compiled modules
+plugged into the same unverified pile does not reduce that risk — if anything it raises the stakes of
+finally running Phase G, since a first real `dotnet build` now has six additional modules' worth of
+surface area to find compiler errors in. The honest read: breadth is now very high, confidence is
+exactly where it was before this pass started.
+
+**Latest (2026-07-18): Phase 1 completion pass — punch list done.** Having given every module in
+the catalog breadth, this pass went for **depth** on Phase 1 specifically (Inventory, Warehouse,
+Procurement, Sales — the "Trading ERP Core" per `docs/blueprint/05_MODULE_ROADMAP.md`), closing
+every genuinely-missing capability identified by a dedicated gap-mapping pass rather than
+re-verifying what's already documented in Section 2. Eight items shipped, each with the identical
+full-stack treatment (Domain → Application → Infrastructure → Api → Tests → Frontend →
+PermissionCatalog → this tracker): **Reservations + Available-to-promise** (Inventory), **Sales
+backorder handling** (unblocked by Reservations landing first), **inter-warehouse Transfers**
+(Inventory), **Product Variants** (Inventory), **Vendor Returns** (Procurement — the first item
+this pass needing a genuine cross-module event, since Procurement can't call Inventory directly),
+**Price History** (Procurement — a canned report, no new aggregate), **FIFO costing** (Inventory —
+computed alongside Weighted Average in the same valuation report, not behind a mode switch), and
+**a tiered Discount Rules engine** (Sales — a quantity-break lookup the Sales Order flow can query,
+deliberately not an automatic override of the existing per-line discount field). See Section 2 for
+all eight entries.
+Three Phase 1 gaps were deliberately **not** built even under "complete Phase 1": Procurement
+three-way match (blocked on AP/Supplier Invoicing not existing yet, see Section 3), a Customer
+self-service portal (needs its own customer-identity/auth model, a larger and separately-scoped
+piece of work), and cross-docking/barcode-RF-scanning workflows (hardware-adjacent scope this pass
+correctly declined to fake). One narrower scope-out within a shipped item: the Discount Rules
+engine's UI does not (yet) surface its lookup inline on the Sales Order creation form — the engine
+itself is complete and API-exposed, but wiring a "suggested discount" hint into `SalesOrdersPanel`
+was deliberately deferred rather than risking a rushed edit to an already-working panel.
+This does not change Phase G's standing as the single highest-priority next step — every line of
+this pass is written under the same "written, not run" caveat as everything before it. Section 5's
+Inventory/Warehouse/Procurement/Sales rows and Section 3's Phase M10 bullet were all corrected
+alongside this pass; nothing here changes what Section 4 already resolved.

@@ -1,8 +1,10 @@
 using System.Text;
 using FusionOS.BuildingBlocks.Application.Csv;
+using FusionOS.Modules.Inventory.Application.Products.Commands.AddProductVariant;
 using FusionOS.Modules.Inventory.Application.Products.Commands.AddUnitOfMeasureConversion;
 using FusionOS.Modules.Inventory.Application.Products.Commands.CreateProduct;
 using FusionOS.Modules.Inventory.Application.Products.Commands.DeactivateProduct;
+using FusionOS.Modules.Inventory.Application.Products.Commands.DeactivateProductVariant;
 using FusionOS.Modules.Inventory.Application.Products.Commands.RemoveUnitOfMeasureConversion;
 using FusionOS.Modules.Inventory.Application.Products.Commands.UpdateProduct;
 using FusionOS.Modules.Inventory.Application.Products.Queries.GetProductById;
@@ -102,6 +104,30 @@ public sealed class ProductsController : ControllerBase
         var result = await _sender.Send(command, cancellationToken);
         return Ok(result);
     }
+
+    // Phase 1 closeout (2026-07-18): Variants.
+    [HttpPost("{id:guid}/variants")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> AddVariant(Guid id, [FromBody] AddProductVariantRequest request, CancellationToken cancellationToken)
+    {
+        var command = new AddProductVariantCommand(request.CompanyId, id, request.VariantSku, request.Attributes);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    // Soft-deactivate only — same convention as Product.Deactivate itself.
+    [HttpPost("{id:guid}/variants/{variantId:guid}/deactivate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DeactivateVariant(Guid id, Guid variantId, [FromBody] DeactivateProductRequest request, CancellationToken cancellationToken)
+    {
+        var command = new DeactivateProductVariantCommand(request.CompanyId, id, variantId);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
 }
 
 /// <summary>Request body for product update — Id comes from the route, not the body.</summary>
@@ -115,3 +141,6 @@ public sealed record AddUnitOfMeasureConversionRequest(Guid CompanyId, string Al
 
 /// <summary>Request body for removing a unit-of-measure conversion.</summary>
 public sealed record RemoveUnitOfMeasureConversionRequest(Guid CompanyId, string AlternateUnitOfMeasure);
+
+/// <summary>Request body for adding a variant SKU.</summary>
+public sealed record AddProductVariantRequest(Guid CompanyId, string VariantSku, string Attributes);
