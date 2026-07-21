@@ -19,5 +19,6 @@ public sealed class LeadConfiguration : IEntityTypeConfiguration<Lead>
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);
         builder.HasIndex(x => new { x.CompanyId, x.Status });
+        builder.HasIndex(x => x.AccountId);
     }
 }

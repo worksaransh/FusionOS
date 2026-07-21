@@ -19,6 +19,15 @@ public interface IApLedgerRepository
 
     Task<decimal> SumAmountAsync(Guid companyId, Guid supplierId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Total already charged against one specific purchase order (three-way
+    /// match, 2026-07-20) - unlike SumAmountAsync's supplier-wide scope, this
+    /// is the "already billed" figure RecordBillChargeCommandHandler compares
+    /// against PurchaseOrderFact's OrderedAmount/ReceivedAmount ceilings before
+    /// accepting a new manual charge for the same PurchaseOrderId.
+    /// </summary>
+    Task<decimal> SumAmountByPurchaseOrderAsync(Guid companyId, Guid purchaseOrderId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Domain.Payables.ApLedgerEntry>> ListAsync(Guid companyId, Guid supplierId, int page, int pageSize, CancellationToken cancellationToken = default);
 
     Task<int> CountAsync(Guid companyId, Guid supplierId, CancellationToken cancellationToken = default);

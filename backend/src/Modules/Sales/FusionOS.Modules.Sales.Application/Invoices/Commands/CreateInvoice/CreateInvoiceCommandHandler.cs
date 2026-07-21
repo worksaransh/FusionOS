@@ -30,29 +30,41 @@ public sealed class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceC
             });
         }
 
-        // 2026-07-14 coverage-audit follow-up: previously nothing compared the
-        // requested invoice lines to what the sales order actually ordered, or to
-        // what had already been invoiced against it - an order could be invoiced
-        // for any quantity, any number of times. Reject any line that would push
-        // the cumulative invoiced quantity for that product past what was ordered.
+        // Cross-aggregate quantity guard (2026-07-14 coverage-audit follow-up,
+        // tightened 2026-07-20): the cumulative invoiced quantity per product -
+        // every existing invoice against this sales order plus every line of this
+        // request - must never exceed the quantity the order actually ordered.
+        //
+        // Counting rule: ALL persisted invoices count toward the cap, Draft and
+        // Issued alike. InvoiceStatus has no cancelled/voided state today, so
+        // every persisted invoice is a live claim on the ordered quantity (a
+        // Draft is on its way to being Issued, not abandoned). If a cancellation
+        // status is ever introduced, IInvoiceRepository.GetInvoicedQuantityAsync
+        // must be updated to exclude it - the decision lives in that query, not here.
+        //
+        // Request lines are grouped by product before checking, so the same
+        // product split across several request lines cannot slip past the cap by
+        // each line passing individually; the cap itself sums every order line
+        // carrying the product, in case the order lists a product more than once.
         var failures = new List<FluentValidation.Results.ValidationFailure>();
-        foreach (var line in request.Lines)
+        foreach (var productLines in request.Lines.GroupBy(l => l.ProductId))
         {
-            var orderLine = salesOrder.Lines.FirstOrDefault(l => l.ProductId == line.ProductId);
-            if (orderLine is null)
+            if (!salesOrder.Lines.Any(l => l.ProductId == productLines.Key))
             {
                 failures.Add(new FluentValidation.Results.ValidationFailure(
-                    nameof(request.Lines), $"Product {line.ProductId} is not part of sales order {request.SalesOrderId}."));
+                    nameof(request.Lines), $"Product {productLines.Key} is not part of sales order {request.SalesOrderId}."));
                 continue;
             }
 
-            var alreadyInvoiced = await _repository.GetInvoicedQuantityAsync(request.CompanyId, request.SalesOrderId, line.ProductId, cancellationToken);
-            if (alreadyInvoiced + line.Quantity > orderLine.Quantity)
+            var orderedQuantity = salesOrder.Lines.Where(l => l.ProductId == productLines.Key).Sum(l => l.Quantity);
+            var requestedQuantity = productLines.Sum(l => l.Quantity);
+            var alreadyInvoiced = await _repository.GetInvoicedQuantityAsync(request.CompanyId, request.SalesOrderId, productLines.Key, cancellationToken);
+            if (alreadyInvoiced + requestedQuantity > orderedQuantity)
             {
                 failures.Add(new FluentValidation.Results.ValidationFailure(
                     nameof(request.Lines),
-                    $"Product {line.ProductId}: invoicing {line.Quantity} would exceed the sales order's remaining invoiceable quantity " +
-                    $"({orderLine.Quantity - alreadyInvoiced} of {orderLine.Quantity} left, {alreadyInvoiced} already invoiced)."));
+                    $"Product {productLines.Key}: invoicing {requestedQuantity} would exceed the sales order's remaining invoiceable quantity " +
+                    $"({orderedQuantity - alreadyInvoiced} of {orderedQuantity} left, {alreadyInvoiced} already invoiced)."));
             }
         }
 

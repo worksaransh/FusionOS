@@ -12,6 +12,10 @@ public interface IInvoiceRepository
     /// invoice against this sales order (2026-07-14 coverage-audit follow-up:
     /// CreateInvoiceCommandHandler previously fetched the sales order only to
     /// check it existed, never to bound how much of it could be invoiced).
+    /// Counting rule (2026-07-20): Draft and Issued invoices BOTH count -
+    /// InvoiceStatus has no cancelled/voided state today, so every persisted
+    /// invoice is a live claim on the ordered quantity. If a cancellation status
+    /// is ever added to InvoiceStatus, this sum must exclude it.
     /// </summary>
     Task<decimal> GetInvoicedQuantityAsync(Guid companyId, Guid salesOrderId, Guid productId, CancellationToken cancellationToken = default);
 

@@ -1,3 +1,4 @@
+using FusionOS.BuildingBlocks.Application.Abstractions;
 using FusionOS.Modules.Sales.Application.Discounts.Contracts;
 using MediatR;
 

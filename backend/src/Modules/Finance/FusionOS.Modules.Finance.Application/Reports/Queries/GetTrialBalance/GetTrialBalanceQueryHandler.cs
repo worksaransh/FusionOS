@@ -20,11 +20,17 @@ public sealed class GetTrialBalanceQueryHandler : IRequestHandler<GetTrialBalanc
     {
         var balances = await _journalEntryRepository.GetPostedBalancesByAccountAsOfAsync(request.CompanyId, request.AsOfDate, cancellationToken);
 
+        // One bulk fetch of the whole chart of accounts into a dictionary, then an
+        // in-memory lookup per balance row - same pattern as
+        // GetBalanceSheetReportQueryHandler/GetProfitAndLossReportQueryHandler -
+        // instead of one GetByIdAsync query per distinct account.
+        var accounts = (await _accountRepository.ListAllAsync(request.CompanyId, cancellationToken)).ToDictionary(a => a.Id);
+
         var lines = new List<TrialBalanceLineDto>();
         foreach (var b in balances)
         {
-            var account = await _accountRepository.GetByIdAsync(request.CompanyId, b.AccountId, cancellationToken)
-                ?? throw new KeyNotFoundException($"Account '{b.AccountId}' referenced by a posted journal entry was not found.");
+            if (!accounts.TryGetValue(b.AccountId, out var account))
+                throw new KeyNotFoundException($"Account '{b.AccountId}' referenced by a posted journal entry was not found.");
 
             lines.Add(new TrialBalanceLineDto(
                 b.AccountId,

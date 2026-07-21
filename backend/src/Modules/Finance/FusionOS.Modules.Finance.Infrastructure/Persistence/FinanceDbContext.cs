@@ -64,6 +64,7 @@ public sealed class FinanceDbContext : BaseDbContext
     public DbSet<BudgetLine> BudgetLines => Set<BudgetLine>();
     public DbSet<FixedAsset> FixedAssets => Set<FixedAsset>();
     public DbSet<FinanceSettings> FinanceSettings => Set<FinanceSettings>();
+    public DbSet<PurchaseOrderFact> PurchaseOrderFacts => Set<PurchaseOrderFact>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

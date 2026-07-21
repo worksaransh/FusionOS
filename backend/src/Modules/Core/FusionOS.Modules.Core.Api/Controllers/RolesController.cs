@@ -1,5 +1,6 @@
 using FusionOS.Modules.Core.Application.Roles.Commands.CreateRole;
 using FusionOS.Modules.Core.Application.Roles.Commands.SetRolePermissions;
+using FusionOS.Modules.Core.Application.Roles.Commands.UpdateRole;
 using FusionOS.Modules.Core.Application.Roles.Queries.GetRolePermissions;
 using FusionOS.Modules.Core.Application.Roles.Queries.ListRoles;
 using MediatR;
@@ -40,6 +41,16 @@ public sealed class RolesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRoleRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new UpdateRoleCommand(request.CompanyId, id, request.Name), cancellationToken);
+        return Ok(result);
+    }
+
     [HttpGet("{id:guid}/permissions")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -62,3 +73,6 @@ public sealed class RolesController : ControllerBase
 
 /// <summary>Body shape for PUT .../permissions — RoleId comes from the route, not the body.</summary>
 public sealed record SetRolePermissionsRequest(Guid CompanyId, IReadOnlyList<string> PermissionCodes);
+
+/// <summary>Body shape for PUT /{id} — RoleId comes from the route, not the body.</summary>
+public sealed record UpdateRoleRequest(Guid CompanyId, string Name);

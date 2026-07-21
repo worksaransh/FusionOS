@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Menu, Moon, Sun, Search, LogOut, X, Bell, CheckSquare } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import { useAuthStore } from '../../shared/auth/authStore';
 import { apiClient } from '../../shared/api/client';
 import type { PagedResult } from '../../shared/api/types';
 import { MODULES } from '../modules';
+import { CommandPalette } from './CommandPalette';
 
 /**
  * Unread-notification count for the sidebar badge (Phase M7, 2026-07-15) —
@@ -27,8 +28,17 @@ function useUnreadNotificationCount(companyId: string) {
 /**
  * Enterprise shell: persistent sidebar nav across every module, a global
  * search/command trigger, and a dark-mode toggle — 06_UI_UX_DESIGN_SYSTEM.md
- * §2, §3, §5. Full Cmd/Ctrl+K command palette is a follow-up; this wires the
- * visible entry point for it now so the shell shape doesn't change later.
+ * §2, §3, §5. The search button opens a real Cmd/Ctrl+K command palette
+ * (CommandPalette.tsx) that jumps to any module route the signed-in user can
+ * access; it does not (yet) search across entity data, only routes.
+ *
+ * The sidebar's module list is filtered down to modules the signed-in user
+ * holds at least one permission for (RBAC gating, 07_SECURITY.md) — this is
+ * a UX nicety on top of the backend's real authorization checks, not a
+ * replacement for them. Dashboard/Approvals/Notifications stay unconditional
+ * since every authenticated user, even one on a brand-new zero-permission
+ * "Member" role (see RegisterUserCommandHandler), should be able to reach
+ * basic navigation.
  * Active company is pre-filled from the signed-in session's company_id claim
  * (07_SECURITY.md) but stays editable — useful for a user who belongs to more
  * than one company, or for testing.
@@ -46,11 +56,45 @@ export function AppShell() {
   const { companyId, setCompanyId } = useActiveCompany();
   const session = useAuthStore((s) => s.session);
   const clearSession = useAuthStore((s) => s.clearSession);
+  const hasPermissionPrefix = useAuthStore((s) => s.hasPermissionPrefix);
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const unreadCount = useUnreadNotificationCount(companyId);
 
-  const handleLogout = () => {
+  // Only offer modules the signed-in user holds at least one permission for
+  // (module name doubles as the permission-code prefix, e.g. "sales" matches
+  // "sales.customer.read") — a module nobody can act on is just clutter.
+  const visibleModules = useMemo(
+    () => MODULES.filter((module) => hasPermissionPrefix(module.name)),
+    [hasPermissionPrefix],
+  );
+
+  // Cmd+K on macOS, Ctrl+K everywhere else, opens the command palette from
+  // anywhere in the shell — Escape/arrow handling lives inside the palette
+  // itself once it's open.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setIsPaletteOpen(true);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleLogout = async () => {
+    // Best-effort: revoke the refresh token server-side (POST /core/auth/logout)
+    // so it can't be replayed after sign-out. The local session is cleared
+    // either way — a network failure here shouldn't trap the user signed in.
+    if (session?.refreshToken) {
+      try {
+        await apiClient.post('/core/auth/logout', { refreshToken: session.refreshToken });
+      } catch {
+        // Ignored — see comment above.
+      }
+    }
     clearSession();
     navigate('/login', { replace: true });
   };
@@ -124,7 +168,7 @@ export function AppShell() {
               <span className="ml-auto rounded-full bg-danger px-1.5 py-0.5 text-xs text-white">{unreadCount}</span>
             )}
           </NavLink>
-          {MODULES.map((module) => (
+          {visibleModules.map((module) => (
             <NavLink
               key={module.name}
               to={`/${module.name}`}
@@ -152,7 +196,10 @@ export function AppShell() {
             >
               <Menu size={16} />
             </button>
-            <button className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-text-muted">
+            <button
+              onClick={() => setIsPaletteOpen(true)}
+              className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-text-muted"
+            >
               <Search size={16} />
               <span className="hidden sm:inline">
                 Search… <kbd className="ml-2 rounded bg-surface-muted px-1.5 text-xs">⌘K</kbd>
@@ -193,6 +240,8 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+
+      <CommandPalette open={isPaletteOpen} onClose={() => setIsPaletteOpen(false)} modules={visibleModules} />
     </div>
   );
 }

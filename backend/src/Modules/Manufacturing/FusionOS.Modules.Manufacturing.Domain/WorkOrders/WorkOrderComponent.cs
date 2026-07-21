@@ -15,6 +15,9 @@ public sealed class WorkOrderComponent
     public Guid ComponentProductId { get; private set; }
     public decimal QuantityRequired { get; private set; }
 
+    /// <summary>How much of this component has actually been issued (picked/consumed) to the shop floor so far — distinct from QuantityRequired, the planned snapshot. Never exceeds QuantityRequired.</summary>
+    public decimal QuantityIssued { get; private set; }
+
     private WorkOrderComponent() { }
 
     internal static WorkOrderComponent Create(Guid componentProductId, decimal quantityRequired)
@@ -30,5 +33,30 @@ public sealed class WorkOrderComponent
             ComponentProductId = componentProductId,
             QuantityRequired = quantityRequired,
         };
+    }
+
+    /// <summary>Records that <paramref name="quantity"/> more of this component has been issued. Cannot push the running total past QuantityRequired.</summary>
+    internal void Issue(decimal quantity)
+    {
+        var newTotal = QuantityIssued + quantity;
+        if (newTotal > QuantityRequired)
+        {
+            throw new InvalidOperationException(
+                $"Cannot issue {quantity} of component '{ComponentProductId}': only {QuantityRequired - QuantityIssued} remains unissued.");
+        }
+
+        QuantityIssued = newTotal;
+    }
+
+    /// <summary>Reverses a prior issuance — the inverse of <see cref="Issue"/>. Cannot return more than has actually been issued.</summary>
+    internal void Return(decimal quantity)
+    {
+        if (quantity > QuantityIssued)
+        {
+            throw new InvalidOperationException(
+                $"Cannot return {quantity} of component '{ComponentProductId}': only {QuantityIssued} has been issued.");
+        }
+
+        QuantityIssued -= quantity;
     }
 }

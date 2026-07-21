@@ -62,6 +62,85 @@ public class CreateCreditNoteCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenSameProductSplitAcrossRequestLinesExceedsInvoicedQuantity_ThrowsValidationException()
+    {
+        var companyId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var invoice = Invoice.Create(companyId, Guid.NewGuid(), customerId, new[] { new InvoiceLineInput(productId, 10m, 25m) });
+        var repository = Substitute.For<ICreditNoteRepository>();
+        var invoiceRepository = Substitute.For<IInvoiceRepository>();
+        invoiceRepository.GetByIdAsync(companyId, invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
+        repository.GetCreditedQuantityAsync(companyId, invoice.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var handler = new CreateCreditNoteCommandHandler(repository, invoiceRepository, unitOfWork);
+        // Each line alone (6) is within the invoiced 10, but together they credit 12.
+        var command = new CreateCreditNoteCommand(companyId, invoice.Id, customerId, "Damaged goods", new[]
+        {
+            new CreditNoteLineInput(productId, 6m, 25m),
+            new CreditNoteLineInput(productId, 6m, 25m),
+        });
+
+        var act = () => handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ValidationException>();
+        await repository.DidNotReceive().AddAsync(Arg.Any<CreditNote>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenSameProductSplitAcrossRequestLinesStaysWithinInvoicedQuantity_PersistsCreditNote()
+    {
+        var companyId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var invoice = Invoice.Create(companyId, Guid.NewGuid(), customerId, new[] { new InvoiceLineInput(productId, 10m, 25m) });
+        var repository = Substitute.For<ICreditNoteRepository>();
+        var invoiceRepository = Substitute.For<IInvoiceRepository>();
+        invoiceRepository.GetByIdAsync(companyId, invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
+        repository.GetCreditedQuantityAsync(companyId, invoice.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var handler = new CreateCreditNoteCommandHandler(repository, invoiceRepository, unitOfWork);
+        // 5 + 5 = exactly the invoiced 10.
+        var command = new CreateCreditNoteCommand(companyId, invoice.Id, customerId, "Damaged goods", new[]
+        {
+            new CreditNoteLineInput(productId, 5m, 25m),
+            new CreditNoteLineInput(productId, 5m, 25m),
+        });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.TotalAmount.Should().Be(250m);
+        await repository.Received(1).AddAsync(Arg.Any<CreditNote>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenProductAppearsOnMultipleInvoiceLines_CapsAtTheirSummedQuantity()
+    {
+        var companyId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        // The invoice bills the same product on two lines: 6 + 4 = 10 creditable in total.
+        var invoice = Invoice.Create(companyId, Guid.NewGuid(), customerId, new[]
+        {
+            new InvoiceLineInput(productId, 6m, 25m),
+            new InvoiceLineInput(productId, 4m, 25m),
+        });
+        var repository = Substitute.For<ICreditNoteRepository>();
+        var invoiceRepository = Substitute.For<IInvoiceRepository>();
+        invoiceRepository.GetByIdAsync(companyId, invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
+        repository.GetCreditedQuantityAsync(companyId, invoice.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var handler = new CreateCreditNoteCommandHandler(repository, invoiceRepository, unitOfWork);
+        // 8 exceeds either single line but is within the summed 10 - must pass.
+        var command = new CreateCreditNoteCommand(companyId, invoice.Id, customerId, "Damaged goods", new[] { new CreditNoteLineInput(productId, 8m, 25m) });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.TotalAmount.Should().Be(200m);
+        await repository.Received(1).AddAsync(Arg.Any<CreditNote>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_WhenProductIsNotPartOfTheInvoice_ThrowsValidationException()
     {
         var companyId = Guid.NewGuid();

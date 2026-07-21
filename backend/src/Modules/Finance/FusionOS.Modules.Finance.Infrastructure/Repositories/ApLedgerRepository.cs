@@ -19,6 +19,11 @@ public sealed class ApLedgerRepository : IApLedgerRepository
             .Where(x => x.CompanyId == companyId && x.SupplierId == supplierId)
             .SumAsync(x => x.Amount, cancellationToken);
 
+    public Task<decimal> SumAmountByPurchaseOrderAsync(Guid companyId, Guid purchaseOrderId, CancellationToken cancellationToken = default) =>
+        _context.ApLedgerEntries
+            .Where(x => x.CompanyId == companyId && x.PurchaseOrderId == purchaseOrderId)
+            .SumAsync(x => x.Amount, cancellationToken);
+
     public async Task<IReadOnlyList<ApLedgerEntry>> ListAsync(Guid companyId, Guid supplierId, int page, int pageSize, CancellationToken cancellationToken = default) =>
         await _context.ApLedgerEntries
             .Where(x => x.CompanyId == companyId && x.SupplierId == supplierId)

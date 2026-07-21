@@ -62,10 +62,10 @@ describe('EntityCombobox', () => {
     await user.click(input);
     await user.keyboard('{ArrowDown}{ArrowDown}{Enter}');
 
-    // First ArrowDown just opens+highlights index 0 (Apple); the popup was
-    // already open from the click, so the two ArrowDowns move the highlight
-    // from Apple (0) to Banana (1) before Enter commits it.
-    expect(onChange).toHaveBeenCalledWith('2');
+    // The click already opened the popup and highlighted index 0 (Apple) via
+    // onFocus, so both ArrowDowns move the highlight: Apple (0) -> Banana (1)
+    // -> Cherry (2), and Enter commits Cherry.
+    expect(onChange).toHaveBeenCalledWith('3');
   });
 
   it('closes on Escape without selecting anything', async () => {

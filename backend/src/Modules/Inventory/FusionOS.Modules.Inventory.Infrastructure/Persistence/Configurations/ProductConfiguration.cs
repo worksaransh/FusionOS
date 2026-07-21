@@ -14,9 +14,21 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.Name).HasMaxLength(200).IsRequired();
         builder.Property(p => p.Description).HasMaxLength(1000);
         builder.Property(p => p.UnitOfMeasure).HasMaxLength(20).IsRequired();
+        builder.Property(p => p.Barcode).HasMaxLength(64);
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md — SQL Server IsRowVersion() idiom fixed)
         builder.Ignore(p => p.RowVersion);
         builder.HasIndex(p => new { p.CompanyId, p.Sku }).IsUnique();
+
+        // Barcode/QR support (2026-07-21) — Barcode is nullable (most products may never get
+        // one) and multiple products with no barcode must NOT collide on uniqueness, so this is a
+        // filtered/partial unique index (Postgres partial index via EF Core Npgsql's HasFilter):
+        // only rows with a non-null Barcode participate in the uniqueness check. No existing
+        // filtered-index precedent elsewhere in this codebase to follow, so this uses the
+        // standard EF Core Npgsql HasFilter syntax directly.
+        builder.HasIndex(p => new { p.CompanyId, p.Barcode })
+            .IsUnique()
+            .HasFilter("\"Barcode\" IS NOT NULL");
+
         builder.Ignore(p => p.DomainEvents);
 
         // M9-remaining e: Multi-UOM (2026-07-16) — entity-with-own-Id child collection,

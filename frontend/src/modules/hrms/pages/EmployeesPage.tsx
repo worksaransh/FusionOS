@@ -10,7 +10,9 @@ import { DataTable } from '../../../shared/ui/DataTable';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue';
 import type { PagedResult } from '../../../shared/api/types';
+import { AttendancePanel } from './AttendancePanel';
 import { LeaveRequestsPanel } from './LeaveRequestsPanel';
+import { PayrollPanel } from './PayrollPanel';
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -212,6 +214,8 @@ export function EmployeesPage() {
       )}
 
       <LeaveRequestsPanel />
+      <AttendancePanel />
+      <PayrollPanel />
     </div>
   );
 }

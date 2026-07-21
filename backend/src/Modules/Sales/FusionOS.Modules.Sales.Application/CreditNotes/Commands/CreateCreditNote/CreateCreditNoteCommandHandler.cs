@@ -38,27 +38,34 @@ public sealed class CreateCreditNoteCommandHandler : IRequestHandler<CreateCredi
             });
         }
 
-        // Mirrors CreateInvoiceCommandHandler's cumulative-quantity guard: reject any
-        // line that would push the cumulative credited quantity for that product past
-        // what the invoice actually billed for it.
+        // Mirrors CreateInvoiceCommandHandler's cumulative-quantity guard (tightened
+        // 2026-07-20, same pass as the Invoice/Dispatch handlers): the cumulative
+        // credited quantity per product - every existing credit note against this
+        // invoice plus every line of this request - must never exceed the quantity
+        // the invoice actually billed. Request lines are grouped by product before
+        // checking, so the same product split across several request lines cannot
+        // slip past the cap by each line passing individually; the cap itself sums
+        // every invoice line carrying the product, in case the invoice lists a
+        // product more than once.
         var failures = new List<FluentValidation.Results.ValidationFailure>();
-        foreach (var line in request.Lines)
+        foreach (var productLines in request.Lines.GroupBy(l => l.ProductId))
         {
-            var invoiceLine = invoice.Lines.FirstOrDefault(l => l.ProductId == line.ProductId);
-            if (invoiceLine is null)
+            if (!invoice.Lines.Any(l => l.ProductId == productLines.Key))
             {
                 failures.Add(new FluentValidation.Results.ValidationFailure(
-                    nameof(request.Lines), $"Product {line.ProductId} is not part of invoice {request.InvoiceId}."));
+                    nameof(request.Lines), $"Product {productLines.Key} is not part of invoice {request.InvoiceId}."));
                 continue;
             }
 
-            var alreadyCredited = await _repository.GetCreditedQuantityAsync(request.CompanyId, request.InvoiceId, line.ProductId, cancellationToken);
-            if (alreadyCredited + line.Quantity > invoiceLine.Quantity)
+            var invoicedQuantity = invoice.Lines.Where(l => l.ProductId == productLines.Key).Sum(l => l.Quantity);
+            var requestedQuantity = productLines.Sum(l => l.Quantity);
+            var alreadyCredited = await _repository.GetCreditedQuantityAsync(request.CompanyId, request.InvoiceId, productLines.Key, cancellationToken);
+            if (alreadyCredited + requestedQuantity > invoicedQuantity)
             {
                 failures.Add(new FluentValidation.Results.ValidationFailure(
                     nameof(request.Lines),
-                    $"Product {line.ProductId}: crediting {line.Quantity} would exceed the invoice's remaining creditable quantity " +
-                    $"({invoiceLine.Quantity - alreadyCredited} of {invoiceLine.Quantity} left, {alreadyCredited} already credited)."));
+                    $"Product {productLines.Key}: crediting {requestedQuantity} would exceed the invoice's remaining creditable quantity " +
+                    $"({invoicedQuantity - alreadyCredited} of {invoicedQuantity} left, {alreadyCredited} already credited)."));
             }
         }
 

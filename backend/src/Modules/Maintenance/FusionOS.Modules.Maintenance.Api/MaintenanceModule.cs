@@ -4,6 +4,7 @@ using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.Modules.Maintenance.Application.Assets.Commands.CreateAsset;
 using FusionOS.Modules.Maintenance.Application.Assets.Contracts;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Contracts;
+using FusionOS.Modules.Maintenance.Application.MaintenanceSchedules.Contracts;
 using FusionOS.Modules.Maintenance.Infrastructure.Persistence;
 using FusionOS.Modules.Maintenance.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Routing;
@@ -14,11 +15,13 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FusionOS.Modules.Maintenance.Api;
 
 /// <summary>
-/// Phase 5 — Maintenance, first slice (2026-07-18). Registers the module's DbContext,
-/// Assets + MaintenanceRequests CQRS, repositories, and the outbox dispatcher that
-/// relays AssetCreated/MaintenanceRequestCreated/MaintenanceRequestCompleted to Kafka
-/// (03_SYSTEM_ARCHITECTURE.md §4.2). Maintenance publishes events but consumes none,
-/// so no IIntegrationEventConsumer is registered here.
+/// Phase 5 — Maintenance, first slice (2026-07-18), extended with preventive
+/// maintenance scheduling and technician assignment (2026-07-20). Registers the
+/// module's DbContext, Assets + MaintenanceRequests + MaintenanceSchedules CQRS,
+/// repositories, and the outbox dispatcher that relays AssetCreated/
+/// MaintenanceRequestCreated/MaintenanceRequestCompleted/MaintenanceScheduleCreated
+/// to Kafka (03_SYSTEM_ARCHITECTURE.md §4.2). Maintenance publishes events but
+/// consumes none, so no IIntegrationEventConsumer is registered here.
 /// </summary>
 public sealed class MaintenanceModule : IModule
 {
@@ -33,6 +36,7 @@ public sealed class MaintenanceModule : IModule
 
         services.AddScoped<IAssetRepository, AssetRepository>();
         services.AddScoped<IMaintenanceRequestRepository, MaintenanceRequestRepository>();
+        services.AddScoped<IMaintenanceScheduleRepository, MaintenanceScheduleRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddModuleApplication(typeof(CreateAssetCommand).Assembly);

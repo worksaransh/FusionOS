@@ -26,8 +26,7 @@ public class GetTrialBalanceQueryHandlerTests
             });
 
         var accountRepository = Substitute.For<IAccountRepository>();
-        accountRepository.GetByIdAsync(companyId, cash.Id, Arg.Any<CancellationToken>()).Returns(cash);
-        accountRepository.GetByIdAsync(companyId, revenue.Id, Arg.Any<CancellationToken>()).Returns(revenue);
+        accountRepository.ListAllAsync(companyId, Arg.Any<CancellationToken>()).Returns(new List<Account> { cash, revenue });
 
         var handler = new GetTrialBalanceQueryHandler(journalEntryRepository, accountRepository);
 
@@ -49,8 +48,10 @@ public class GetTrialBalanceQueryHandlerTests
         var journalEntryRepository = Substitute.For<IJournalEntryRepository>();
         journalEntryRepository.GetPostedBalancesByAccountAsOfAsync(companyId, Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>())
             .Returns(new List<(Guid, decimal, decimal)>());
+        var accountRepository = Substitute.For<IAccountRepository>();
+        accountRepository.ListAllAsync(companyId, Arg.Any<CancellationToken>()).Returns(new List<Account>());
 
-        var handler = new GetTrialBalanceQueryHandler(journalEntryRepository, Substitute.For<IAccountRepository>());
+        var handler = new GetTrialBalanceQueryHandler(journalEntryRepository, accountRepository);
 
         var result = await handler.Handle(new GetTrialBalanceQuery(companyId, DateTimeOffset.UtcNow), CancellationToken.None);
 

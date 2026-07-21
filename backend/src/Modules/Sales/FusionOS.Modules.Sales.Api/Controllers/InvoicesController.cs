@@ -24,8 +24,8 @@ public sealed class InvoicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create([FromBody] CreateInvoiceRequest request, CancellationToken cancellationToken)
     {
-        var lines = request.Lines.Select(l => new InvoiceLineInput(l.ProductId, l.Quantity, l.UnitPrice)).ToList();
-        var command = new CreateInvoiceCommand(request.CompanyId, request.SalesOrderId, request.CustomerId, lines);
+        var lines = request.Lines.Select(l => new InvoiceLineInput(l.ProductId, l.Quantity, l.UnitPrice, l.TaxRateId, l.TaxAmount)).ToList();
+        var command = new CreateInvoiceCommand(request.CompanyId, request.SalesOrderId, request.CustomerId, lines, request.SalesPersonId);
         var result = await _sender.Send(command, cancellationToken);
         return CreatedAtAction(nameof(List), new { companyId = request.CompanyId }, result);
     }
@@ -53,6 +53,6 @@ public sealed class InvoicesController : ControllerBase
     }
 }
 
-public sealed record CreateInvoiceLineRequest(Guid ProductId, decimal Quantity, decimal UnitPrice);
+public sealed record CreateInvoiceLineRequest(Guid ProductId, decimal Quantity, decimal UnitPrice, Guid? TaxRateId = null, decimal TaxAmount = 0m);
 
-public sealed record CreateInvoiceRequest(Guid CompanyId, Guid SalesOrderId, Guid CustomerId, IReadOnlyList<CreateInvoiceLineRequest> Lines);
+public sealed record CreateInvoiceRequest(Guid CompanyId, Guid SalesOrderId, Guid CustomerId, IReadOnlyList<CreateInvoiceLineRequest> Lines, Guid? SalesPersonId = null);

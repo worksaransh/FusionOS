@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Controller, type Control, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Trash2 } from 'lucide-react';
@@ -10,8 +10,12 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
+import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue';
 import { useCustomerOptions, useProductOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
+
+const DISCOUNT_LOOKUP_DEBOUNCE_MS = 250;
+const UUID_PATTERN = /^[0-9a-fA-F-]{36}$/;
 
 const lineSchema = z.object({
   productId: z.string().uuid('Pick a product'),
@@ -46,12 +50,21 @@ interface SalesOrderDto {
   lines: SalesOrderLineDto[];
 }
 
+interface ApplicableDiscountDto {
+  discountRuleId: string | null;
+  discountPercentage: number;
+}
+
 /**
  * Sales Orders — next slice after Customer (05_MODULE_ROADMAP.md Phase 1).
  * Customer and each line's Product are picked via the shared EntityCombobox.
  * Each line also carries an optional discount percentage (docs/IMPLEMENTATION_PLAN.md
  * Phase 10 item 10) — a line discount over the backend's documented 20% threshold
- * is rejected with a validation error surfaced below the form.
+ * is rejected with a validation error surfaced below the form. As the user picks a
+ * product/quantity, GetApplicableDiscountQuery (GET /sales/discount-rules/applicable)
+ * is consulted and the matching tier's percentage is offered as a one-click "Use
+ * suggested" fill — it never auto-overrides the field itself (see DiscountRule's own
+ * doc comment: the lookup never auto-writes the line's DiscountPercentage).
  */
 export function SalesOrdersPanel() {
   const { companyId } = useActiveCompany();
@@ -139,59 +152,15 @@ export function SalesOrdersPanel() {
 
           <div className="flex flex-col gap-2">
             {fields.map((field, index) => (
-              <div key={field.id} className="flex items-end gap-2">
-                <label className="flex flex-col gap-1 text-sm">
-                  Product
-                  <Controller
-                    control={control}
-                    name={`lines.${index}.productId`}
-                    render={({ field: lineField }) => (
-                      <EntityCombobox
-                        className="w-72"
-                        value={lineField.value}
-                        onChange={lineField.onChange}
-                        options={productOptions.options}
-                        isLoading={productOptions.isLoading}
-                        onSearchChange={productOptions.onSearchChange}
-                        placeholder="Search products…"
-                      />
-                    )}
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm">
-                  Quantity
-                  <Controller
-                    control={control}
-                    name={`lines.${index}.quantity`}
-                    render={({ field: lineField }) => (
-                      <input className="w-24 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
-                    )}
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm">
-                  Unit price
-                  <Controller
-                    control={control}
-                    name={`lines.${index}.unitPrice`}
-                    render={({ field: lineField }) => (
-                      <input className="w-28 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
-                    )}
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm">
-                  Discount %
-                  <Controller
-                    control={control}
-                    name={`lines.${index}.discountPercentage`}
-                    render={({ field: lineField }) => (
-                      <input className="w-20 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
-                    )}
-                  />
-                </label>
-                <Button type="button" variant="secondary" onClick={() => remove(index)} disabled={fields.length === 1}>
-                  <Trash2 size={16} />
-                </Button>
-              </div>
+              <SalesOrderLineRow
+                key={field.id}
+                control={control}
+                index={index}
+                companyId={companyId}
+                productOptions={productOptions}
+                onRemove={() => remove(index)}
+                removeDisabled={fields.length === 1}
+              />
             ))}
             {errors.lines && typeof errors.lines.message === 'string' && (
               <span className="text-xs text-danger">{errors.lines.message}</span>
@@ -294,6 +263,108 @@ export function SalesOrdersPanel() {
       {createOrder.isError && createOrder.error instanceof ApiError && (
         <p role="alert" className="mt-2 text-sm text-danger">{createOrder.error.problem.title}</p>
       )}
+    </div>
+  );
+}
+
+interface SalesOrderLineRowProps {
+  control: Control<FormValues>;
+  index: number;
+  companyId: string;
+  productOptions: ReturnType<typeof useProductOptions>;
+  onRemove: () => void;
+  removeDisabled: boolean;
+}
+
+/**
+ * One Sales Order line's fields, split out of SalesOrdersPanel's create form so it can
+ * watch its own productId/quantity and consult GetApplicableDiscountQuery
+ * (GET /sales/discount-rules/applicable) for a suggested discount tier — see this
+ * file's own doc comment. The suggestion is offered as a click-to-fill, never forced.
+ */
+function SalesOrderLineRow({ control, index, companyId, productOptions, onRemove, removeDisabled }: SalesOrderLineRowProps) {
+  const productId = useWatch({ control, name: `lines.${index}.productId` });
+  const quantityRaw = useWatch({ control, name: `lines.${index}.quantity` });
+  const debouncedQuantity = useDebouncedValue(quantityRaw, DISCOUNT_LOOKUP_DEBOUNCE_MS);
+  const quantity = Number(debouncedQuantity);
+  const isValidProduct = UUID_PATTERN.test(productId ?? '');
+
+  const applicableDiscountQuery = useQuery({
+    queryKey: ['applicable-discount', companyId, productId, quantity],
+    queryFn: () =>
+      apiClient.get<ApplicableDiscountDto>(
+        `/sales/discount-rules/applicable?companyId=${companyId}&productId=${productId}&quantity=${quantity}`,
+      ),
+    enabled: Boolean(companyId && isValidProduct && quantity > 0),
+  });
+
+  const suggestion = applicableDiscountQuery.data;
+  const hasSuggestion = Boolean(suggestion && suggestion.discountRuleId);
+
+  return (
+    <div className="flex items-end gap-2">
+      <label className="flex flex-col gap-1 text-sm">
+        Product
+        <Controller
+          control={control}
+          name={`lines.${index}.productId`}
+          render={({ field: lineField }) => (
+            <EntityCombobox
+              className="w-72"
+              value={lineField.value}
+              onChange={lineField.onChange}
+              options={productOptions.options}
+              isLoading={productOptions.isLoading}
+              onSearchChange={productOptions.onSearchChange}
+              placeholder="Search products…"
+            />
+          )}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Quantity
+        <Controller
+          control={control}
+          name={`lines.${index}.quantity`}
+          render={({ field: lineField }) => (
+            <input className="w-24 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
+          )}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Unit price
+        <Controller
+          control={control}
+          name={`lines.${index}.unitPrice`}
+          render={({ field: lineField }) => (
+            <input className="w-28 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
+          )}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Discount %
+        <Controller
+          control={control}
+          name={`lines.${index}.discountPercentage`}
+          render={({ field: lineField }) => (
+            <>
+              <input className="w-20 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
+              {hasSuggestion && suggestion && (
+                <button
+                  type="button"
+                  className="w-fit text-xs text-primary underline underline-offset-2 hover:opacity-80"
+                  onClick={() => lineField.onChange(String(suggestion.discountPercentage))}
+                >
+                  Use suggested {suggestion.discountPercentage}%
+                </button>
+              )}
+            </>
+          )}
+        />
+      </label>
+      <Button type="button" variant="secondary" onClick={onRemove} disabled={removeDisabled}>
+        <Trash2 size={16} />
+      </Button>
     </div>
   );
 }

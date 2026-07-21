@@ -7,9 +7,14 @@ import { apiClient, ApiError } from '../../../shared/api/client';
 import { Button } from '../../../shared/ui/Button';
 import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
+import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue';
+import { useCrmAccountOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
+import { ActivitiesPanel } from './ActivitiesPanel';
+import { ContactsPanel } from './ContactsPanel';
+import { CrmAccountsPanel } from './CrmAccountsPanel';
 import { OpportunitiesPanel } from './OpportunitiesPanel';
 
 const SEARCH_DEBOUNCE_MS = 250;
@@ -22,6 +27,11 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+const assignAccountSchema = z.object({
+  accountId: z.string().refine((v) => v === '' || /^[0-9a-fA-F-]{36}$/.test(v), 'Must be blank or a valid Account'),
+});
+type AssignAccountFormValues = z.infer<typeof assignAccountSchema>;
+
 interface LeadDto {
   id: string;
   name: string;
@@ -29,20 +39,23 @@ interface LeadDto {
   contactPhone: string | null;
   source: string | null;
   status: string;
+  accountId: string | null;
 }
 
 /**
  * Leads — CRM's first real frontend slice (backend has existed since the
  * Manufacturing/CRM/Quality backend-only pass; this closes the "frontend
  * panel deferred" gap flagged in docs/PROJECT_TRACKER.md). Top-level page for
- * /crm, same shape as AccountsPage/SuppliersPage: a create form + list here,
- * with OpportunitiesPanel rendered as a sibling panel below it.
+ * /crm, same shape as Finance's AccountsPage: a create form + list here, with
+ * OpportunitiesPanel/CrmAccountsPanel/ContactsPanel/ActivitiesPanel (CRM depth
+ * pass, 2026-07-20) rendered as sibling panels below it.
  */
 export function LeadsPage() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const [assigningAccountLeadId, setAssigningAccountLeadId] = useState<string | null>(null);
 
   const leadsQuery = useQuery({
     queryKey: ['leads', companyId, debouncedSearch],
@@ -171,6 +184,7 @@ export function LeadsPage() {
             { header: 'Contact', render: (row: LeadDto) => row.contactEmail ?? row.contactPhone ?? '—' },
             { header: 'Source', render: (row: LeadDto) => row.source ?? '—' },
             { header: 'Status', render: (row: LeadDto) => row.status },
+            { header: 'Account', render: (row: LeadDto) => (row.accountId ? `${row.accountId.slice(0, 8)}…` : '—') },
             {
               header: 'Actions',
               render: (row: LeadDto) => (
@@ -185,6 +199,9 @@ export function LeadsPage() {
                       </Button>
                     </>
                   )}
+                  <Button type="button" variant="secondary" onClick={() => setAssigningAccountLeadId(row.id)}>
+                    {row.accountId ? 'Change account' : 'Assign account'}
+                  </Button>
                 </div>
               ),
             },
@@ -201,7 +218,85 @@ export function LeadsPage() {
         <p role="alert" className="mt-2 text-sm text-danger">Could not update that lead.</p>
       )}
 
+      {(() => {
+        const assigningAccountLead = leadsQuery.data?.data.find((l) => l.id === assigningAccountLeadId) ?? null;
+        return assigningAccountLead ? (
+          <LeadAssignAccountPanel
+            companyId={companyId}
+            lead={assigningAccountLead}
+            onClose={() => setAssigningAccountLeadId(null)}
+          />
+        ) : null;
+      })()}
+
       <OpportunitiesPanel />
+      <CrmAccountsPanel />
+      <ContactsPanel />
+      <ActivitiesPanel />
     </div>
+  );
+}
+
+interface LeadAssignAccountPanelProps {
+  companyId: string;
+  lead: LeadDto;
+  onClose: () => void;
+}
+
+/** Links a Lead to a CRM Account via POST .../{id}/assign-account (CRM depth pass) — AccountId is nullable, so a blank pick unassigns it. */
+function LeadAssignAccountPanel({ companyId, lead, onClose }: LeadAssignAccountPanelProps) {
+  const queryClient = useQueryClient();
+  const crmAccountOptions = useCrmAccountOptions(companyId);
+
+  const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<AssignAccountFormValues>({
+    resolver: zodResolver(assignAccountSchema),
+    defaultValues: { accountId: lead.accountId ?? '' },
+  });
+
+  const assignAccount = useMutation({
+    mutationFn: (values: AssignAccountFormValues) =>
+      apiClient.post<LeadDto>(`/crm/leads/${lead.id}/assign-account`, {
+        companyId,
+        accountId: values.accountId || null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads', companyId] });
+      onClose();
+    },
+  });
+
+  return (
+    <Card className="mt-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-base font-semibold text-text">Assign account — {lead.name}</h3>
+        <Button variant="secondary" onClick={onClose}>Close</Button>
+      </div>
+      <form onSubmit={handleSubmit((values) => assignAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Account (leave blank to unassign)
+          <Controller
+            control={control}
+            name="accountId"
+            render={({ field }) => (
+              <EntityCombobox
+                value={field.value}
+                onChange={field.onChange}
+                options={crmAccountOptions.options}
+                isLoading={crmAccountOptions.isLoading}
+                onSearchChange={crmAccountOptions.onSearchChange}
+                placeholder="Search accounts…"
+              />
+            )}
+          />
+          {errors.accountId && <span className="text-xs text-danger">{errors.accountId.message}</span>}
+        </label>
+        <div className="col-span-2 flex items-center gap-3">
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save account'}</Button>
+          {assignAccount.isError && (
+            <span role="alert" className="text-sm text-danger">Could not assign that account.</span>
+          )}
+        </div>
+      </form>
+    </Card>
   );
 }

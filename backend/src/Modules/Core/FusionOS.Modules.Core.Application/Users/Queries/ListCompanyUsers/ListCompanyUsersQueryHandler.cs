@@ -13,6 +13,6 @@ public sealed class ListCompanyUsersQueryHandler : IRequestHandler<ListCompanyUs
     public async Task<IReadOnlyList<CompanyUserDto>> Handle(ListCompanyUsersQuery request, CancellationToken cancellationToken)
     {
         var rows = await _users.ListCompanyUsersAsync(request.CompanyId, request.Search, cancellationToken);
-        return rows.Select(r => new CompanyUserDto(r.UserId, r.Email, r.FullName, r.RoleId, r.RoleName)).ToList();
+        return rows.Select(r => new CompanyUserDto(r.UserId, r.Email, r.FullName, r.RoleId, r.RoleName, r.IsActive)).ToList();
     }
 }

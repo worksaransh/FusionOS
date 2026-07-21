@@ -9,7 +9,7 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
-import { useLeadOptions } from '../../../shared/api/entityOptions';
+import { useCrmAccountOptions, useLeadOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
 const schema = z.object({
@@ -24,6 +24,11 @@ const winSchema = z.object({
 });
 type WinFormValues = z.infer<typeof winSchema>;
 
+const assignAccountSchema = z.object({
+  accountId: z.string().refine((v) => v === '' || /^[0-9a-fA-F-]{36}$/.test(v), 'Must be blank or a valid Account'),
+});
+type AssignAccountFormValues = z.infer<typeof assignAccountSchema>;
+
 interface OpportunityDto {
   id: string;
   leadId: string;
@@ -33,6 +38,7 @@ interface OpportunityDto {
   estimatedValue: number;
   stage: string;
   customerCode: string | null;
+  accountId: string | null;
 }
 
 /**
@@ -48,6 +54,7 @@ export function OpportunitiesPanel() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
   const [winningOpportunityId, setWinningOpportunityId] = useState<string | null>(null);
+  const [assigningAccountOpportunityId, setAssigningAccountOpportunityId] = useState<string | null>(null);
 
   const leadOptions = useLeadOptions(companyId);
 
@@ -91,6 +98,7 @@ export function OpportunitiesPanel() {
   if (!companyId) return null;
 
   const winningOpportunity = opportunitiesQuery.data?.data.find((o) => o.id === winningOpportunityId) ?? null;
+  const assigningAccountOpportunity = opportunitiesQuery.data?.data.find((o) => o.id === assigningAccountOpportunityId) ?? null;
 
   return (
     <div className="mt-8">
@@ -154,19 +162,26 @@ export function OpportunitiesPanel() {
             { header: 'Estimated value', render: (row: OpportunityDto) => row.estimatedValue.toLocaleString() },
             { header: 'Stage', render: (row: OpportunityDto) => row.stage },
             { header: 'Customer', render: (row: OpportunityDto) => row.customerCode ?? '—' },
+            { header: 'Account', render: (row: OpportunityDto) => (row.accountId ? `${row.accountId.slice(0, 8)}…` : '—') },
             {
               header: 'Actions',
-              render: (row: OpportunityDto) =>
-                row.stage === 'Open' ? (
-                  <div className="flex items-center gap-2">
-                    <Button type="button" variant="secondary" onClick={() => setWinningOpportunityId(row.id)}>
-                      Win
-                    </Button>
-                    <Button type="button" variant="danger" disabled={loseOpportunity.isPending} onClick={() => loseOpportunity.mutate(row.id)}>
-                      Lose
-                    </Button>
-                  </div>
-                ) : null,
+              render: (row: OpportunityDto) => (
+                <div className="flex items-center gap-2">
+                  {row.stage === 'Open' && (
+                    <>
+                      <Button type="button" variant="secondary" onClick={() => setWinningOpportunityId(row.id)}>
+                        Win
+                      </Button>
+                      <Button type="button" variant="danger" disabled={loseOpportunity.isPending} onClick={() => loseOpportunity.mutate(row.id)}>
+                        Lose
+                      </Button>
+                    </>
+                  )}
+                  <Button type="button" variant="secondary" onClick={() => setAssigningAccountOpportunityId(row.id)}>
+                    {row.accountId ? 'Change account' : 'Assign account'}
+                  </Button>
+                </div>
+              ),
             },
           ]}
           rows={opportunitiesQuery.data?.data}
@@ -186,6 +201,14 @@ export function OpportunitiesPanel() {
           companyId={companyId}
           opportunity={winningOpportunity}
           onClose={() => setWinningOpportunityId(null)}
+        />
+      )}
+
+      {assigningAccountOpportunity && (
+        <OpportunityAssignAccountPanel
+          companyId={companyId}
+          opportunity={assigningAccountOpportunity}
+          onClose={() => setAssigningAccountOpportunityId(null)}
         />
       )}
     </div>
@@ -250,6 +273,70 @@ function WinOpportunityPanel({ companyId, opportunity, onClose }: WinOpportunity
           <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Confirm win'}</Button>
           {winOpportunity.isError && (
             <span role="alert" className="text-sm text-danger">Could not win that opportunity.</span>
+          )}
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+interface OpportunityAssignAccountPanelProps {
+  companyId: string;
+  opportunity: OpportunityDto;
+  onClose: () => void;
+}
+
+/** Links an Opportunity to a CRM Account via POST .../{id}/assign-account (CRM depth pass) — AccountId is nullable, so a blank pick unassigns it. */
+function OpportunityAssignAccountPanel({ companyId, opportunity, onClose }: OpportunityAssignAccountPanelProps) {
+  const queryClient = useQueryClient();
+  const crmAccountOptions = useCrmAccountOptions(companyId);
+
+  const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<AssignAccountFormValues>({
+    resolver: zodResolver(assignAccountSchema),
+    defaultValues: { accountId: opportunity.accountId ?? '' },
+  });
+
+  const assignAccount = useMutation({
+    mutationFn: (values: AssignAccountFormValues) =>
+      apiClient.post<OpportunityDto>(`/crm/opportunities/${opportunity.id}/assign-account`, {
+        companyId,
+        accountId: values.accountId || null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['opportunities', companyId] });
+      onClose();
+    },
+  });
+
+  return (
+    <Card className="mt-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-base font-semibold text-text">Assign account — {opportunity.name}</h3>
+        <Button variant="secondary" onClick={onClose}>Close</Button>
+      </div>
+      <form onSubmit={handleSubmit((values) => assignAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Account (leave blank to unassign)
+          <Controller
+            control={control}
+            name="accountId"
+            render={({ field }) => (
+              <EntityCombobox
+                value={field.value}
+                onChange={field.onChange}
+                options={crmAccountOptions.options}
+                isLoading={crmAccountOptions.isLoading}
+                onSearchChange={crmAccountOptions.onSearchChange}
+                placeholder="Search accounts…"
+              />
+            )}
+          />
+          {errors.accountId && <span className="text-xs text-danger">{errors.accountId.message}</span>}
+        </label>
+        <div className="col-span-2 flex items-center gap-3">
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save account'}</Button>
+          {assignAccount.isError && (
+            <span role="alert" className="text-sm text-danger">Could not assign that account.</span>
           )}
         </div>
       </form>

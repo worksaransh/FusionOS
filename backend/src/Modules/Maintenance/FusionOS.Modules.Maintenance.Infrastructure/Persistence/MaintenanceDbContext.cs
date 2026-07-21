@@ -1,6 +1,7 @@
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
 using FusionOS.Modules.Maintenance.Domain.Assets;
 using FusionOS.Modules.Maintenance.Domain.MaintenanceRequests;
+using FusionOS.Modules.Maintenance.Domain.MaintenanceSchedules;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,8 @@ namespace FusionOS.Modules.Maintenance.Infrastructure.Persistence;
 /// Owns the "maintenance" schema. First real slice (2026-07-18): the machine
 /// register (Asset) and preventive/breakdown maintenance requests against it
 /// (MaintenanceRequest) — 05_MODULE_ROADMAP.md's Maintenance line item.
+/// Preventive maintenance scheduling (MaintenanceSchedule) and technician
+/// assignment on MaintenanceRequest were added in a follow-up pass (2026-07-20).
 /// Spare parts tracking is not yet mapped here — a separately-scoped follow-up.
 /// </summary>
 public sealed class MaintenanceDbContext : BaseDbContext
@@ -19,6 +22,7 @@ public sealed class MaintenanceDbContext : BaseDbContext
 
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<MaintenanceRequest> MaintenanceRequests => Set<MaintenanceRequest>();
+    public DbSet<MaintenanceSchedule> MaintenanceSchedules => Set<MaintenanceSchedule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

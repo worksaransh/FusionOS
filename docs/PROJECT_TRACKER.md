@@ -1,7 +1,7 @@
 # FusionOS — Project Completion Tracker
 
-**Last updated:** 2026-07-17 (Phase M8h — Finance depth closeout audit — the eighth and final M8 sub-slice, now closing out **Phase M8 (Finance depth) in its entirety**. A full audit sweep across all of M8a–g found the codebase's IUnitOfWork-missing-using bug class to be genuinely absent this time (every one of the 27 M8 command handlers, plus a repo-wide re-sweep of all 102 handlers across every module, either imports the correct module-canonical namespace or fully-qualifies the type inline — zero misses), all 10 M8 DbSets present in `FinanceDbContext.cs`, all 10 M8 repositories registered in `FinanceModule.cs`, all 38 M8 `RequiredPermissions` string literals cross-checked byte-for-byte against `PermissionCatalog.cs` with zero typos, all 9 new controllers routed sensibly (`BudgetLine` CRUD confirmed intentionally nested under `BudgetsController`, not a missing controller), and all 9 new frontend panels confirmed imported and rendered in `AccountsPage.tsx`. One genuine bug was found and fixed: the recurring filesystem mount-staleness bug (see Section 6) had truncated `CreateCostCenterCommandHandler.cs` on the bash-side mount (missing its final class-closing brace, caught by the routine brace-balance sweep across all M8 domain/application/infrastructure/api/test folders — the only imbalance found in the entire sweep), recovered via the standard `cat > file <<'EOF'` heredoc rewrite using the `Read`-tool-confirmed content, re-verified by line count and a clean re-run of the brace check. A real `tsc -b --force` came back with 0 errors. Test-file presence confirmed for all 7 M8 sub-slices under `backend/tests/FusionOS.Modules.Finance.Tests/` (`BankStatementLine` tests are intentionally co-located inside the `BankAccounts/` test folder alongside M8d's bank-reconciliation tests, not a separate folder). Phase M8 (sub-slices a–h) is now fully closed. Phase M7 fully closed — SendGrid delivery done; Phase M9 fully closed in its entirety — WMS-depth scope, weighted-average costing, batch/lot/serial, and Multi-UOM; Phase M10 fully closed except two genuinely blocked items; all three outstanding user decisions — costing method, tax jurisdiction, notification provider — are now resolved)
-**Overall completion:** ~36% (source-code-presence estimate, not a measured/verified figure — see caveat below)
+**Last updated:** 2026-07-20 (Wave 1 — a coordinated multi-agent depth pass: the frontend's first real RBAC gating (a `RequirePermission` route gate + permission-prefix sidebar filtering + `hasPermissionPrefix` on `authStore`; every module route now gated on its `*.read` code, Dashboard/Approvals/Notifications deliberately ungated) and a Ctrl/Cmd+K command palette (module-jump navigation, wired to the previously decorative header search button), plus depth slices in five modules — Manufacturing (BOM routing operations, work-order material issue/return, scrap/yield on completion), CRM (Account/Contact/Activity aggregates + account linkage on Lead/Opportunity), HRMS (attendance + a deliberately-minimal payroll skeleton), Quality (non-conformance reports + corrective actions — the CAPA gap), and Maintenance (schedules + technician assignment/downtime). Frontend genuinely execution-verified: `npm run lint` clean, `npm run build` 0 errors, `npm test` 37/37 (17 new tests). Backend written-but-never-compiled as always — two real compile-class errors were caught by manual review during the wave (an unqualified `IUnitOfWork` in Quality; a JSON-unbindable typed enum in CRM's CreateActivity), both fixed, which reinforces rather than reduces Phase G's standing as the single top blocker. EF Core migrations still do not exist anywhere. See Section 2's Wave 1 entry. Previous update: 2026-07-17/18, Phase M8h — Finance depth closeout audit — the eighth and final M8 sub-slice, now closing out **Phase M8 (Finance depth) in its entirety**. A full audit sweep across all of M8a–g found the codebase's IUnitOfWork-missing-using bug class to be genuinely absent this time (every one of the 27 M8 command handlers, plus a repo-wide re-sweep of all 102 handlers across every module, either imports the correct module-canonical namespace or fully-qualifies the type inline — zero misses), all 10 M8 DbSets present in `FinanceDbContext.cs`, all 10 M8 repositories registered in `FinanceModule.cs`, all 38 M8 `RequiredPermissions` string literals cross-checked byte-for-byte against `PermissionCatalog.cs` with zero typos, all 9 new controllers routed sensibly (`BudgetLine` CRUD confirmed intentionally nested under `BudgetsController`, not a missing controller), and all 9 new frontend panels confirmed imported and rendered in `AccountsPage.tsx`. One genuine bug was found and fixed: the recurring filesystem mount-staleness bug (see Section 6) had truncated `CreateCostCenterCommandHandler.cs` on the bash-side mount (missing its final class-closing brace, caught by the routine brace-balance sweep across all M8 domain/application/infrastructure/api/test folders — the only imbalance found in the entire sweep), recovered via the standard `cat > file <<'EOF'` heredoc rewrite using the `Read`-tool-confirmed content, re-verified by line count and a clean re-run of the brace check. A real `tsc -b --force` came back with 0 errors. Test-file presence confirmed for all 7 M8 sub-slices under `backend/tests/FusionOS.Modules.Finance.Tests/` (`BankStatementLine` tests are intentionally co-located inside the `BankAccounts/` test folder alongside M8d's bank-reconciliation tests, not a separate folder). Phase M8 (sub-slices a–h) is now fully closed. Phase M7 fully closed — SendGrid delivery done; Phase M9 fully closed in its entirety — WMS-depth scope, weighted-average costing, batch/lot/serial, and Multi-UOM; Phase M10 fully closed except two genuinely blocked items; all three outstanding user decisions — costing method, tax jurisdiction, notification provider — are now resolved)
+**Overall completion:** ~37% (source-code-presence estimate, not a measured/verified figure — see caveat below)
 **Production readiness:** 0% verified — no EF Core migration has ever been generated or applied, and the backend has never been compiled in this project's working environment.
 
 This file is the single place to check "where does FusionOS actually stand." It supersedes the
@@ -1900,6 +1900,112 @@ copy-paste prompts to run each one.
   **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
   tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
 
+- [x] **AR/AP subledgers wired into the GL (Finance), Phase 2 closeout (2026-07-18).** The single
+  most consequential gap the audit found: `InvoiceIssuedConsumer`/`CreditNoteIssuedConsumer`/
+  `PurchaseOrderGoodsReceiptCostedConsumer` wrote AR/AP subledger entries but never touched the
+  General Ledger — Trial Balance/P&amp;L/Balance Sheet never reflected an issued invoice or a costed
+  goods receipt at all. New `FinanceSettings` aggregate (get-or-create singleton-per-company, same
+  pattern as Core's `CompanySettings`) holds four nullable default-account ids
+  (DefaultArAccountId/DefaultSalesRevenueAccountId/DefaultApAccountId/DefaultPurchaseExpenseAccountId)
+  — a company that hasn't configured them yet keeps today's subledger-only behavior (each consumer
+  checks for null and silently skips the GL post, since a consumer has no user-facing channel to
+  surface a "please configure Finance settings" error the way a command handler does); GL posting
+  turns on automatically the moment a Finance admin configures the relevant pair, no code change or
+  deploy needed. All three consumers now also construct-and-post a balanced two-line `JournalEntry`
+  in the same transaction as their subledger write: Invoice issued -> Debit AR / Credit Sales
+  Revenue; Credit note issued -> Debit Sales Revenue / Credit AR (the reversal); Goods receipt
+  costed -> Debit Purchase Expense / Credit AP. Account-id validity is checked once, at
+  `UpdateFinanceSettingsCommandHandler` configuration time (mirroring
+  `PostMonthlyDepreciationCommandHandler`'s "validate at configuration time, trust it at posting
+  time" split) — the consumers themselves never re-validate.
+  **Bonus fix, found while reading the three consumers for this change:** `PurchaseOrderGoodsReceiptCostedConsumer.cs`
+  used `IUnitOfWork` with no `using` for the namespace it actually lives in
+  (`Accounts.Contracts`) — a real, would-have-failed-to-compile bug of the exact same class as the
+  IntegrationHub `IUnitOfWork` bug found earlier this session (C#'s enclosing-namespace lookup does
+  not reach across sibling branches). Fixed alongside this change since the file was already being
+  touched.
+  Backend: 1 new domain aggregate (no domain event — deliberately, same "don't raise an event nobody
+  consumes" restraint as `CompanySettings.CreateDefault`), `IFinanceSettingsRepository`,
+  `FinanceSettingsDto`, 1 query (get-or-create) + 1 command (configure, with account-existence
+  validation), EF configuration + `DbSet<FinanceSettings>` on the existing `FinanceDbContext` (unique
+  index on CompanyId), new `SettingsController` (`api/v1/finance/settings`), 2 new
+  `finance.settings.*` permission codes, `FinanceModule.cs` updated to register
+  `IFinanceSettingsRepository`. All three consumers' constructors gained 2 new dependencies
+  (`IJournalEntryRepository`, `IFinanceSettingsRepository`) — no other callers construct these
+  consumers directly (DI-resolved only), so this is not a breaking change anywhere. Tests: new
+  `FinanceSettingsTests` (domain) + `GetFinanceSettingsQueryHandlerTests` +
+  `UpdateFinanceSettingsCommandHandlerTests`, plus a new test file per consumer (all three: GL-posts
+  when configured, silently skips when not, still records the subledger charge either way) — all
+  added to the existing `FusionOS.Modules.Finance.Tests` project. Frontend: `FinanceSettingsPanel.tsx`
+  (new, 4 account pickers) rendered on `AccountsPage`.
+  **Verification**: brace/paren-balance checked on every touched/created file (all balanced); `npx
+  tsc -b --force` — 0 errors. Backend remains under the standard "written, not run" caveat.
+
+- [x] **Wave 1 — multi-agent depth pass: frontend RBAC + command palette, and Manufacturing/CRM/
+  HRMS/Quality/Maintenance depth (2026-07-20).** A coordinated multi-agent build wave. Frontend
+  genuinely execution-verified this time (lint + build + full test suite, see below); every backend
+  slice carries the standard "written, never compiled" caveat — reinforced with fresh evidence this
+  wave, see the verification bullet. The slices:
+  - **Frontend RBAC gating** — new `RequirePermission` route gate
+    (`frontend/src/app/RequirePermission.tsx`), sidebar filtering by permission prefix in
+    `AppShell.tsx`, and a `hasPermissionPrefix` helper on `authStore`. Every module route is now
+    gated on its module's `*.read` permission code. Dashboard/Approvals/Notifications are
+    **deliberately ungated** — a fresh Member role has zero permissions and needs somewhere
+    non-empty to land. This closes the frontend half of the sprint audit's long-standing "RBAC
+    gates writes only, reads are open" finding; server-side read gating already existed.
+  - **Command palette** — Ctrl/Cmd+K module-jump palette
+    (`frontend/src/app/layout/CommandPalette.tsx`), wired to the header search button that had been
+    decorative since the shell was built. Route navigation only — deliberately **not** data search
+    (Section 5's Search row still measures server-side list search, a different thing).
+  - **Manufacturing depth** — `RoutingOperation` entity on `BillOfMaterials` (add/remove/reorder,
+    3 new endpoints), material issue/return on work orders (2 new endpoints +
+    `MaterialIssuedToWorkOrder`/`MaterialReturnedFromWorkOrder` events), and scrap/yield recording
+    on completion — `WorkOrderCompleted` extended **additively**, so the existing Inventory-side
+    consumer is untouched and redeliveries of old-shape events still bind. 5 new
+    `manufacturing.*` permission codes; 5 new test files. **ProductionOrder deliberately not
+    added** — `WorkOrder` already is this codebase's production order; a parallel aggregate would
+    be duplication wearing a new name.
+  - **CRM depth** — `Account`, `Contact`, `Activity` aggregates, each a full vertical slice
+    (CQRS, controllers, EF configuration, repositories), plus `AccountId` added to both Lead and
+    Opportunity with assign-account endpoints. 12 new `crm.*` permission codes; ~20 new/modified
+    test files; 3 new frontend panels stacked under `LeadsPage` (`CrmAccountsPanel`,
+    `ContactsPanel`, `ActivitiesPanel`); new `entityOptions` hooks for the pickers.
+  - **HRMS depth** — `AttendanceRecord` (with a unique company+employee+date index, so a day can't
+    be recorded twice) and a `PayrollRecord` **skeleton** (Draft→Approved→Paid lifecycle; gross pay
+    always equals base salary — explicitly **no** tax/deductions/allowances, with an honest scope
+    note in both the code and the UI rather than a fake calculation that looks like payroll). 7 new
+    `hrms.*` permission codes; 4 new test files; 2 new frontend panels (`AttendancePanel`,
+    `PayrollPanel`).
+  - **Quality depth** — closes the Quality row's own named gap ("no CAPA/non-conformance workflow
+    yet"): `NonConformanceReport` (Open→UnderReview→Closed) and `CorrectiveAction`
+    (Open→InProgress→Closed→Verified) aggregates, full CQRS/controllers/repositories/EF config,
+    8 new `quality.*` permission codes, **31 new tests**, 2 new frontend panels. Reusing Core's
+    generic approval engine for CorrectiveAction's verification step was considered and
+    **deliberately rejected** — it would have created the codebase's first cross-module CQRS
+    dependency; the trade-off is documented in `CorrectiveAction.cs` itself.
+  - **Maintenance depth** — `MaintenanceSchedule` aggregate (frequency enum, next-due-date,
+    due-soon/overdue queries), plus technician assignment and downtime-minutes recording on
+    `MaintenanceRequest`. 5 new `maintenance.*` permission codes; new tests; 1 new frontend panel
+    (`MaintenanceSchedulesPanel`) + the existing requests panel extended.
+  - **Frontend verification — genuinely executed, not static:** `npm run lint` clean;
+    `npm run build` (tsc + vite) 0 errors; `npm test` **37/37 passing** (was 20 before the wave —
+    17 new tests covering `authStore`, `RequirePermission`, and `CommandPalette`). Two
+    **pre-existing** test-infrastructure bugs were found and fixed along the way: vitest was
+    picking up the Playwright e2e spec (an exclude added to `vitest.config.ts`), and an
+    `EntityCombobox` keyboard test asserted the wrong option.
+  - **Backend verification — the standard caveat, with fresh evidence for why it matters:** all
+    backend Wave 1 code is written but has **never been compiled** (no .NET SDK in this
+    environment, same constraint as every prior session). Two agents' manual review passes each
+    caught one real compile-class error — an unqualified `IUnitOfWork` in Quality (the recurring
+    bug class, see Section 6) and a JSON-unbindable typed enum in CRM's CreateActivity — both
+    fixed. Read that honestly: two caught errors is evidence this bug class exists in
+    never-compiled code, not evidence the list is now exhausted. EF Core migrations still do not
+    exist anywhere. Phase G (Section 7) remains the top blocker.
+  - **Known doc-rot, noted rather than fixed** (this was a build wave, not a doc sweep): the
+    doc-comment at the top of `frontend/src/modules/core/pages/CompaniesPage.tsx` still calls that
+    page "the one real, end-to-end vertical slice in this scaffold" with "every other module's page
+    a health-check placeholder" — long false on both counts; fix next time that file is touched.
+
 ---
 
 ## 3. Not yet started
@@ -1971,7 +2077,7 @@ across every single row**, because no migration has ever been applied anywhere.
 
 | Module | Completion % | Change since audit |
 |---|---|---|
-| Core Platform | 75% | — |
+| Core Platform | 77% | +2 (2026-07-20, Wave 1) — the frontend's first real RBAC gating: `RequirePermission` route gate + permission-prefix sidebar filtering (`hasPermissionPrefix` on authStore); every module route now gated on its `*.read` code, Dashboard/Approvals/Notifications deliberately ungated (a fresh Member role has zero permissions). Frontend-only change — server-side read gating already existed. |
 | Authentication | 70% | — |
 | RBAC | 65% | — |
 | Companies | 60% | +5 — Update now reachable from the UI |
@@ -1984,13 +2090,13 @@ across every single row**, because no migration has ever been applied anywhere.
 | Procurement (Suppliers/Purchase Orders/RFQ/Vendor Returns/Price History) | 68% | +3 (2026-07-18) — Vendor Returns (Pending -> Completed/Cancelled, first Phase 1 closeout item needing a cross-module event since Procurement can't call Inventory directly) and Price History (a canned report over existing PurchaseOrder data, no new aggregate). Three-way match is the only remaining Procurement gap, blocked on Accounts Payable, see Section 3 |
 | Sales (Customers/Orders/Invoices/Dispatch/Credit Notes/Quotations/Discount Rules) | 75% | +3 (2026-07-18) — backorder handling (manual flag/clear per sales order line) plus a tiered Discount Rules engine (quantity-break tiers per product, a lookup the Sales Order flow can query, not an automatic override). Customer self-service portal is the only remaining named Sales gap, and it needs its own customer-identity/auth model — see Section 3 |
 | Finance (CoA/Journal/AP/AR/Cost Centers/Tax/Bank/Budgets/Assets) | 62% | +12 (2026-07-18) — corrected from a stale 50%/"CoA/Journal/AR" label: a source-verified audit found 11 real backend aggregates (Account, JournalEntry with structural double-entry validation, CostCenter, TaxJurisdiction, TaxRate with a real `CalculateLineTaxQuery` calculation, ApLedgerEntry, ArLedgerEntry, BankAccount, BankStatementLine with a real suggest-match reconciliation algorithm, ExchangeRate, Budget/BudgetLine, FixedAsset with automated depreciation-posting math), **every one already wired to a frontend panel** — unlike the Manufacturing/CRM/Quality precedent, Finance never had the "real backend, zero UI" gap. Genuine gaps instead: no GL-level financial statements (P&L/Balance Sheet/Cash Flow), no AP Aging (AR has one), AR/AP subledgers post no JournalEntry so the GL never reflects invoice/bill activity, and the tax engine is never actually invoked by Sales/Procurement's UI despite the schema plumbing already existing — see Section 3/7 for the Phase 2 punch list closing these. |
-| Manufacturing | 20% | +18 (2026-07-18) — corrected from a stale 2%: real `BillOfMaterials`/`WorkOrder` aggregates (Draft→Released→Completed, `WorkOrderCompleted` consumed by Inventory) already existed backend-only; this pass added the missing frontend (`BillsOfMaterialsPage`/`WorkOrdersPanel`) closing the "frontend deferred" gap. No routing/costing/capacity-planning yet. |
+| Manufacturing | 30% | +10 (2026-07-20, Wave 1) — routing operations on BOM (add/remove/reorder), material issue/return on work orders, scrap/yield on completion (`WorkOrderCompleted` extended additively; Inventory consumer unchanged). ProductionOrder deliberately not added — WorkOrder already covers it. Still no MRP/capacity planning/costing rollup. Written, never compiled. (Prior: +18 on 2026-07-18 — first real slices' frontend, `BillsOfMaterialsPage`/`WorkOrdersPanel`.) |
 | BOM | 25% | +25 (2026-07-18) — same `BillOfMaterials` aggregate as the Manufacturing row above (components + quantities, soft-deactivate); this is the specific sub-capability that row's % rolls up. |
 | MRP | 0% | — no MRP-specific aggregate (demand planning, reorder points) exists anywhere in the codebase yet. |
-| CRM | 20% | +18 (2026-07-18) — corrected from a stale 2%: real `Lead`/`Opportunity` aggregates (New→Qualified→Converted/Disqualified; Open→Won/Lost, winning creates a real Sales Customer via `OpportunityWon`) already existed backend-only; this pass added the missing frontend (`LeadsPage`/`OpportunitiesPanel`). No pipeline reporting/activity-timeline yet. |
-| HRMS | 18% | +16 (2026-07-18) — genuinely new this pass, not a correction: real `Employee`/`LeaveRequest` aggregates (employee records; Requested→Approved/Rejected leave) built backend+frontend together (`EmployeesPage`/`LeaveRequestsPanel`). No attendance/payroll/recruitment/performance/training yet. |
-| Quality | 15% | +13 (2026-07-18) — corrected from a stale 2%: a real `Inspection` aggregate (Pending→Passed/Failed checklist against a Work Order or Goods Receipt) already existed backend-only; this pass added the missing frontend (`InspectionsPage`). Single aggregate only — no CAPA/non-conformance workflow yet. |
-| Maintenance | 18% | +16 (2026-07-18) — genuinely new this pass, not a correction: real `Asset`/`MaintenanceRequest` aggregates (machine register; Open→InProgress→Completed preventive/breakdown requests) built backend+frontend together (`AssetsPage`/`MaintenanceRequestsPanel`). No spare-parts tracking yet. |
+| CRM | 32% | +12 (2026-07-20, Wave 1) — `Account`/`Contact`/`Activity` aggregates (closing the row's previously-named "no activity-timeline" gap), `AccountId` linkage + assign-account endpoints on Lead/Opportunity, 3 new frontend panels under `LeadsPage`. Still no pipeline reporting/forecasting. Written, never compiled. (Prior: +18 on 2026-07-18 — first real slices' frontend, `LeadsPage`/`OpportunitiesPanel`.) |
+| HRMS | 26% | +8 (2026-07-20, Wave 1) — `AttendanceRecord` (unique company+employee+date index) and a `PayrollRecord` skeleton (Draft→Approved→Paid; gross pay always equals base salary — explicitly no tax/deductions/allowances, honest scope note in code and UI), 2 new frontend panels. Recruitment/performance/training still absent. Written, never compiled. (Prior: +16 on 2026-07-18 — first `Employee`/`LeaveRequest` slice.) |
+| Quality | 27% | +12 (2026-07-20, Wave 1) — the row's own named gap ("no CAPA/non-conformance workflow yet") now has a first slice: `NonConformanceReport` (Open→UnderReview→Closed) + `CorrectiveAction` (Open→InProgress→Closed→Verified), 31 new tests, 2 new frontend panels; Core approval-engine reuse deliberately rejected (would be the first cross-module CQRS dependency — documented in `CorrectiveAction.cs`). Written, never compiled. (Prior: +13 on 2026-07-18 — `Inspection`'s missing frontend.) |
+| Maintenance | 26% | +8 (2026-07-20, Wave 1) — `MaintenanceSchedule` aggregate (frequency enum, next-due-date, due-soon/overdue queries), technician assignment + downtime minutes on `MaintenanceRequest`, 1 new frontend panel + the requests panel extended. Spare-parts tracking still absent. Written, never compiled. (Prior: +16 on 2026-07-18 — first `Asset`/`MaintenanceRequest` slice.) |
 | Reports | 30% | +30 — 3 canned reports (AR aging, stock valuation, PO status summary) + CSV export on 7 list endpoints; no ad-hoc/custom report builder yet |
 | Dashboard | 25% | +25 — first `/dashboard` landing page with 4 KPI cards + 3 detail tables, all built on the new canned reports |
 | Workflow Engine | 35% | +35 — generic multi-step ApprovalRequest/ApprovalStep engine (submit/decide/list-pending API), not yet adopted by any existing per-module Approve() action |
@@ -2002,15 +2108,19 @@ across every single row**, because no migration has ever been applied anywhere.
 | Mobile Apps | 0% | — |
 | SAP Migration | 0% | — |
 | Settings | 35% | +35 — first code ever: `CompanySettings` aggregate, Get/Update CQRS, frontend page |
-| Search | 45% | +30 — 9 of 19 endpoints now server-side searchable (Roles/Users/Audit Log/Permissions added this pass) |
+| Search | 50% | +5 (2026-07-20, Wave 1) — Ctrl/Cmd+K command palette wired to the previously decorative header search button; module-jump route navigation only, deliberately not data search, so the server-side-searchable endpoint count (9 of 19, from the earlier +30) is unchanged |
 | Audit Logs | 45% | — |
 | Analytics | 0% | — |
 
 **Overall (simple average across all 34 rows, now including the new Business Intelligence row):
-~34%.** Barely moved despite six modules going from 2% to 15-20% each, because the table also grew by
+~37% after Wave 1 (2026-07-20); was ~34% after the 2026-07-18 pass.** The 2026-07-18 figure barely
+moved despite six modules going from 2% to 15-20% each, because the table also grew by
 one row and the six gainers were all starting from the lowest baseline in the table — a reminder that
 "more modules have a first slice" and "overall % complete" are different measurements or this pass
-would read as a bigger jump than it actually represents.
+would read as a bigger jump than it actually represents. Wave 1's ~+3 comes from seven rows moving
+(the five depth modules plus Core Platform and Search) — same source-code-presence caveat as every
+other number here, and Production Ready stays **No** on every row: Wave 1 changed nothing about
+migrations or compilation.
 
 ---
 
@@ -2265,6 +2375,22 @@ computed alongside Weighted Average in the same valuation report, not behind a m
 **a tiered Discount Rules engine** (Sales — a quantity-break lookup the Sales Order flow can query,
 deliberately not an automatic override of the existing per-line discount field). See Section 2 for
 all eight entries.
+
+**Latest (2026-07-20): Wave 1 — and the recommendation still does not move.** A coordinated
+multi-agent wave added depth to five modules (Manufacturing routing operations/material
+issue-return/scrap-yield, CRM Account/Contact/Activity, HRMS attendance + a deliberately-minimal
+payroll skeleton, Quality NCR/corrective actions, Maintenance schedules + technician
+assignment/downtime), plus the frontend's first real RBAC gating (`RequirePermission` route gate +
+permission-prefix sidebar filtering) and a Ctrl/Cmd+K command palette — see Section 2's Wave 1
+entry. The frontend half is genuinely execution-verified (lint clean, `npm run build` 0 errors,
+37/37 vitest, 17 of them new). The backend half is more never-compiled code on the pile — and this
+wave produced the sharpest evidence yet for why that matters: two separate manual review passes each
+caught one real compile-class error (an unqualified `IUnitOfWork` in Quality, a JSON-unbindable
+typed enum in CRM's CreateActivity) that a first `dotnet build` would have caught in seconds. Two
+caught errors means the remaining count is unknown, not zero. **Phase G — a real
+`dotnet build`/`dotnet test` plus generating and applying EF Core migrations on a real machine —
+remains the single highest-priority next step.** No migration exists anywhere, for any module,
+including everything Wave 1 added.
 Three Phase 1 gaps were deliberately **not** built even under "complete Phase 1": Procurement
 three-way match (blocked on AP/Supplier Invoicing not existing yet, see Section 3), a Customer
 self-service portal (needs its own customer-identity/auth model, a larger and separately-scoped

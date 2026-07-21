@@ -1,3 +1,4 @@
+using FusionOS.BuildingBlocks.Application.Abstractions;
 using FusionOS.Modules.BusinessIntelligence.Application.KpiSnapshots.Contracts;
 using MediatR;
 

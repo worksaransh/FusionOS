@@ -19,6 +19,7 @@ public sealed class Product : TenantAggregateRoot
     public string? Description { get; private set; }
     public string UnitOfMeasure { get; private set; } = default!;
     public bool IsActive { get; private set; } = true;
+    public string? Barcode { get; private set; }
     public IReadOnlyList<ProductUnitOfMeasureConversion> UnitOfMeasureConversions => _unitOfMeasureConversions.AsReadOnly();
     public IReadOnlyList<ProductVariant> Variants => _variants.AsReadOnly();
 
@@ -110,5 +111,43 @@ public sealed class Product : TenantAggregateRoot
             ?? throw new ArgumentException($"No variant found with id '{variantId}'.", nameof(variantId));
 
         variant.Deactivate();
+    }
+
+    /// <summary>
+    /// Assigns (or, passed null/blank, clears) the single canonical barcode/QR-payload VALUE
+    /// for this product (2026-07-21 barcode/QR support — FusionOS previously had none at all).
+    ///
+    /// Deliberate scope decision, spelled out here rather than left implicit: this field and its
+    /// lookup (GetProductByBarcodeQuery) are the whole of what FusionOS owns for barcode/QR — a
+    /// canonical string value per product, and a fast reverse lookup from that value back to the
+    /// product (the real "USB scanner gun types the code + Enter into a search box" warehouse
+    /// workflow). It deliberately does NOT render every possible symbology:
+    ///   - A linear barcode (Code 39) IS rendered client-side from this same value
+    ///     (frontend/src/shared/barcode/code39.ts + BarcodeLabel.tsx), because Code 39's
+    ///     character-to-bar-pattern mapping is a small, fully-specified, tractable-to-implement-
+    ///     correctly table.
+    ///   - A real QR code is a structured 2D matrix with Reed-Solomon error correction. Writing a
+    ///     correct encoder from scratch with no library is a substantial, error-prone undertaking
+    ///     — get it subtly wrong and you get an image that LOOKS like a QR code but silently
+    ///     fails to scan, which is worse than not having one at all. So FusionOS does not attempt
+    ///     one. The same Barcode string this method stores IS the QR payload — rendering it as an
+    ///     actual QR symbol is deferred to either (a) a future dependency-backed implementation
+    ///     (a maintained QR-encoding library), or (b) the label printer/software the warehouse
+    ///     already owns, which can encode this exact value into whatever symbology (QR, Code 128,
+    ///     etc.) it needs. This method's job is only to own the value.
+    /// </summary>
+    public void AssignBarcode(string? barcode)
+    {
+        if (string.IsNullOrWhiteSpace(barcode))
+        {
+            Barcode = null;
+            return;
+        }
+
+        var trimmed = barcode.Trim();
+        if (trimmed.Length > 64)
+            throw new ArgumentException("Barcode must be 64 characters or fewer.", nameof(barcode));
+
+        Barcode = trimmed;
     }
 }

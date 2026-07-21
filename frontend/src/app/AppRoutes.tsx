@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from './layout/AppShell';
 import { RequireAuth } from './RequireAuth';
+import { RequirePermission } from './RequirePermission';
 import { LoginPage } from '../modules/core/pages/LoginPage';
 import { RegisterPage } from '../modules/core/pages/RegisterPage';
 
@@ -11,6 +12,7 @@ const RolesPage = lazy(() => import('../modules/core/pages/RolesPage').then((m) 
 const AuditLogPage = lazy(() => import('../modules/core/pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
 const SettingsPage = lazy(() => import('../modules/core/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const ApprovalsPage = lazy(() => import('../modules/core/pages/ApprovalsPage').then((m) => ({ default: m.ApprovalsPage })));
+const FeatureFlagsPage = lazy(() => import('../modules/core/pages/FeatureFlagsPage').then((m) => ({ default: m.FeatureFlagsPage })));
 const NotificationsPage = lazy(() => import('../modules/core/pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const ModuleHealthPage = lazy(() => import('../modules/core/pages/ModuleHealthPage').then((m) => ({ default: m.ModuleHealthPage })));
 const ProductsPage = lazy(() => import('../modules/inventory/pages/ProductsPage').then((m) => ({ default: m.ProductsPage })));
@@ -59,6 +61,16 @@ function RouteFallback() {
  * / redirects to /dashboard (Phase M6, 2026-07-15) — the cross-module KPI
  * landing page — rather than /core, now that there's a real landing page to
  * send people to instead of the Companies list.
+ *
+ * Every real module page (everything except /dashboard, /core/approvals and
+ * /core/notifications, which every authenticated user can reach regardless
+ * of role — see AppShell's docstring) is wrapped in RequirePermission with
+ * that module's primary "*.read" permission code from PermissionCatalog.cs.
+ * This mirrors the sidebar's own per-module filtering in AppShell.tsx so a
+ * user who somehow navigates straight to a URL they have no nav link for
+ * sees a "Not authorized" page instead of a broken/empty one — additive
+ * UI-layer gating on top of the backend's real IRequirePermission checks,
+ * not a replacement for them.
  */
 export function AppRoutes() {
   return (
@@ -82,33 +94,51 @@ export function AppRoutes() {
           <Route
             path="/core"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <CompaniesPage />
-              </Suspense>
+              <RequirePermission permission="core.company.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <CompaniesPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/core/roles"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <RolesPage />
-              </Suspense>
+              <RequirePermission permission="core.role.manage">
+                <Suspense fallback={<RouteFallback />}>
+                  <RolesPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/core/audit-log"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <AuditLogPage />
-              </Suspense>
+              <RequirePermission permission="core.audit.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <AuditLogPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/core/settings"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <SettingsPage />
-              </Suspense>
+              <RequirePermission permission="core.settings.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <SettingsPage />
+                </Suspense>
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="/core/feature-flags"
+            element={
+              <RequirePermission permission="core.feature-flag.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <FeatureFlagsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
@@ -130,113 +160,141 @@ export function AppRoutes() {
           <Route
             path="/inventory"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <ProductsPage />
-              </Suspense>
+              <RequirePermission permission="inventory.product.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <ProductsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/warehouse"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <WarehousesPage />
-              </Suspense>
+              <RequirePermission permission="warehouse.warehouse.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <WarehousesPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/procurement"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <SuppliersPage />
-              </Suspense>
+              <RequirePermission permission="procurement.supplier.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <SuppliersPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/sales"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <CustomersPage />
-              </Suspense>
+              <RequirePermission permission="sales.customer.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <CustomersPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/finance"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <AccountsPage />
-              </Suspense>
+              <RequirePermission permission="finance.account.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <AccountsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/manufacturing"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <BillsOfMaterialsPage />
-              </Suspense>
+              <RequirePermission permission="manufacturing.bill-of-materials.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <BillsOfMaterialsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/crm"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <LeadsPage />
-              </Suspense>
+              <RequirePermission permission="crm.lead.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <LeadsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/quality"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <InspectionsPage />
-              </Suspense>
+              <RequirePermission permission="quality.inspection.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <InspectionsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/maintenance"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <AssetsPage />
-              </Suspense>
+              <RequirePermission permission="maintenance.asset.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <AssetsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/hrms"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <EmployeesPage />
-              </Suspense>
+              <RequirePermission permission="hrms.employee.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <EmployeesPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/bi"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <KpiDefinitionsPage />
-              </Suspense>
+              <RequirePermission permission="bi.kpi-definition.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <KpiDefinitionsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/ai"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <RecommendationsPage />
-              </Suspense>
+              <RequirePermission permission="ai.recommendation.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <RecommendationsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/marketplace"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <PluginListingsPage />
-              </Suspense>
+              <RequirePermission permission="marketplace.plugin-listing.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <PluginListingsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route
             path="/integration_hub"
             element={
-              <Suspense fallback={<RouteFallback />}>
-                <IntegrationConnectorsPage />
-              </Suspense>
+              <RequirePermission permission="integration_hub.connector.read">
+                <Suspense fallback={<RouteFallback />}>
+                  <IntegrationConnectorsPage />
+                </Suspense>
+              </RequirePermission>
             }
           />
           <Route

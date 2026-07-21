@@ -15,4 +15,15 @@ public sealed class Role : AuditableEntity
 
     public static Role CreateCompanyRole(Guid companyId, string name) =>
         new() { CompanyId = companyId, Name = name, IsSystemRole = false };
+
+    /// <summary>Renames a company-custom role. System roles (IsSystemRole) can never be renamed - they are platform-defined, not per-company.</summary>
+    public void Rename(string newName)
+    {
+        if (IsSystemRole)
+            throw new InvalidOperationException("A system role cannot be renamed.");
+        if (string.IsNullOrWhiteSpace(newName))
+            throw new ArgumentException("Role name is required.", nameof(newName));
+
+        Name = newName.Trim();
+    }
 }

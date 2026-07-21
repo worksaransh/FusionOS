@@ -15,7 +15,7 @@ public sealed class ListBinsQueryHandler : IRequestHandler<ListBinsQuery, PagedR
         var bins = await _repository.ListAsync(request.CompanyId, request.ZoneId, request.Page, request.PageSize, cancellationToken);
         var total = await _repository.CountAsync(request.CompanyId, request.ZoneId, cancellationToken);
 
-        var dtos = bins.Select(b => new BinDto(b.Id, b.ZoneId, b.Name, b.Code, b.IsActive, b.CreatedAt)).ToList();
+        var dtos = bins.Select(b => new BinDto(b.Id, b.ZoneId, b.Name, b.Code, b.IsActive, b.CreatedAt, b.ShelfId)).ToList();
 
         return new PagedResult<BinDto>(dtos, request.Page, request.PageSize, total);
     }

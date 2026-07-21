@@ -14,6 +14,12 @@ public sealed record WorkOrderComponentConsumption(Guid ComponentProductId, deci
 /// the Inventory ledger directly — it only announces what happened and lets Inventory,
 /// which owns the ledger, apply it (same producer/consumer split as
 /// GoodsReceiptLineReceived → Inventory).
+///
+/// <see cref="QuantityProduced"/> is always the GOOD quantity — the only amount
+/// Inventory should ever post into stock. <see cref="QuantityScrapped"/> and
+/// <see cref="YieldPercentage"/> are additive scrap/yield reporting fields (never
+/// posted to the ledger); Inventory's existing consumer ignores unknown JSON
+/// properties, so adding them here does not change that consumer's behavior.
 /// </summary>
 public sealed record WorkOrderCompleted(
     Guid WorkOrderId,
@@ -21,7 +27,9 @@ public sealed record WorkOrderCompleted(
     Guid WarehouseId,
     Guid ProductId,
     decimal QuantityProduced,
-    IReadOnlyList<WorkOrderComponentConsumption> Components) : IDomainEvent
+    IReadOnlyList<WorkOrderComponentConsumption> Components,
+    decimal QuantityScrapped,
+    decimal YieldPercentage) : IDomainEvent
 {
     public DateTimeOffset OccurredOn { get; } = DateTimeOffset.UtcNow;
 }

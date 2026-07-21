@@ -16,5 +16,6 @@ public static class ProductMapper
             .ToList(),
         product.Variants
             .Select(v => new ProductVariantDto(v.Id, v.VariantSku, v.Attributes, v.IsActive))
-            .ToList());
+            .ToList(),
+        product.Barcode);
 }

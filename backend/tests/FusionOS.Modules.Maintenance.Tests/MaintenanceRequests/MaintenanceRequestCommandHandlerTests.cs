@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FusionOS.Modules.Maintenance.Application.Assets.Contracts;
+using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.AssignMaintenanceRequestTechnician;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.CompleteMaintenanceRequest;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.CreateMaintenanceRequest;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.StartMaintenanceRequest;
@@ -61,8 +62,25 @@ public class MaintenanceRequestCommandHandlerTests
         started.Status.Should().Be("InProgress");
 
         var completeHandler = new CompleteMaintenanceRequestCommandHandler(repository, unitOfWork);
-        var completed = await completeHandler.Handle(new CompleteMaintenanceRequestCommand(companyId, request.Id, "Replaced bearing"), CancellationToken.None);
+        var completed = await completeHandler.Handle(new CompleteMaintenanceRequestCommand(companyId, request.Id, "Replaced bearing", 45), CancellationToken.None);
         completed.Status.Should().Be("Completed");
         completed.ResolutionNotes.Should().Be("Replaced bearing");
+        completed.ActualDowntimeMinutes.Should().Be(45);
+    }
+
+    [Fact]
+    public async Task AssignTechnician_SetsAssignedTechnicianUserId()
+    {
+        var companyId = Guid.NewGuid();
+        var technicianId = Guid.NewGuid();
+        var request = Domain.MaintenanceRequests.MaintenanceRequest.Create(companyId, Guid.NewGuid(), MaintenanceRequestType.Breakdown, "Motor overheating");
+        var repository = Substitute.For<IMaintenanceRequestRepository>();
+        repository.GetByIdAsync(companyId, request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+
+        var handler = new AssignMaintenanceRequestTechnicianCommandHandler(repository, unitOfWork);
+        var result = await handler.Handle(new AssignMaintenanceRequestTechnicianCommand(companyId, request.Id, technicianId), CancellationToken.None);
+
+        result.AssignedTechnicianUserId.Should().Be(technicianId);
     }
 }

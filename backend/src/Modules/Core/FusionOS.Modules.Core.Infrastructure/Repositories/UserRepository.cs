@@ -105,8 +105,9 @@ public sealed class UserRepository : IUserRepository
 
     // --- RBAC administration (2026-07-14 sprint audit, Phase H2) --------------------
 
-    public Task<bool> RoleNameExistsAsync(Guid companyId, string name, CancellationToken ct) =>
-        _context.Roles.AnyAsync(r => r.CompanyId == companyId && r.Name.ToLower() == name.Trim().ToLower(), ct);
+    public Task<bool> RoleNameExistsAsync(Guid companyId, string name, Guid? excludeRoleId, CancellationToken ct) =>
+        _context.Roles.AnyAsync(r => r.CompanyId == companyId && r.Name.ToLower() == name.Trim().ToLower()
+            && (excludeRoleId == null || r.Id != excludeRoleId), ct);
 
     public async Task AddRoleAsync(Role role, CancellationToken ct) => await _context.Roles.AddAsync(role, ct);
 
@@ -149,14 +150,14 @@ public sealed class UserRepository : IUserRepository
         _context.RolePermissions.RemoveRange(toRemove);
     }
 
-    public async Task<IReadOnlyList<(Guid UserId, string Email, string FullName, Guid RoleId, string RoleName)>> ListCompanyUsersAsync(Guid companyId, string? search, CancellationToken ct)
+    public async Task<IReadOnlyList<(Guid UserId, string Email, string FullName, Guid RoleId, string RoleName, bool IsActive)>> ListCompanyUsersAsync(Guid companyId, string? search, CancellationToken ct)
     {
         var query =
             from ucr in _context.UserCompanyRoles
             join u in _context.Users on ucr.UserId equals u.Id
             join r in _context.Roles on ucr.RoleId equals r.Id
             where ucr.CompanyId == companyId
-            select new { u.Id, u.Email, u.FullName, RoleId = r.Id, RoleName = r.Name };
+            select new { u.Id, u.Email, u.FullName, RoleId = r.Id, RoleName = r.Name, u.IsActive };
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -165,7 +166,7 @@ public sealed class UserRepository : IUserRepository
         }
 
         var rows = await query.OrderBy(x => x.Email).ToListAsync(ct);
-        return rows.Select(x => new ValueTuple<Guid, string, string, Guid, string>(x.Id, x.Email, x.FullName, x.RoleId, x.RoleName)).ToList();
+        return rows.Select(x => new ValueTuple<Guid, string, string, Guid, string, bool>(x.Id, x.Email, x.FullName, x.RoleId, x.RoleName, x.IsActive)).ToList();
     }
 
     public async Task AssignUserRoleAsync(Guid userId, Guid companyId, Guid roleId, CancellationToken ct)

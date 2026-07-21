@@ -1,10 +1,17 @@
 using FusionOS.BuildingBlocks.Application;
+using FusionOS.BuildingBlocks.Application.Abstractions;
 using FusionOS.BuildingBlocks.Application.Modularity;
 using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.Modules.Core.Application.AuditLog.Contracts;
 using FusionOS.Modules.Core.Application.Auth.Contracts;
+using FusionOS.Modules.Core.Application.Branches.Contracts;
+using FusionOS.Modules.Core.Application.Comments.Contracts;
 using FusionOS.Modules.Core.Application.Companies.Commands.CreateCompany;
 using FusionOS.Modules.Core.Application.Companies.Contracts;
+using FusionOS.Modules.Core.Application.Departments.Contracts;
+using FusionOS.Modules.Core.Application.Documents.Contracts;
+using FusionOS.Modules.Core.Application.FeatureFlags.Contracts;
+using FusionOS.Modules.Core.Application.FeatureFlags.Services;
 using FusionOS.Modules.Core.Application.Notifications.Contracts;
 using FusionOS.Modules.Core.Application.Notifications.Services;
 using FusionOS.Modules.Core.Application.Settings.Contracts;
@@ -41,6 +48,29 @@ public sealed class CoreModule : IModule
 
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Organizations — Branch/Department (Phase 2 Core Platform completion,
+        // 2026-07-21). Domain entities and DbSets existed since Phase 0 but were
+        // never given an Application/Api layer until now.
+        services.AddScoped<IBranchRepository, BranchRepository>();
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+
+        // Document Management / Attachments (Phase 2 Core Platform, net-new,
+        // 2026-07-21) — generic (EntityType, EntityId) attachments, same
+        // polymorphic-reference convention as ApprovalRequest below.
+        services.AddScoped<IDocumentRepository, DocumentRepository>();
+
+        // Feature Flags (Phase 2 Core Platform, net-new, 2026-07-21) — per-company
+        // on/off flags with an optional rollout-percentage. IFeatureFlagService is
+        // published in BuildingBlocks.Application.Abstractions so other modules
+        // could reference it without depending on Core.Application directly (see
+        // its own doc comment for the request-context caveat this implies).
+        services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
+        services.AddScoped<IFeatureFlagService, FeatureFlagService>();
+
+        // Comments + the merged Activity Timeline that reads them alongside
+        // AuditLogRepository (Phase 2 Core Platform, net-new, 2026-07-21).
+        services.AddScoped<ICommentRepository, CommentRepository>();
 
         // Settings module (Phase M5, 2026-07-15 — previously 0% per docs/PROJECT_TRACKER.md).
         services.AddScoped<ICompanySettingsRepository, CompanySettingsRepository>();

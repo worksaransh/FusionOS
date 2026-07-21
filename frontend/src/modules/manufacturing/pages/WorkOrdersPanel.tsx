@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,7 +9,7 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
-import { useBillOfMaterialsOptions, useWarehouseOptions } from '../../../shared/api/entityOptions';
+import { useBillOfMaterialsOptions, useProductOptions, useWarehouseOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
 const schema = z.object({
@@ -18,6 +19,13 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+interface WorkOrderComponentDto {
+  id: string;
+  componentProductId: string;
+  quantityRequired: number;
+  quantityIssued: number;
+}
+
 interface WorkOrderDto {
   id: string;
   billOfMaterialsId: string;
@@ -25,6 +33,10 @@ interface WorkOrderDto {
   warehouseId: string;
   quantityToProduce: number;
   status: string;
+  components: WorkOrderComponentDto[];
+  quantityGoodProduced: number | null;
+  quantityScrapped: number;
+  yieldPercentage: number | null;
 }
 
 /**
@@ -33,6 +45,10 @@ interface WorkOrderDto {
  * under BillsOfMaterialsPage, same pattern as JournalEntriesPanel under
  * AccountsPage. Completing raises WorkOrderCompleted (consumed by Inventory
  * to post the real stock movements) — this panel only surfaces the action.
+ * A Released work order gets a "Manage" button (same pattern as
+ * PickListsPanel's PickListManagePanel) opening shop-floor material
+ * issue/return per component plus the completion form with its optional
+ * scrap/yield quantities.
  */
 export function WorkOrdersPanel() {
   const { companyId } = useActiveCompany();
@@ -40,6 +56,7 @@ export function WorkOrdersPanel() {
 
   const bomOptions = useBillOfMaterialsOptions(companyId);
   const warehouseOptions = useWarehouseOptions(companyId);
+  const [managingWorkOrderId, setManagingWorkOrderId] = useState<string | null>(null);
 
   const { control, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -78,12 +95,13 @@ export function WorkOrdersPanel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['work-orders', companyId] }),
   });
 
-  const completeWorkOrder = useMutation({
-    mutationFn: (id: string) => apiClient.post<WorkOrderDto>(`/manufacturing/work-orders/${id}/complete`, { companyId }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['work-orders', companyId] }),
-  });
-
   if (!companyId) return null;
+
+  // Only a Released order can be managed — if it just completed (or the list
+  // refetched into another state), the manage card disappears with it.
+  const managingWorkOrder = workOrdersQuery.data?.data.find(
+    (w) => w.id === managingWorkOrderId && w.status === 'Released',
+  );
 
   return (
     <div className="mt-8">
@@ -152,6 +170,9 @@ export function WorkOrdersPanel() {
           columns={[
             { header: 'Status', render: (row: WorkOrderDto) => row.status },
             { header: 'Quantity to produce', render: (row: WorkOrderDto) => row.quantityToProduce },
+            { header: 'Good produced', render: (row: WorkOrderDto) => row.quantityGoodProduced ?? '—' },
+            { header: 'Scrapped', render: (row: WorkOrderDto) => (row.status === 'Completed' ? row.quantityScrapped : '—') },
+            { header: 'Yield', render: (row: WorkOrderDto) => (row.yieldPercentage != null ? `${row.yieldPercentage.toLocaleString()}%` : '—') },
             {
               header: 'Actions',
               render: (row: WorkOrderDto) => (
@@ -162,8 +183,8 @@ export function WorkOrdersPanel() {
                     </Button>
                   )}
                   {row.status === 'Released' && (
-                    <Button type="button" disabled={completeWorkOrder.isPending} onClick={() => completeWorkOrder.mutate(row.id)}>
-                      Complete
+                    <Button type="button" variant="secondary" onClick={() => setManagingWorkOrderId(row.id)}>
+                      Manage
                     </Button>
                   )}
                 </div>
@@ -178,9 +199,201 @@ export function WorkOrdersPanel() {
           rowKey={(row) => row.id}
         />
       </Card>
-      {(releaseWorkOrder.isError || completeWorkOrder.isError) && (
-        <p role="alert" className="mt-2 text-sm text-danger">Could not update that work order.</p>
+      {releaseWorkOrder.isError && (
+        <p role="alert" className="mt-2 text-sm text-danger">Could not release that work order.</p>
+      )}
+
+      {managingWorkOrder && (
+        <WorkOrderManagePanel
+          companyId={companyId}
+          workOrder={managingWorkOrder}
+          onClose={() => setManagingWorkOrderId(null)}
+        />
       )}
     </div>
+  );
+}
+
+interface WorkOrderManagePanelProps {
+  companyId: string;
+  workOrder: WorkOrderDto;
+  onClose: () => void;
+}
+
+/** Blank means "not entered"; otherwise it must parse to a non-negative number. */
+function isValidOptionalQuantity(value: string): boolean {
+  if (value.trim() === '') return true;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0;
+}
+
+/**
+ * Shop-floor view of one Released work order (same manage-card pattern as
+ * PickListsPanel's PickListManagePanel): per-component material issue/return
+ * against WorkOrdersController's POST .../materials/issue and
+ * .../materials/return, then completion with optional good/scrapped
+ * quantities (CompleteWorkOrderCommand's scrap/yield recording — leave both
+ * blank for the default 100%-yield completion of the full planned quantity).
+ */
+function WorkOrderManagePanel({ companyId, workOrder, onClose }: WorkOrderManagePanelProps) {
+  const queryClient = useQueryClient();
+  const productOptions = useProductOptions(companyId);
+  const [quantityInputs, setQuantityInputs] = useState<Record<string, string>>({});
+  const [goodQuantity, setGoodQuantity] = useState('');
+  const [scrappedQuantity, setScrappedQuantity] = useState('');
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['work-orders', companyId] });
+
+  const issueMaterial = useMutation({
+    mutationFn: ({ componentProductId, quantity }: { componentProductId: string; quantity: number }) =>
+      apiClient.post<WorkOrderDto>(`/manufacturing/work-orders/${workOrder.id}/materials/issue`, {
+        companyId,
+        componentProductId,
+        quantity,
+      }),
+    onSuccess: invalidate,
+  });
+
+  const returnMaterial = useMutation({
+    mutationFn: ({ componentProductId, quantity }: { componentProductId: string; quantity: number }) =>
+      apiClient.post<WorkOrderDto>(`/manufacturing/work-orders/${workOrder.id}/materials/return`, {
+        companyId,
+        componentProductId,
+        quantity,
+      }),
+    onSuccess: invalidate,
+  });
+
+  const completeWorkOrder = useMutation({
+    mutationFn: () =>
+      apiClient.post<WorkOrderDto>(`/manufacturing/work-orders/${workOrder.id}/complete`, {
+        companyId,
+        quantityGoodProduced: goodQuantity.trim() === '' ? null : Number(goodQuantity),
+        quantityScrapped: scrappedQuantity.trim() === '' ? null : Number(scrappedQuantity),
+      }),
+    onSuccess: () => {
+      invalidate();
+      onClose();
+    },
+  });
+
+  const isMovingMaterial = issueMaterial.isPending || returnMaterial.isPending;
+  const completionInputsValid = isValidOptionalQuantity(goodQuantity) && isValidOptionalQuantity(scrappedQuantity);
+
+  return (
+    <Card className="mt-6">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-text">Manage work order — {workOrder.status}</h3>
+        <Button variant="secondary" onClick={onClose}>Close</Button>
+      </div>
+
+      <h4 className="mb-2 text-sm font-semibold text-text">Materials</h4>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-text-muted">
+            <th className="pb-2">Component</th>
+            <th className="pb-2">Required</th>
+            <th className="pb-2">Issued</th>
+            <th className="pb-2">Issue / return</th>
+          </tr>
+        </thead>
+        <tbody>
+          {workOrder.components.map((component) => {
+            const input = quantityInputs[component.componentProductId] ?? '';
+            const quantity = Number(input);
+            const inputInvalid = !input || !Number.isFinite(quantity) || quantity <= 0;
+            return (
+              <tr key={component.id} className="border-t border-border">
+                <td className="py-2">
+                  {productOptions.options.find((p) => p.id === component.componentProductId)?.label ?? component.componentProductId}
+                </td>
+                <td className="py-2">{component.quantityRequired}</td>
+                <td className="py-2">{component.quantityIssued}</td>
+                <td className="py-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="w-24 rounded-md border border-border bg-surface px-2 py-1"
+                      placeholder="Qty"
+                      value={input}
+                      onChange={(e) =>
+                        setQuantityInputs((prev) => ({ ...prev, [component.componentProductId]: e.target.value }))
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={inputInvalid || isMovingMaterial}
+                      onClick={() => issueMaterial.mutate({ componentProductId: component.componentProductId, quantity })}
+                    >
+                      Issue
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={inputInvalid || isMovingMaterial || component.quantityIssued <= 0}
+                      onClick={() => returnMaterial.mutate({ componentProductId: component.componentProductId, quantity })}
+                    >
+                      Return
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+          {workOrder.components.length === 0 && (
+            <tr>
+              <td colSpan={4} className="py-4 text-center text-text-muted">
+                This work order has no snapshotted components.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      {issueMaterial.isError && issueMaterial.error instanceof ApiError && (
+        <p role="alert" className="mt-2 text-sm text-danger">{issueMaterial.error.problem.title}</p>
+      )}
+      {returnMaterial.isError && returnMaterial.error instanceof ApiError && (
+        <p role="alert" className="mt-2 text-sm text-danger">{returnMaterial.error.problem.title}</p>
+      )}
+
+      <h4 className="mb-2 mt-6 text-sm font-semibold text-text">Complete</h4>
+      <p className="mb-3 text-xs text-text-muted">
+        Optionally record scrap/yield — leave both blank to complete the full planned quantity
+        ({workOrder.quantityToProduce}) with no scrap.
+      </p>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Good quantity produced (optional)
+          <input
+            className="w-40 rounded-md border border-border bg-surface px-2 py-1.5"
+            placeholder={String(workOrder.quantityToProduce)}
+            value={goodQuantity}
+            onChange={(e) => setGoodQuantity(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Quantity scrapped (optional)
+          <input
+            className="w-40 rounded-md border border-border bg-surface px-2 py-1.5"
+            placeholder="0"
+            value={scrappedQuantity}
+            onChange={(e) => setScrappedQuantity(e.target.value)}
+          />
+        </label>
+        <Button
+          type="button"
+          disabled={!completionInputsValid || completeWorkOrder.isPending}
+          onClick={() => completeWorkOrder.mutate()}
+        >
+          {completeWorkOrder.isPending ? 'Completing…' : 'Complete work order'}
+        </Button>
+      </div>
+      {!completionInputsValid && (
+        <p className="mt-1 text-xs text-danger">Quantities must be blank or non-negative numbers.</p>
+      )}
+      {completeWorkOrder.isError && completeWorkOrder.error instanceof ApiError && (
+        <p role="alert" className="mt-2 text-sm text-danger">{completeWorkOrder.error.problem.title}</p>
+      )}
+    </Card>
   );
 }

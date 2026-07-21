@@ -14,6 +14,12 @@ namespace FusionOS.Modules.Maintenance.Domain.MaintenanceRequests;
 /// requests themselves already carry that history. Spare parts tracking is
 /// explicitly out of scope for this slice — a follow-up once there is a
 /// concrete need to consume/track parts against a request.
+///
+/// AssignedTechnicianUserId (added alongside MaintenanceSchedule) is an opaque
+/// reference into Core's own User — never existence-validated here, same
+/// "opaque cross-module reference" convention as PickList.AssignedToUserId
+/// (Warehouse). ActualDowntimeMinutes is recorded once, at Complete time —
+/// there is no separate "downtime tracking" aggregate for this slice.
 /// </summary>
 public sealed class MaintenanceRequest : TenantAggregateRoot
 {
@@ -24,6 +30,8 @@ public sealed class MaintenanceRequest : TenantAggregateRoot
     public DateTimeOffset ReportedAt { get; private set; }
     public DateTimeOffset? CompletedAt { get; private set; }
     public string? ResolutionNotes { get; private set; }
+    public Guid? AssignedTechnicianUserId { get; private set; }
+    public int? ActualDowntimeMinutes { get; private set; }
 
     private MaintenanceRequest() { }
 
@@ -57,15 +65,35 @@ public sealed class MaintenanceRequest : TenantAggregateRoot
         Status = MaintenanceRequestStatus.InProgress;
     }
 
-    /// <summary>Resolves the request. Requires it to be InProgress — a request cannot be completed before someone started the work.</summary>
-    public void Complete(string? resolutionNotes)
+    /// <summary>Resolves the request. Requires it to be InProgress — a request cannot be completed before someone started the work. ActualDowntimeMinutes is optional — not every breakdown causes downtime worth recording (e.g. a redundant unit kept the line running).</summary>
+    public void Complete(string? resolutionNotes, int? actualDowntimeMinutes = null)
     {
         if (Status != MaintenanceRequestStatus.InProgress)
             throw new InvalidOperationException($"Only an InProgress maintenance request can be completed (current status: {Status}).");
+        if (actualDowntimeMinutes is < 0)
+            throw new ArgumentException("Actual downtime minutes cannot be negative.", nameof(actualDowntimeMinutes));
 
         Status = MaintenanceRequestStatus.Completed;
         CompletedAt = DateTimeOffset.UtcNow;
         ResolutionNotes = string.IsNullOrWhiteSpace(resolutionNotes) ? null : resolutionNotes.Trim();
+        ActualDowntimeMinutes = actualDowntimeMinutes;
         Raise(new MaintenanceRequestCompleted(Id, CompanyId, AssetId, Type.ToString()));
+    }
+
+    /// <summary>
+    /// Assigns (or reassigns) the technician responsible for this request. Allowed any time
+    /// before Completed — a mid-repair reassignment (handing off to another technician) is a
+    /// normal operation, not an error — same "assignable any time before the terminal state"
+    /// rule as PickList.AssignTo (Warehouse). Does not raise its own domain event, matching
+    /// that same precedent.
+    /// </summary>
+    public void AssignTechnician(Guid technicianUserId)
+    {
+        if (technicianUserId == Guid.Empty)
+            throw new ArgumentException("Technician user id is required.", nameof(technicianUserId));
+        if (Status == MaintenanceRequestStatus.Completed)
+            throw new InvalidOperationException("This maintenance request is already completed — it cannot be reassigned.");
+
+        AssignedTechnicianUserId = technicianUserId;
     }
 }

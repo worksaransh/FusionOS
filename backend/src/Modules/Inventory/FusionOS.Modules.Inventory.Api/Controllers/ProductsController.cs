@@ -2,11 +2,13 @@ using System.Text;
 using FusionOS.BuildingBlocks.Application.Csv;
 using FusionOS.Modules.Inventory.Application.Products.Commands.AddProductVariant;
 using FusionOS.Modules.Inventory.Application.Products.Commands.AddUnitOfMeasureConversion;
+using FusionOS.Modules.Inventory.Application.Products.Commands.AssignProductBarcode;
 using FusionOS.Modules.Inventory.Application.Products.Commands.CreateProduct;
 using FusionOS.Modules.Inventory.Application.Products.Commands.DeactivateProduct;
 using FusionOS.Modules.Inventory.Application.Products.Commands.DeactivateProductVariant;
 using FusionOS.Modules.Inventory.Application.Products.Commands.RemoveUnitOfMeasureConversion;
 using FusionOS.Modules.Inventory.Application.Products.Commands.UpdateProduct;
+using FusionOS.Modules.Inventory.Application.Products.Queries.GetProductByBarcode;
 using FusionOS.Modules.Inventory.Application.Products.Queries.GetProductById;
 using FusionOS.Modules.Inventory.Application.Products.Queries.ListProducts;
 using MediatR;
@@ -41,6 +43,19 @@ public sealed class ProductsController : ControllerBase
     public async Task<IActionResult> GetById(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetProductByIdQuery(companyId, id), cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    // Barcode/QR support (2026-07-21) — the "scanner gun types code + Enter" lookup. Placed
+    // ahead of ListProducts in this file (route ordering doesn't matter here since "by-barcode"
+    // can never match the {id:guid} constraint on GetById, but keeping the two GETs adjacent
+    // reads naturally). Mirrors GetById's null -> 404 shape exactly.
+    [HttpGet("by-barcode/{barcode}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetByBarcode(string barcode, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetProductByBarcodeQuery(companyId, barcode), cancellationToken);
         return result is null ? NotFound() : Ok(result);
     }
 
@@ -105,6 +120,21 @@ public sealed class ProductsController : ControllerBase
         return Ok(result);
     }
 
+    // Barcode/QR support (2026-07-21). Assigning (or, with barcode null/blank, clearing) a
+    // barcode is product master-data maintenance — modeled as a POST action like the other
+    // sub-resource writes on this controller, not a PATCH/DELETE (apiClient has no
+    // patch/delete-with-body method by design; see AddUnitOfMeasureConversion's own comment).
+    [HttpPost("{id:guid}/barcode")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> AssignBarcode(Guid id, [FromBody] AssignProductBarcodeRequest request, CancellationToken cancellationToken)
+    {
+        var command = new AssignProductBarcodeCommand(request.CompanyId, id, request.Barcode);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     // Phase 1 closeout (2026-07-18): Variants.
     [HttpPost("{id:guid}/variants")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -144,3 +174,6 @@ public sealed record RemoveUnitOfMeasureConversionRequest(Guid CompanyId, string
 
 /// <summary>Request body for adding a variant SKU.</summary>
 public sealed record AddProductVariantRequest(Guid CompanyId, string VariantSku, string Attributes);
+
+/// <summary>Request body for assigning (or, with Barcode null/blank, clearing) a product's barcode/QR-payload value.</summary>
+public sealed record AssignProductBarcodeRequest(Guid CompanyId, string? Barcode);

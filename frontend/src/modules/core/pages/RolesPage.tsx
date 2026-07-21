@@ -33,6 +33,7 @@ interface CompanyUserDto {
   fullName: string;
   roleId: string;
   roleName: string;
+  isActive: boolean;
 }
 
 /**
@@ -48,6 +49,8 @@ export function RolesPage() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [renamingRoleId, setRenamingRoleId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
 
   const rolesQuery = useQuery({
     queryKey: ['roles', companyId],
@@ -86,6 +89,15 @@ export function RolesPage() {
     },
   });
 
+  const renameRole = useMutation({
+    mutationFn: ({ roleId, name }: { roleId: string; name: string }) =>
+      apiClient.put(`/core/roles/${roleId}`, { companyId, name }),
+    onSuccess: () => {
+      setRenamingRoleId(null);
+      queryClient.invalidateQueries({ queryKey: ['roles', companyId] });
+    },
+  });
+
   if (!companyId) {
     return <p className="text-text-muted">Set an active Company ID in the header above to manage roles.</p>;
   }
@@ -102,14 +114,49 @@ export function RolesPage() {
         emptyMessage="No custom roles yet — every user is on the auto-created Owner role until you create one."
         rowKey={(row) => row.id}
         columns={[
-          { header: 'Name', render: (row) => row.name },
+          {
+            header: 'Name',
+            render: (row) =>
+              renamingRoleId === row.id ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    className="rounded-md border border-border bg-surface px-2 py-1 text-sm"
+                    value={renameDraft}
+                    onChange={(e) => setRenameDraft(e.target.value)}
+                    autoFocus
+                  />
+                  <Button
+                    disabled={renameRole.isPending || !renameDraft.trim()}
+                    onClick={() => renameRole.mutate({ roleId: row.id, name: renameDraft.trim() })}
+                  >
+                    Save
+                  </Button>
+                  <Button variant="secondary" onClick={() => setRenamingRoleId(null)}>Cancel</Button>
+                </div>
+              ) : (
+                row.name
+              ),
+          },
           { header: 'Type', render: (row) => (row.isSystemRole ? 'System' : 'Custom') },
           {
             header: '',
             render: (row) => (
-              <Button variant="secondary" onClick={() => setSelectedRoleId(row.id)}>
-                Edit permissions
-              </Button>
+              <div className="flex items-center gap-2">
+                {!row.isSystemRole && renamingRoleId !== row.id && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setRenamingRoleId(row.id);
+                      setRenameDraft(row.name);
+                    }}
+                  >
+                    Rename
+                  </Button>
+                )}
+                <Button variant="secondary" onClick={() => setSelectedRoleId(row.id)}>
+                  Edit permissions
+                </Button>
+              </div>
             ),
           },
         ]}
@@ -126,6 +173,10 @@ export function RolesPage() {
           </form>
         }
       />
+
+      {renameRole.isError && (
+        <p role="alert" className="mt-2 text-sm text-danger">Could not rename that role.</p>
+      )}
 
       {selectedRoleId && (
         <RolePermissionsEditor
@@ -252,6 +303,11 @@ function CompanyUsersPanel({ companyId, users, roles }: CompanyUsersPanelProps) 
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['company-users', companyId] }),
   });
 
+  const deactivateUser = useMutation({
+    mutationFn: (userId: string) => apiClient.post(`/core/users/${userId}/deactivate`, { companyId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['company-users', companyId] }),
+  });
+
   return (
     <div className="mt-8">
       <h2 className="mb-3 text-lg font-semibold text-text">Users in this company</h2>
@@ -278,6 +334,20 @@ function CompanyUsersPanel({ companyId, users, roles }: CompanyUsersPanelProps) 
                 </select>
               ),
             },
+            { header: 'Status', render: (u) => (u.isActive ? 'Active' : 'Deactivated') },
+            {
+              header: '',
+              render: (u) =>
+                u.isActive ? (
+                  <Button
+                    variant="danger"
+                    disabled={deactivateUser.isPending}
+                    onClick={() => deactivateUser.mutate(u.userId)}
+                  >
+                    Deactivate
+                  </Button>
+                ) : null,
+            },
           ]}
           rows={users}
           isLoading={users === undefined}
@@ -287,6 +357,9 @@ function CompanyUsersPanel({ companyId, users, roles }: CompanyUsersPanelProps) 
       </Card>
       {assignRole.isError && (
         <p role="alert" className="mt-2 text-sm text-danger">Could not change that user's role.</p>
+      )}
+      {deactivateUser.isError && (
+        <p role="alert" className="mt-2 text-sm text-danger">Could not deactivate that user.</p>
       )}
     </div>
   );

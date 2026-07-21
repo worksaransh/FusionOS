@@ -25,6 +25,15 @@ interface AuthState {
   setSession: (session: AuthSession) => void;
   clearSession: () => void;
   hasPermission: (code: string) => boolean;
+  /**
+   * True if the signed-in user holds at least one permission code under the
+   * given module prefix (e.g. "sales" matches "sales.customer.read",
+   * "sales.invoice.create", …) regardless of the read/write suffix — used to
+   * decide whether a whole module's nav link/route is worth showing at all
+   * (RBAC gating, 07_SECURITY.md — this is a UX nicety on top of the
+   * backend's real IRequirePermission enforcement, not a substitute for it).
+   */
+  hasPermissionPrefix: (prefix: string) => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -34,6 +43,8 @@ export const useAuthStore = create<AuthState>()(
       setSession: (session) => set({ session }),
       clearSession: () => set({ session: null }),
       hasPermission: (code) => get().session?.permissions.includes(code) ?? false,
+      hasPermissionPrefix: (prefix) =>
+        get().session?.permissions.some((p) => p === prefix || p.startsWith(`${prefix}.`)) ?? false,
     }),
     { name: 'fusionos.auth-session' },
   ),

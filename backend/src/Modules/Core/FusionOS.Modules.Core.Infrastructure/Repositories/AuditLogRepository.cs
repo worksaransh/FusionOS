@@ -20,6 +20,21 @@ public sealed class AuditLogRepository : IAuditLogRepository
     public Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default) =>
         Filtered(companyId, search).CountAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<AuditLogEntryDto>> ListByEntityAsync(Guid companyId, string entityType, Guid entityId, CancellationToken cancellationToken = default)
+    {
+        var query =
+            from a in _context.AuditLogs
+            where a.CompanyId == companyId && a.EntityType == entityType && a.EntityId == entityId
+            join u in _context.Users on a.ActorId equals u.Id into actorJoin
+            from actor in actorJoin.DefaultIfEmpty()
+            orderby a.OccurredAt
+            select new AuditLogEntryDto(
+                a.Id, a.EntityType, a.EntityId, a.Action, a.ActorId, actor != null ? actor.Email : null,
+                a.CompanyId, a.BranchId, a.OccurredAt, a.CorrelationId);
+
+        return await query.ToListAsync(cancellationToken);
+    }
+
     // Matches on EntityType or Action — the two fields an audit-log search box would reasonably type into.
     private IQueryable<Domain.Audit.AuditLog> Filtered(Guid companyId, string? search)
     {

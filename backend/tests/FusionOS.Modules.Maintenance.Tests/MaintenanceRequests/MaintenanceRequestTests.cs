@@ -74,4 +74,72 @@ public class MaintenanceRequestTests
 
         act.Should().Throw<InvalidOperationException>();
     }
+
+    [Fact]
+    public void Complete_WithActualDowntimeMinutes_RecordsIt()
+    {
+        var request = New();
+        request.Start();
+
+        request.Complete("Replaced bearing", 90);
+
+        request.ActualDowntimeMinutes.Should().Be(90);
+    }
+
+    [Fact]
+    public void Complete_WithNegativeDowntimeMinutes_Throws()
+    {
+        var request = New();
+        request.Start();
+
+        var act = () => request.Complete("Replaced bearing", -1);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void AssignTechnician_SetsAssignedTechnicianUserId()
+    {
+        var request = New();
+        var technicianId = Guid.NewGuid();
+
+        request.AssignTechnician(technicianId);
+
+        request.AssignedTechnicianUserId.Should().Be(technicianId);
+    }
+
+    [Fact]
+    public void AssignTechnician_CanReassign_WhileInProgress()
+    {
+        var request = New();
+        request.AssignTechnician(Guid.NewGuid());
+        request.Start();
+
+        var secondTechnician = Guid.NewGuid();
+        request.AssignTechnician(secondTechnician);
+
+        request.AssignedTechnicianUserId.Should().Be(secondTechnician);
+    }
+
+    [Fact]
+    public void AssignTechnician_WhenCompleted_Throws()
+    {
+        var request = New();
+        request.Start();
+        request.Complete(null);
+
+        var act = () => request.AssignTechnician(Guid.NewGuid());
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void AssignTechnician_WithEmptyGuid_Throws()
+    {
+        var request = New();
+
+        var act = () => request.AssignTechnician(Guid.Empty);
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

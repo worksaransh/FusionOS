@@ -21,6 +21,20 @@ public sealed class Bin : TenantAggregateRoot
     public string Code { get; private set; } = default!;
     public bool IsActive { get; private set; } = true;
 
+    /// <summary>
+    /// Optional refinement of this bin's location, one level deeper than the
+    /// required ZoneId (Warehouse -> Zone -> Rack -> Shelf -> Bin, with only
+    /// Warehouse/Zone required). Nullable and additive — every existing
+    /// Bin-creation flow that only specifies a Zone keeps working unchanged.
+    /// Assigned/cleared via AssignShelf; AssignBinShelfCommandHandler is
+    /// responsible for verifying the Shelf's Rack's Zone matches this bin's
+    /// own ZoneId before calling it (data-integrity rule lives in the
+    /// application layer, same place CreateBinCommandHandler checks
+    /// ZoneExistsAsync, since it needs a cross-aggregate repository lookup
+    /// the domain method itself has no access to).
+    /// </summary>
+    public Guid? ShelfId { get; private set; }
+
     private Bin() { }
 
     public static Bin Create(Guid companyId, Guid zoneId, string name, string code)
@@ -58,4 +72,13 @@ public sealed class Bin : TenantAggregateRoot
 
         Name = name.Trim();
     }
+
+    /// <summary>
+    /// Sets or clears (pass null) this bin's optional Shelf refinement.
+    /// Zone-consistency (the Shelf's Rack's Zone must match this bin's
+    /// ZoneId) is enforced by AssignBinShelfCommandHandler before this is
+    /// called — this method trusts its caller, same as Create trusting
+    /// CreateBinCommandHandler's prior ZoneExistsAsync check.
+    /// </summary>
+    public void AssignShelf(Guid? shelfId) => ShelfId = shelfId;
 }

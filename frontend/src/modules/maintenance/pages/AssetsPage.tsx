@@ -11,6 +11,7 @@ import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue';
 import type { PagedResult } from '../../../shared/api/types';
 import { MaintenanceRequestsPanel } from './MaintenanceRequestsPanel';
+import { MaintenanceSchedulesPanel } from './MaintenanceSchedulesPanel';
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -183,6 +184,7 @@ export function AssetsPage() {
       )}
 
       <MaintenanceRequestsPanel />
+      <MaintenanceSchedulesPanel />
     </div>
   );
 }

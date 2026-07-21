@@ -192,6 +192,61 @@ export function useLeadOptions(companyId: string | undefined) {
   );
 }
 
+interface OpportunityLite {
+  id: string;
+  name: string;
+  stage: string;
+}
+
+const OPPORTUNITY_OPTIONS_PAGE_SIZE = 200;
+
+/** Backs ActivitiesPanel's opportunity picker (CRM depth pass, 2026-07-20) — ListOpportunitiesQuery has no `search` param yet, same one-page/client-filtered pattern as useSalesOrderOptions. */
+export function useOpportunityOptions(companyId: string | undefined) {
+  return useEntityOptionsWithoutSearch<OpportunityLite>(
+    ['opportunity-options', companyId],
+    `/crm/opportunities?companyId=${companyId}&page=1&pageSize=${OPPORTUNITY_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId),
+    (o) => ({ id: o.id, label: `${o.name} (${o.stage})` }),
+  );
+}
+
+interface CrmAccountLite {
+  id: string;
+  name: string;
+  industry: string | null;
+}
+
+/**
+ * Backs ContactsPanel's/ActivitiesPanel's/Lead-Opportunity assign-account pickers (CRM
+ * depth pass, 2026-07-20). Named "Crm" to disambiguate from Finance's chart-of-accounts
+ * useAccountOptions above — same server-side search pattern, different backing endpoint
+ * (/crm/accounts, the org/company behind a lead/opportunity/contact — see Account.cs).
+ */
+export function useCrmAccountOptions(companyId: string | undefined) {
+  return useEntityOptions<CrmAccountLite>(
+    'crm-account-options',
+    '/crm/accounts',
+    companyId,
+    (a) => ({ id: a.id, label: a.industry ? `${a.name} (${a.industry})` : a.name }),
+  );
+}
+
+interface ContactLite {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
+/** Backs ActivitiesPanel's contact picker (CRM depth pass, 2026-07-20) — contacts' list endpoint supports `search`, same server-side pattern as useAccountOptions. */
+export function useContactOptions(companyId: string | undefined) {
+  return useEntityOptions<ContactLite>(
+    'contact-options',
+    '/crm/contacts',
+    companyId,
+    (c) => ({ id: c.id, label: c.email ? `${c.name} (${c.email})` : c.name }),
+  );
+}
+
 interface BillOfMaterialsLite {
   id: string;
   code: string;
@@ -272,6 +327,36 @@ export function useEmployeeOptions(companyId: string | undefined) {
   );
 }
 
+interface LeaveRequestLite {
+  id: string;
+  employeeId: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+}
+
+const LEAVE_REQUEST_OPTIONS_PAGE_SIZE = 200;
+
+/**
+ * Backs AttendancePanel's optional "linked leave request" picker (HRMS
+ * frontend, 2026-07-20) — leave-requests' list endpoint has no `search` param
+ * yet, same one-page/client-filtered pattern as useZoneOptions, scoped to the
+ * employee already selected in the same form (mirrors useZoneOptions being
+ * scoped to a warehouseId).
+ */
+export function useLeaveRequestOptions(companyId: string | undefined, employeeId: string | undefined) {
+  return useEntityOptionsWithoutSearch<LeaveRequestLite>(
+    ['leave-request-options', companyId, employeeId],
+    `/hrms/leave-requests?companyId=${companyId}&employeeId=${employeeId}&page=1&pageSize=${LEAVE_REQUEST_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId && employeeId),
+    (l) => ({
+      id: l.id,
+      label: `${l.type} · ${new Date(l.startDate).toLocaleDateString()}–${new Date(l.endDate).toLocaleDateString()} · ${l.status}`,
+    }),
+  );
+}
+
 interface AssetLite {
   id: string;
   code: string;
@@ -317,6 +402,33 @@ export function useTaxJurisdictionOptions(companyId: string | undefined) {
     '/finance/tax-jurisdictions',
     companyId,
     (j) => ({ id: j.id, label: `${j.code} — ${j.name}` }),
+  );
+}
+
+interface TaxRateLite {
+  id: string;
+  code: string;
+  name: string;
+  percentage: number;
+}
+
+const TAX_RATE_OPTIONS_PAGE_SIZE = 100;
+
+/**
+ * Backs InvoicesPanel's/PurchaseOrdersPanel's per-line tax-rate picker (Phase 2
+ * closeout, 2026-07-18 — wiring the previously-unused CalculateLineTaxQuery
+ * into transaction lines). Tax rates' list endpoint requires a
+ * `taxJurisdictionId` (a rate nests under one jurisdiction, not a company-wide
+ * list) and has no `search` param, so this only fetches once a jurisdiction is
+ * picked, one page, client-filtered — same `useEntityOptionsWithoutSearch`
+ * shape as usePurchaseOrderOptions.
+ */
+export function useTaxRateOptions(companyId: string | undefined, taxJurisdictionId: string | undefined) {
+  return useEntityOptionsWithoutSearch<TaxRateLite>(
+    ['tax-rate-options', companyId, taxJurisdictionId],
+    `/finance/tax-rates?companyId=${companyId}&taxJurisdictionId=${taxJurisdictionId}&page=1&pageSize=${TAX_RATE_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId && taxJurisdictionId),
+    (r) => ({ id: r.id, label: `${r.code} — ${r.name} (${r.percentage}%)` }),
   );
 }
 
@@ -448,4 +560,57 @@ export function useUserOptions(companyId: string | undefined) {
     isLoading: query.isLoading,
     onSearchChange: setSearch,
   };
+}
+
+interface InspectionLite {
+  id: string;
+  type: string;
+  status: string;
+}
+
+const INSPECTION_OPTIONS_PAGE_SIZE = 200;
+
+/** Backs NonConformanceReportsPanel's optional Inspection-link picker (Quality NCR/CAPA slice) — inspections' list endpoint has no `search` param yet, same one-page/client-filtered pattern as useSalesOrderOptions/usePurchaseOrderOptions. */
+export function useInspectionOptions(companyId: string | undefined) {
+  return useEntityOptionsWithoutSearch<InspectionLite>(
+    ['inspection-options', companyId],
+    `/quality/inspections?companyId=${companyId}&page=1&pageSize=${INSPECTION_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId),
+    (i) => ({ id: i.id, label: `${i.type} · ${i.status}` }),
+  );
+}
+
+interface BranchLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs DepartmentsPanel's branch picker (Core Organizations frontend, 2026-07-21) — branches' list endpoint supports `search`, same server-side pattern as useAccountOptions. */
+export function useBranchOptions(companyId: string | undefined) {
+  return useEntityOptions<BranchLite>(
+    'branch-options',
+    '/core/branches',
+    companyId,
+    (b) => ({ id: b.id, label: `${b.code} — ${b.name}` }),
+  );
+}
+
+interface NonConformanceReportLite {
+  id: string;
+  description: string;
+  severity: string;
+  status: string;
+}
+
+const NON_CONFORMANCE_REPORT_OPTIONS_PAGE_SIZE = 200;
+
+/** Backs CorrectiveActionsPanel's NCR-link picker (Quality NCR/CAPA slice) — non-conformance-reports' list endpoint has no `search` param yet, same one-page/client-filtered pattern as useInspectionOptions. */
+export function useNonConformanceReportOptions(companyId: string | undefined) {
+  return useEntityOptionsWithoutSearch<NonConformanceReportLite>(
+    ['non-conformance-report-options', companyId],
+    `/quality/non-conformance-reports?companyId=${companyId}&page=1&pageSize=${NON_CONFORMANCE_REPORT_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId),
+    (r) => ({ id: r.id, label: `${r.severity} — ${r.description}` }),
+  );
 }

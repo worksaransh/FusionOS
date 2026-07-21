@@ -29,37 +29,42 @@ public sealed class InvoiceRepository : IInvoiceRepository
     public Task<int> CountAsync(Guid companyId, CancellationToken cancellationToken = default) =>
         _context.Invoices.CountAsync(i => i.CompanyId == companyId, cancellationToken);
 
-    // Loads matching invoices with their lines and sums in memory rather than
-    // relying on EF translating a SelectMany over InvoiceLine (a private-field-backed
-    // owned collection) directly into SQL - safer to verify by reading given no
-    // compiler is available in this environment (2026-07-14 coverage-audit follow-up).
-    public async Task<decimal> GetInvoicedQuantityAsync(Guid companyId, Guid salesOrderId, Guid productId, CancellationToken cancellationToken = default)
+    // InvoiceLine is a plain FK-mapped entity (InvoiceConfiguration: HasMany(...).WithOne()
+    // .HasForeignKey("InvoiceId")), not an EF owned type, so a SelectMany over the Lines
+    // navigation translates to a single SQL join+SUM - same shape as
+    // JournalEntryRepository.SumPostedAmountByAccountAsync (Finance). Fixed 2026-07-21:
+    // the previous version loaded every invoice + all lines for the sales order into
+    // memory and summed client-side.
+    public Task<decimal> GetInvoicedQuantityAsync(Guid companyId, Guid salesOrderId, Guid productId, CancellationToken cancellationToken = default)
     {
-        var invoices = await _context.Invoices
-            .Include(i => i.Lines)
-            .Where(i => i.CompanyId == companyId && i.SalesOrderId == salesOrderId)
-            .ToListAsync(cancellationToken);
+        var lines =
+            from invoice in _context.Invoices
+            where invoice.CompanyId == companyId && invoice.SalesOrderId == salesOrderId
+            from line in invoice.Lines
+            where line.ProductId == productId
+            select line;
 
-        return invoices
-            .SelectMany(i => i.Lines)
-            .Where(l => l.ProductId == productId)
-            .Sum(l => l.Quantity);
+        return lines.SumAsync(l => l.Quantity, cancellationToken);
     }
 
-    // TotalAmount is a computed, EF-ignored property (summed in memory from the
-    // Lines navigation, same as GetInvoicedQuantityAsync above) - it cannot be
-    // referenced inside a query EF would try to translate to SQL, so this loads
-    // matching invoices with their lines first and groups/sums in memory.
+    // TotalAmount is a computed, EF-ignored property, so it can't be referenced inside a
+    // translated query - but its constituent, LineTotal, is a real mapped column, so this
+    // groups by SalesPersonId and sums LineTotal directly in a single grouped SQL query
+    // (same shape as JournalEntryRepository.GetPostedBalancesByAccountInRangeAsync).
+    // Fixed 2026-07-21: the previous version loaded every Issued invoice company-wide
+    // with all lines into memory and grouped/summed client-side.
     public async Task<IReadOnlyList<(Guid SalesPersonId, decimal TotalInvoicedRevenue)>> GetIssuedInvoiceTotalsBySalesPersonAsync(Guid companyId, CancellationToken cancellationToken = default)
     {
-        var invoices = await _context.Invoices
-            .Include(i => i.Lines)
-            .Where(i => i.CompanyId == companyId && i.Status == InvoiceStatus.Issued && i.SalesPersonId != null)
+        var grouped = await (
+            from invoice in _context.Invoices
+            where invoice.CompanyId == companyId
+                  && invoice.Status == InvoiceStatus.Issued
+                  && invoice.SalesPersonId != null
+            from line in invoice.Lines
+            group line by invoice.SalesPersonId into g
+            select new { SalesPersonId = g.Key!.Value, TotalInvoicedRevenue = g.Sum(l => l.LineTotal) })
             .ToListAsync(cancellationToken);
 
-        return invoices
-            .GroupBy(i => i.SalesPersonId!.Value)
-            .Select(g => (SalesPersonId: g.Key, TotalInvoicedRevenue: g.Sum(i => i.TotalAmount)))
-            .ToList();
+        return grouped.Select(g => (g.SalesPersonId, g.TotalInvoicedRevenue)).ToList();
     }
 }

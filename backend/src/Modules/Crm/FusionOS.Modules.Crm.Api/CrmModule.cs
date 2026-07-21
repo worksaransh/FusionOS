@@ -1,6 +1,9 @@
 using FusionOS.BuildingBlocks.Application;
 using FusionOS.BuildingBlocks.Application.Modularity;
 using FusionOS.BuildingBlocks.EventBus;
+using FusionOS.Modules.Crm.Application.Accounts.Contracts;
+using FusionOS.Modules.Crm.Application.Activities.Contracts;
+using FusionOS.Modules.Crm.Application.Contacts.Contracts;
 using FusionOS.Modules.Crm.Application.Leads.Commands.CreateLead;
 using FusionOS.Modules.Crm.Application.Leads.Contracts;
 using FusionOS.Modules.Crm.Application.Opportunities.Contracts;
@@ -14,10 +17,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FusionOS.Modules.Crm.Api;
 
 /// <summary>
-/// Phase 4 — CRM, first slice. Registers the module's DbContext, Leads + Opportunities
-/// CQRS, repositories, and the outbox dispatcher that relays OpportunityWon to Kafka for
-/// Sales to consume (03_SYSTEM_ARCHITECTURE.md §4.2). CRM publishes events but consumes
-/// none, so no IIntegrationEventConsumer is registered here.
+/// Phase 4 — CRM. Registers the module's DbContext, Leads + Opportunities + Accounts +
+/// Contacts + Activities CQRS, repositories, and the outbox dispatcher that relays
+/// OpportunityWon to Kafka for Sales to consume (03_SYSTEM_ARCHITECTURE.md §4.2). CRM
+/// publishes events but consumes none, so no IIntegrationEventConsumer is registered here.
 /// </summary>
 public sealed class CrmModule : IModule
 {
@@ -32,6 +35,9 @@ public sealed class CrmModule : IModule
 
         services.AddScoped<ILeadRepository, LeadRepository>();
         services.AddScoped<IOpportunityRepository, OpportunityRepository>();
+        services.AddScoped<IAccountRepository, AccountRepository>();
+        services.AddScoped<IContactRepository, ContactRepository>();
+        services.AddScoped<IActivityRepository, ActivityRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddModuleApplication(typeof(CreateLeadCommand).Assembly);

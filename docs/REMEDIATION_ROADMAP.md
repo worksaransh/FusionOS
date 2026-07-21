@@ -132,11 +132,15 @@ listening.
 2. **Build AR collections/payments** so Finance's customer balance reflects real outstanding AR
    instead of lifetime-invoiced total (currently charge-only, can never decrease). 3–5 days.
    **Still open.**
-3. **Add cross-aggregate validation**: Invoice/Dispatch quantities against the parent Sales
-   Order's remaining quantity, closing the double-invoice/over-dispatch gap. 2–3 days. **Still
-   open** — investigated and scoped (needs a per-product "already consumed" sum on both
-   `IInvoiceRepository` and `IDispatchRepository`), deliberately not implemented without a
-   compiler to verify it.
+3. ~~**Add cross-aggregate validation**~~ — **done** (Phase M1, 2026-07-14; tightened
+   2026-07-20). `CreateInvoiceCommandHandler`/`CreateDispatchCommandHandler` reject any request
+   whose per-product total (grouped across request lines, so the same product split over two
+   lines can't slip past) plus the already-invoiced/dispatched sum
+   (`IInvoiceRepository.GetInvoicedQuantityAsync`/`IDispatchRepository.GetDispatchedQuantityAsync`)
+   exceeds the ordered total for that product summed across all order lines. All persisted
+   invoices (Draft and Issued — no cancelled state exists) and all dispatches (no lifecycle)
+   count toward the cap. Handler tests cover at-limit, one-over, split-line, and
+   multi-order-line cases.
 4. ~~**Fix Purchase Order self-approval**~~ — **done.** `ApprovePurchaseOrderCommandHandler` now
    rejects `_currentUser.UserId == order.CreatedBy` with `InvalidOperationException`. **Caveat**:
    the shared exception handler doesn't map `InvalidOperationException` to 409 yet (see new gap

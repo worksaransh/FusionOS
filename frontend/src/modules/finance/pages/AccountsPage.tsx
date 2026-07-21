@@ -16,6 +16,7 @@ import { BankStatementLinesPanel } from './BankStatementLinesPanel';
 import { BudgetsPanel } from './BudgetsPanel';
 import { CostCentersPanel } from './CostCentersPanel';
 import { ExchangeRatesPanel } from './ExchangeRatesPanel';
+import { FinanceSettingsPanel } from './FinanceSettingsPanel';
 import { FinancialStatementsPanel } from './FinancialStatementsPanel';
 import { FixedAssetsPanel } from './FixedAssetsPanel';
 import { JournalEntriesPanel } from './JournalEntriesPanel';
@@ -238,6 +239,7 @@ export function AccountsPage() {
       <ExchangeRatesPanel />
       <BudgetsPanel />
       <FixedAssetsPanel />
+      <FinanceSettingsPanel />
       <FinancialStatementsPanel />
     </div>
   );

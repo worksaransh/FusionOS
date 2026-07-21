@@ -10,6 +10,8 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import type { PagedResult } from '../../../shared/api/types';
+import { CorrectiveActionsPanel } from './CorrectiveActionsPanel';
+import { NonConformanceReportsPanel } from './NonConformanceReportsPanel';
 
 const INSPECTION_TYPES = ['IncomingGoods', 'Production'] as const;
 
@@ -45,13 +47,16 @@ interface InspectionDto {
 }
 
 /**
- * Inspections — Quality's first (and so far only) real frontend slice
- * (backend has existed since the Manufacturing/CRM/Quality backend-only
- * pass; this closes the "frontend panel deferred" gap flagged in
- * docs/PROJECT_TRACKER.md). ReferenceId (the Work Order or Goods Receipt
- * being inspected) is a plain id input, not an EntityCombobox — Inspection's
- * own class doc comment documents this as a deliberately opaque cross-module
- * reference, never existence-validated even on the backend.
+ * Inspections — Quality's first real frontend slice (backend has existed
+ * since the Manufacturing/CRM/Quality backend-only pass; this closes the
+ * "frontend panel deferred" gap flagged in docs/PROJECT_TRACKER.md).
+ * ReferenceId (the Work Order or Goods Receipt being inspected) is a plain
+ * id input, not an EntityCombobox — Inspection's own class doc comment
+ * documents this as a deliberately opaque cross-module reference, never
+ * existence-validated even on the backend. Top-level page for /quality,
+ * with NonConformanceReportsPanel and CorrectiveActionsPanel rendered as
+ * sibling panels below it, same pattern as MaintenanceRequestsPanel under
+ * AssetsPage.
  */
 export function InspectionsPage() {
   const { companyId } = useActiveCompany();
@@ -202,6 +207,9 @@ export function InspectionsPage() {
           onClose={() => setRecordingInspectionId(null)}
         />
       )}
+
+      <NonConformanceReportsPanel />
+      <CorrectiveActionsPanel />
     </div>
   );
 }

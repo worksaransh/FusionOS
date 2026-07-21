@@ -1,3 +1,4 @@
+using FusionOS.Modules.Crm.Application.Opportunities.Commands.AssignOpportunityAccount;
 using FusionOS.Modules.Crm.Application.Opportunities.Commands.CreateOpportunity;
 using FusionOS.Modules.Crm.Application.Opportunities.Commands.LoseOpportunity;
 using FusionOS.Modules.Crm.Application.Opportunities.Commands.WinOpportunity;
@@ -71,6 +72,17 @@ public sealed class OpportunitiesController : ControllerBase
         var result = await _sender.Send(new LoseOpportunityCommand(request.CompanyId, id), cancellationToken);
         return Ok(result);
     }
+
+    [HttpPost("{id:guid}/assign-account")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AssignAccount(Guid id, [FromBody] AssignOpportunityAccountRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new AssignOpportunityAccountCommand(request.CompanyId, id, request.AccountId), cancellationToken);
+        return Ok(result);
+    }
 }
 
 public sealed record CreateOpportunityRequest(Guid CompanyId, Guid LeadId, string Name, decimal EstimatedValue);
@@ -78,3 +90,5 @@ public sealed record CreateOpportunityRequest(Guid CompanyId, Guid LeadId, strin
 public sealed record WinOpportunityRequest(Guid CompanyId, string CustomerCode);
 
 public sealed record OpportunityActionRequest(Guid CompanyId);
+
+public sealed record AssignOpportunityAccountRequest(Guid CompanyId, Guid? AccountId);

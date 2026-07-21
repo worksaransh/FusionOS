@@ -24,6 +24,13 @@ public sealed class BillOfMaterialsConfiguration : IEntityTypeConfiguration<Bill
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(x => x.Lines).HasField("_lines").UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(x => x.Operations)
+            .WithOne()
+            .HasForeignKey("BillOfMaterialsId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(x => x.Operations).HasField("_operations").UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
 
@@ -34,5 +41,18 @@ public sealed class BomLineConfiguration : IEntityTypeConfiguration<BomLine>
         builder.ToTable("bom_lines");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Quantity).HasColumnType("numeric(19,4)").IsRequired();
+    }
+}
+
+public sealed class RoutingOperationConfiguration : IEntityTypeConfiguration<RoutingOperation>
+{
+    public void Configure(EntityTypeBuilder<RoutingOperation> builder)
+    {
+        builder.ToTable("routing_operations");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.SequenceNumber).IsRequired();
+        builder.Property(x => x.OperationName).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.WorkCenter).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.StandardMinutes).HasColumnType("numeric(19,4)").IsRequired();
     }
 }

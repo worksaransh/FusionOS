@@ -11,6 +11,7 @@ import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import { useProductOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
+import { RoutingOperationsPanel } from './RoutingOperationsPanel';
 import { WorkOrdersPanel } from './WorkOrdersPanel';
 
 const lineSchema = z.object({
@@ -32,6 +33,14 @@ interface BomLineDto {
   quantity: number;
 }
 
+interface RoutingOperationDto {
+  id: string;
+  sequenceNumber: number;
+  operationName: string;
+  workCenter: string;
+  standardMinutes: number;
+}
+
 interface BillOfMaterialsDto {
   id: string;
   code: string;
@@ -39,6 +48,7 @@ interface BillOfMaterialsDto {
   productId: string;
   isActive: boolean;
   lines: BomLineDto[];
+  operations: RoutingOperationDto[];
 }
 
 /**
@@ -210,6 +220,7 @@ export function BillsOfMaterialsPage() {
             { header: 'Code', render: (row: BillOfMaterialsDto) => row.code },
             { header: 'Name', render: (row: BillOfMaterialsDto) => row.name },
             { header: 'Components', render: (row: BillOfMaterialsDto) => row.lines.length },
+            { header: 'Operations', render: (row: BillOfMaterialsDto) => row.operations.length },
             { header: 'Status', render: (row: BillOfMaterialsDto) => (row.isActive ? 'Active' : 'Inactive') },
             {
               header: 'Actions',
@@ -237,6 +248,7 @@ export function BillsOfMaterialsPage() {
         <p role="alert" className="mt-2 text-sm text-danger">Could not deactivate that bill of materials.</p>
       )}
 
+      <RoutingOperationsPanel />
       <WorkOrdersPanel />
     </div>
   );

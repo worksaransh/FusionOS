@@ -1,4 +1,5 @@
 using FusionOS.Modules.Core.Application.Users.Commands.AssignUserRole;
+using FusionOS.Modules.Core.Application.Users.Commands.DeactivateUser;
 using FusionOS.Modules.Core.Application.Users.Queries.ListCompanyUsers;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -35,7 +36,20 @@ public sealed class UsersController : ControllerBase
         await _sender.Send(new AssignUserRoleCommand(request.CompanyId, userId, request.RoleId), cancellationToken);
         return NoContent();
     }
+
+    [HttpPost("{userId:guid}/deactivate")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Deactivate(Guid userId, [FromBody] DeactivateUserRequest request, CancellationToken cancellationToken)
+    {
+        await _sender.Send(new DeactivateUserCommand(request.CompanyId, userId), cancellationToken);
+        return NoContent();
+    }
 }
 
 /// <summary>Body shape for POST .../role — UserId comes from the route, not the body.</summary>
 public sealed record AssignUserRoleRequest(Guid CompanyId, Guid RoleId);
+
+/// <summary>Body shape for POST .../deactivate — UserId comes from the route, not the body.</summary>
+public sealed record DeactivateUserRequest(Guid CompanyId);

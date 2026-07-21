@@ -29,6 +29,6 @@ public sealed class DeactivateBinCommandHandler : IRequestHandler<DeactivateBinC
         bin.Deactivate();
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new BinDto(bin.Id, bin.ZoneId, bin.Name, bin.Code, bin.IsActive, bin.CreatedAt);
+        return new BinDto(bin.Id, bin.ZoneId, bin.Name, bin.Code, bin.IsActive, bin.CreatedAt, bin.ShelfId);
     }
 }

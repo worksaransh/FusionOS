@@ -45,6 +45,12 @@ const scheduleSchema = z.object({
 });
 type ScheduleFormValues = z.infer<typeof scheduleSchema>;
 
+const postDepreciationSchema = z.object({
+  depreciationExpenseAccountId: z.string().uuid('Pick the depreciation expense account'),
+  periodEnd: z.string().min(1, 'Period end date is required'),
+});
+type PostDepreciationFormValues = z.infer<typeof postDepreciationSchema>;
+
 interface FixedAssetDto {
   id: string;
   code: string;
@@ -70,17 +76,39 @@ interface DepreciationScheduleDto {
   bookValue: number;
 }
 
+interface JournalEntryLineDto {
+  id: string;
+  accountId: string;
+  debit: number;
+  credit: number;
+  description: string | null;
+  costCenterId: string | null;
+}
+
+interface JournalEntryDto {
+  id: string;
+  reference: string | null;
+  status: string;
+  entryDate: string;
+  totalDebit: number;
+  totalCredit: number;
+  lines: JournalEntryLineDto[];
+}
+
 /**
  * Fixed Assets — M8g, Finance depth: fixed assets. Master data (Code/Name/
  * AssetAccountId/AccumulatedDepreciationAccountId/CostCenterId/
- * AcquisitionDate/AcquisitionCost/SalvageValue/UsefulLifeMonths) plus two
+ * AcquisitionDate/AcquisitionCost/SalvageValue/UsefulLifeMonths) plus three
  * dedicated actions per row: "Dispose" (a genuine one-way business state
  * change — see FixedAsset.Dispose's own doc comment for why no gain/loss is
- * calculated) and "View depreciation schedule" (a pure on-demand
- * calculation — see GetDepreciationScheduleQueryHandler's own doc comment:
- * nothing is persisted, no JournalEntry is ever created). No automated
- * monthly depreciation run and no GL posting anywhere in this slice — see
- * FixedAsset.cs's class doc comment for the full scope line.
+ * calculated), "View depreciation schedule" (a pure on-demand calculation —
+ * see GetDepreciationScheduleQueryHandler's own doc comment: nothing is
+ * persisted, no JournalEntry is ever created), and "Post Depreciation" (posts
+ * one month of straight-line depreciation as a real Posted JournalEntry —
+ * Debit the picked expense account, Credit the asset's accumulated-
+ * depreciation account — see PostMonthlyDepreciationCommand's own doc
+ * comment). Still no automated monthly depreciation *run*: each period is
+ * posted one asset at a time, by hand, via that button.
  */
 export function FixedAssetsPanel() {
   const { companyId } = useActiveCompany();
@@ -88,6 +116,7 @@ export function FixedAssetsPanel() {
   const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [disposingAssetId, setDisposingAssetId] = useState<string | null>(null);
   const [scheduleAssetId, setScheduleAssetId] = useState<string | null>(null);
+  const [postingDepreciationAssetId, setPostingDepreciationAssetId] = useState<string | null>(null);
 
   const accountOptions = useAccountOptions(companyId);
   const costCenterOptions = useCostCenterOptions(companyId);
@@ -147,13 +176,15 @@ export function FixedAssetsPanel() {
   const editingAsset = fixedAssetsQuery.data?.data.find((a) => a.id === editingAssetId) ?? null;
   const disposingAsset = fixedAssetsQuery.data?.data.find((a) => a.id === disposingAssetId) ?? null;
   const scheduleAsset = fixedAssetsQuery.data?.data.find((a) => a.id === scheduleAssetId) ?? null;
+  const postingDepreciationAsset = fixedAssetsQuery.data?.data.find((a) => a.id === postingDepreciationAssetId) ?? null;
 
   return (
     <div className="mt-8">
       <h2 className="mb-3 text-lg font-semibold text-text">Fixed Assets</h2>
       <p className="mb-3 text-xs text-text-muted">
-        Master data plus an on-demand straight-line depreciation calculation. No automated monthly depreciation run
-        and no journal entries are ever posted from this slice — see FixedAsset.cs's class doc comment.
+        Master data plus an on-demand straight-line depreciation calculation and a "Post Depreciation" action that
+        posts one month of it as a real Posted JournalEntry to the GL. No automated monthly depreciation run — each
+        period is still posted one asset at a time, by hand.
       </p>
 
       <Card className="mb-6">
@@ -318,6 +349,14 @@ export function FixedAssetsPanel() {
                   </Button>
                   <Button
                     type="button"
+                    variant="secondary"
+                    disabled={row.isDisposed}
+                    onClick={() => setPostingDepreciationAssetId(row.id)}
+                  >
+                    Post Depreciation
+                  </Button>
+                  <Button
+                    type="button"
                     variant="danger"
                     disabled={!row.isActive || deactivateFixedAsset.isPending}
                     onClick={() => deactivateFixedAsset.mutate(row.id)}
@@ -350,6 +389,14 @@ export function FixedAssetsPanel() {
 
       {scheduleAsset && (
         <FixedAssetDepreciationSchedulePanel companyId={companyId} fixedAsset={scheduleAsset} onClose={() => setScheduleAssetId(null)} />
+      )}
+
+      {postingDepreciationAsset && (
+        <FixedAssetPostDepreciationPanel
+          companyId={companyId}
+          fixedAsset={postingDepreciationAsset}
+          onClose={() => setPostingDepreciationAssetId(null)}
+        />
       )}
     </div>
   );
@@ -571,6 +618,115 @@ function FixedAssetDepreciationSchedulePanel({ companyId, fixedAsset, onClose }:
           <div>
             <dt className="text-text-muted">Book value</dt>
             <dd className="font-medium text-text">{scheduleQuery.data.bookValue.toLocaleString()}</dd>
+          </div>
+        </dl>
+      )}
+    </Card>
+  );
+}
+
+interface FixedAssetPostDepreciationPanelProps {
+  companyId: string;
+  fixedAsset: FixedAssetDto;
+  onClose: () => void;
+}
+
+/**
+ * Posts one month of straight-line depreciation as a real Posted JournalEntry
+ * (POST .../{id}/post-depreciation) — Debit the picked expense account,
+ * Credit the asset's own AccumulatedDepreciationAccountId (fixed at creation,
+ * not re-picked here). See PostMonthlyDepreciationCommand's own doc comment:
+ * the asset must not be disposed and must already have an accumulated-
+ * depreciation account set, and there is no duplicate/period-tracking guard —
+ * posting the same period twice is possible and the user's own responsibility.
+ */
+function FixedAssetPostDepreciationPanel({ companyId, fixedAsset, onClose }: FixedAssetPostDepreciationPanelProps) {
+  const queryClient = useQueryClient();
+  const accountOptions = useAccountOptions(companyId);
+
+  const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<PostDepreciationFormValues>({
+    resolver: zodResolver(postDepreciationSchema),
+    defaultValues: { depreciationExpenseAccountId: '', periodEnd: '' },
+  });
+
+  const postDepreciation = useMutation({
+    mutationFn: (values: PostDepreciationFormValues) =>
+      apiClient.post<JournalEntryDto>(`/finance/fixed-assets/${fixedAsset.id}/post-depreciation`, {
+        companyId,
+        depreciationExpenseAccountId: values.depreciationExpenseAccountId,
+        periodEnd: new Date(values.periodEnd).toISOString(),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fixed-assets', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries', companyId] });
+    },
+  });
+
+  return (
+    <Card className="mt-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-base font-semibold text-text">Post Depreciation — {fixedAsset.code}</h3>
+        <Button variant="secondary" onClick={onClose}>Close</Button>
+      </div>
+      <p className="mb-3 text-xs text-text-muted">
+        Posts one month of straight-line depreciation as a real Posted JournalEntry — Debit the expense account below,
+        Credit this asset's accumulated-depreciation account. Unlike the schedule above, this DOES write to the GL.
+        There is no duplicate-posting guard, so make sure this period hasn't already been posted.
+      </p>
+      <form onSubmit={handleSubmit((values) => postDepreciation.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Depreciation expense account
+          <Controller
+            control={control}
+            name="depreciationExpenseAccountId"
+            render={({ field }) => (
+              <EntityCombobox
+                value={field.value}
+                onChange={field.onChange}
+                options={accountOptions.options}
+                isLoading={accountOptions.isLoading}
+                onSearchChange={accountOptions.onSearchChange}
+                placeholder="Search accounts…"
+              />
+            )}
+          />
+          {errors.depreciationExpenseAccountId && <span className="text-xs text-danger">{errors.depreciationExpenseAccountId.message}</span>}
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Period end
+          <Controller
+            control={control}
+            name="periodEnd"
+            render={({ field }) => (
+              <input type="date" className="rounded-md border border-border bg-surface px-2 py-1.5" {...field} />
+            )}
+          />
+          {errors.periodEnd && <span className="text-xs text-danger">{errors.periodEnd.message}</span>}
+        </label>
+        <div className="col-span-2 flex items-center gap-3">
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Posting…' : 'Post depreciation'}</Button>
+          {postDepreciation.isError && postDepreciation.error instanceof ApiError && (
+            <span role="alert" className="text-sm text-danger">{postDepreciation.error.problem.title}</span>
+          )}
+        </div>
+      </form>
+      {postDepreciation.isSuccess && (
+        <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-text-muted">Journal entry</dt>
+            <dd className="font-medium text-text">{postDepreciation.data.reference ?? postDepreciation.data.id.slice(0, 8)}</dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">Status</dt>
+            <dd className="font-medium text-text">{postDepreciation.data.status}</dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">Entry date</dt>
+            <dd className="font-medium text-text">{new Date(postDepreciation.data.entryDate).toLocaleDateString()}</dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">Amount</dt>
+            <dd className="font-medium text-text">{postDepreciation.data.totalDebit.toLocaleString()}</dd>
           </div>
         </dl>
       )}

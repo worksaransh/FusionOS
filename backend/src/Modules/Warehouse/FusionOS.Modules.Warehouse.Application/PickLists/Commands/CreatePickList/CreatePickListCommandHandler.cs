@@ -38,10 +38,12 @@ public sealed class CreatePickListCommandHandler : IRequestHandler<CreatePickLis
             });
         }
 
+        // Lines are grouped by BinId before checking, so the same bin referenced by
+        // several request lines is only looked up once instead of once per line.
         var failures = new List<FluentValidation.Results.ValidationFailure>();
-        foreach (var line in request.Lines)
+        foreach (var binId in request.Lines.Where(l => l.BinId is not null).Select(l => l.BinId!.Value).Distinct())
         {
-            if (line.BinId is Guid binId && !await _binRepository.ExistsAsync(request.CompanyId, binId, cancellationToken))
+            if (!await _binRepository.ExistsAsync(request.CompanyId, binId, cancellationToken))
             {
                 failures.Add(new FluentValidation.Results.ValidationFailure(nameof(request.Lines), $"Bin '{binId}' does not exist for this company."));
             }

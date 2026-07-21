@@ -8,7 +8,8 @@ public sealed record OpportunityDto(
     string? ContactEmail,
     decimal EstimatedValue,
     string Stage,
-    string? CustomerCode);
+    string? CustomerCode,
+    Guid? AccountId);
 
 /// <summary>Single place that turns an Opportunity aggregate into its DTO, shared by every handler that returns one.</summary>
 public static class OpportunityMapper
@@ -21,5 +22,6 @@ public static class OpportunityMapper
         opportunity.ContactEmail,
         opportunity.EstimatedValue,
         opportunity.Stage.ToString(),
-        opportunity.CustomerCode);
+        opportunity.CustomerCode,
+        opportunity.AccountId);
 }

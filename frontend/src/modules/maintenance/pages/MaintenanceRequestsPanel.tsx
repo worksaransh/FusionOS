@@ -9,7 +9,7 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
-import { useAssetOptions } from '../../../shared/api/entityOptions';
+import { useAssetOptions, useUserOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
 const REQUEST_TYPES = ['Preventive', 'Breakdown'] as const;
@@ -23,8 +23,14 @@ type FormValues = z.infer<typeof schema>;
 
 const completeSchema = z.object({
   resolutionNotes: z.string().max(1000).or(z.literal('')),
+  actualDowntimeMinutes: z.string().refine((v) => v === '' || (/^\d+$/.test(v) && Number(v) >= 0), 'Must be a non-negative whole number').or(z.literal('')),
 });
 type CompleteFormValues = z.infer<typeof completeSchema>;
+
+const assignTechnicianSchema = z.object({
+  technicianUserId: z.string().uuid('Pick a technician'),
+});
+type AssignTechnicianFormValues = z.infer<typeof assignTechnicianSchema>;
 
 interface MaintenanceRequestDto {
   id: string;
@@ -35,6 +41,8 @@ interface MaintenanceRequestDto {
   reportedAt: string;
   completedAt: string | null;
   resolutionNotes: string | null;
+  assignedTechnicianUserId: string | null;
+  actualDowntimeMinutes: number | null;
 }
 
 /**
@@ -50,8 +58,10 @@ export function MaintenanceRequestsPanel() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
   const [completingRequestId, setCompletingRequestId] = useState<string | null>(null);
+  const [assigningRequestId, setAssigningRequestId] = useState<string | null>(null);
 
   const assetOptions = useAssetOptions(companyId);
+  const technicianOptions = useUserOptions(companyId);
 
   const { control, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -93,6 +103,7 @@ export function MaintenanceRequestsPanel() {
   if (!companyId) return null;
 
   const completingRequest = requestsQuery.data?.data.find((r) => r.id === completingRequestId) ?? null;
+  const assigningRequest = requestsQuery.data?.data.find((r) => r.id === assigningRequestId) ?? null;
 
   return (
     <div className="mt-8">
@@ -160,9 +171,22 @@ export function MaintenanceRequestsPanel() {
             { header: 'Status', render: (row: MaintenanceRequestDto) => row.status },
             { header: 'Reported', render: (row: MaintenanceRequestDto) => new Date(row.reportedAt).toLocaleDateString() },
             {
+              header: 'Technician',
+              render: (row: MaintenanceRequestDto) =>
+                row.assignedTechnicianUserId
+                  ? technicianOptions.options.find((t) => t.id === row.assignedTechnicianUserId)?.label ?? row.assignedTechnicianUserId
+                  : '—',
+            },
+            { header: 'Downtime', render: (row: MaintenanceRequestDto) => (row.actualDowntimeMinutes != null ? `${row.actualDowntimeMinutes} min` : '—') },
+            {
               header: 'Actions',
               render: (row: MaintenanceRequestDto) => (
                 <div className="flex items-center gap-2">
+                  {row.status !== 'Completed' && (
+                    <Button type="button" variant="secondary" onClick={() => setAssigningRequestId(row.id)}>
+                      {row.assignedTechnicianUserId ? 'Reassign' : 'Assign'}
+                    </Button>
+                  )}
                   {row.status === 'Open' && (
                     <Button type="button" variant="secondary" disabled={startRequest.isPending} onClick={() => startRequest.mutate(row.id)}>
                       Start
@@ -196,6 +220,15 @@ export function MaintenanceRequestsPanel() {
           onClose={() => setCompletingRequestId(null)}
         />
       )}
+
+      {assigningRequest && (
+        <AssignTechnicianPanel
+          companyId={companyId}
+          request={assigningRequest}
+          technicianOptions={technicianOptions}
+          onClose={() => setAssigningRequestId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -209,9 +242,9 @@ interface CompleteMaintenanceRequestPanelProps {
 function CompleteMaintenanceRequestPanel({ companyId, request, onClose }: CompleteMaintenanceRequestPanelProps) {
   const queryClient = useQueryClient();
 
-  const { control, handleSubmit, formState: { isSubmitting } } = useForm<CompleteFormValues>({
+  const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<CompleteFormValues>({
     resolver: zodResolver(completeSchema),
-    defaultValues: { resolutionNotes: '' },
+    defaultValues: { resolutionNotes: '', actualDowntimeMinutes: '' },
   });
 
   const completeRequest = useMutation({
@@ -219,6 +252,7 @@ function CompleteMaintenanceRequestPanel({ companyId, request, onClose }: Comple
       apiClient.post<MaintenanceRequestDto>(`/maintenance/requests/${request.id}/complete`, {
         companyId,
         resolutionNotes: values.resolutionNotes || null,
+        actualDowntimeMinutes: values.actualDowntimeMinutes === '' ? null : Number(values.actualDowntimeMinutes),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-requests', companyId] });
@@ -232,7 +266,7 @@ function CompleteMaintenanceRequestPanel({ companyId, request, onClose }: Comple
         <h3 className="text-base font-semibold text-text">Complete request — {request.description}</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => completeRequest.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form onSubmit={handleSubmit((values) => completeRequest.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           Resolution notes (optional)
           <Controller
@@ -243,10 +277,86 @@ function CompleteMaintenanceRequestPanel({ companyId, request, onClose }: Comple
             )}
           />
         </label>
-        <div className="col-span-2 flex items-center gap-3">
+        <label className="flex flex-col gap-1 text-sm">
+          Actual downtime, minutes (optional)
+          <Controller
+            control={control}
+            name="actualDowntimeMinutes"
+            render={({ field }) => (
+              <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="90" {...field} />
+            )}
+          />
+          {errors.actualDowntimeMinutes && <span className="text-xs text-danger">{errors.actualDowntimeMinutes.message}</span>}
+        </label>
+        <div className="col-span-full flex items-center gap-3">
           <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Mark completed'}</Button>
           {completeRequest.isError && (
             <span role="alert" className="text-sm text-danger">Could not complete that request.</span>
+          )}
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+interface AssignTechnicianPanelProps {
+  companyId: string;
+  request: MaintenanceRequestDto;
+  technicianOptions: ReturnType<typeof useUserOptions>;
+  onClose: () => void;
+}
+
+function AssignTechnicianPanel({ companyId, request, technicianOptions, onClose }: AssignTechnicianPanelProps) {
+  const queryClient = useQueryClient();
+
+  const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<AssignTechnicianFormValues>({
+    resolver: zodResolver(assignTechnicianSchema),
+    defaultValues: { technicianUserId: request.assignedTechnicianUserId ?? '' },
+  });
+
+  const assignTechnician = useMutation({
+    mutationFn: (values: AssignTechnicianFormValues) =>
+      apiClient.post<MaintenanceRequestDto>(`/maintenance/requests/${request.id}/assign-technician`, {
+        companyId,
+        technicianUserId: values.technicianUserId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['maintenance-requests', companyId] });
+      onClose();
+    },
+  });
+
+  return (
+    <Card className="mt-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-base font-semibold text-text">
+          {request.assignedTechnicianUserId ? 'Reassign technician' : 'Assign technician'} — {request.description}
+        </h3>
+        <Button variant="secondary" onClick={onClose}>Close</Button>
+      </div>
+      <form onSubmit={handleSubmit((values) => assignTechnician.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Technician
+          <Controller
+            control={control}
+            name="technicianUserId"
+            render={({ field }) => (
+              <EntityCombobox
+                value={field.value}
+                onChange={field.onChange}
+                options={technicianOptions.options}
+                isLoading={technicianOptions.isLoading}
+                onSearchChange={technicianOptions.onSearchChange}
+                placeholder="Search users…"
+              />
+            )}
+          />
+          {errors.technicianUserId && <span className="text-xs text-danger">{errors.technicianUserId.message}</span>}
+        </label>
+        <div className="col-span-2 flex items-center gap-3">
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save assignment'}</Button>
+          {assignTechnician.isError && (
+            <span role="alert" className="text-sm text-danger">Could not assign that technician.</span>
           )}
         </div>
       </form>

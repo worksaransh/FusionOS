@@ -21,5 +21,6 @@ public sealed class OpportunityConfiguration : IEntityTypeConfiguration<Opportun
         builder.Ignore(x => x.DomainEvents);
         builder.HasIndex(x => new { x.CompanyId, x.Stage });
         builder.HasIndex(x => x.LeadId);
+        builder.HasIndex(x => x.AccountId);
     }
 }

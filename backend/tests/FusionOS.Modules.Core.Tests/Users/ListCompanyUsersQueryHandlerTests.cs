@@ -15,8 +15,8 @@ public class ListCompanyUsersQueryHandlerTests
         var companyId = Guid.NewGuid();
         var roleId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        users.ListCompanyUsersAsync(companyId, Arg.Any<CancellationToken>())
-            .Returns(new[] { (UserId: userId, Email: "owner@acme.com", FullName: "Owner", RoleId: roleId, RoleName: "Owner") });
+        users.ListCompanyUsersAsync(companyId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new[] { (UserId: userId, Email: "owner@acme.com", FullName: "Owner", RoleId: roleId, RoleName: "Owner", IsActive: true) });
         var handler = new ListCompanyUsersQueryHandler(users);
 
         var result = await handler.Handle(new ListCompanyUsersQuery(companyId), CancellationToken.None);
@@ -24,5 +24,6 @@ public class ListCompanyUsersQueryHandlerTests
         result.Should().ContainSingle();
         result[0].Email.Should().Be("owner@acme.com");
         result[0].RoleName.Should().Be("Owner");
+        result[0].IsActive.Should().BeTrue();
     }
 }

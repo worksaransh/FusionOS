@@ -32,7 +32,7 @@ public class GetBudgetVsActualQueryHandlerTests
             .Returns(new[] { budgetLine });
 
         var accountRepository = Substitute.For<IAccountRepository>();
-        accountRepository.GetByIdAsync(companyId, account.Id, Arg.Any<CancellationToken>()).Returns(account);
+        accountRepository.ListAllAsync(companyId, Arg.Any<CancellationToken>()).Returns(new List<Account> { account });
 
         var journalEntryRepository = Substitute.For<IJournalEntryRepository>();
         journalEntryRepository.SumPostedAmountByAccountAsync(companyId, account.Id, periodStart, periodEnd, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -71,7 +71,7 @@ public class GetBudgetVsActualQueryHandlerTests
             .Returns(new[] { budgetLine });
 
         var accountRepository = Substitute.For<IAccountRepository>();
-        accountRepository.GetByIdAsync(companyId, account.Id, Arg.Any<CancellationToken>()).Returns(account);
+        accountRepository.ListAllAsync(companyId, Arg.Any<CancellationToken>()).Returns(new List<Account> { account });
 
         var journalEntryRepository = Substitute.For<IJournalEntryRepository>();
         journalEntryRepository.SumPostedAmountByAccountAsync(companyId, account.Id, periodStart, periodEnd, costCenterId, Arg.Any<CancellationToken>())

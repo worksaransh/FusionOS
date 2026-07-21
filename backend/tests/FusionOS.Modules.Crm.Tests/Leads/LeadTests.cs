@@ -62,4 +62,17 @@ public class LeadTests
 
         act.Should().Throw<InvalidOperationException>();
     }
+
+    [Fact]
+    public void AssignAccount_SetsAndClearsAccountId()
+    {
+        var lead = New();
+        var accountId = Guid.NewGuid();
+
+        lead.AssignAccount(accountId);
+        lead.AccountId.Should().Be(accountId);
+
+        lead.AssignAccount(null);
+        lead.AccountId.Should().BeNull();
+    }
 }

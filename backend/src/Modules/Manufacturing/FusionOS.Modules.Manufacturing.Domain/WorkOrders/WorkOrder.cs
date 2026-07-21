@@ -28,6 +28,15 @@ public sealed class WorkOrder : TenantAggregateRoot
     public WorkOrderStatus Status { get; private set; }
     public IReadOnlyList<WorkOrderComponent> Components => _components.AsReadOnly();
 
+    /// <summary>The actual good (non-scrap) quantity produced — set only once this order is Completed; null until then.</summary>
+    public decimal? QuantityGoodProduced { get; private set; }
+
+    /// <summary>The quantity scrapped at completion — zero unless recorded otherwise.</summary>
+    public decimal QuantityScrapped { get; private set; }
+
+    /// <summary>Good ÷ (Good + Scrapped) × 100, rounded to 2 decimal places — set only once this order is Completed; null until then.</summary>
+    public decimal? YieldPercentage { get; private set; }
+
     private WorkOrder() { }
 
     public static WorkOrder Create(
@@ -77,20 +86,78 @@ public sealed class WorkOrder : TenantAggregateRoot
     /// <summary>
     /// Released → Completed: raises <see cref="WorkOrderCompleted"/> carrying the parent
     /// production and every component consumption, for Inventory to post to the ledger.
+    ///
+    /// <paramref name="quantityGoodProduced"/> and <paramref name="quantityScrapped"/> are
+    /// optional scrap/yield recording: when omitted, this behaves exactly as a plain
+    /// Complete() always has (100% yield — the full planned QuantityToProduce, zero
+    /// scrap) so every existing caller is unaffected. QuantityProduced on the raised
+    /// event is always the GOOD quantity, since that is the only amount Inventory
+    /// should post into stock — scrapped units never post to the ledger.
     /// </summary>
-    public void Complete()
+    public void Complete(decimal? quantityGoodProduced = null, decimal? quantityScrapped = null)
     {
         if (Status != WorkOrderStatus.Released)
             throw new InvalidOperationException($"Only a Released work order can be completed (current status: {Status}).");
 
+        var good = quantityGoodProduced ?? QuantityToProduce;
+        var scrapped = quantityScrapped ?? 0m;
+
+        if (good < 0)
+            throw new ArgumentException("Good quantity produced cannot be negative.", nameof(quantityGoodProduced));
+        if (scrapped < 0)
+            throw new ArgumentException("Scrapped quantity cannot be negative.", nameof(quantityScrapped));
+        if (good == 0 && scrapped == 0)
+            throw new ArgumentException("A completed work order must account for at least some produced or scrapped quantity.", nameof(quantityGoodProduced));
+
         Status = WorkOrderStatus.Completed;
+        QuantityGoodProduced = good;
+        QuantityScrapped = scrapped;
+        YieldPercentage = Math.Round(good / (good + scrapped) * 100m, 2);
+
         Raise(new WorkOrderCompleted(
             Id,
             CompanyId,
             WarehouseId,
             ProductId,
-            QuantityToProduce,
-            _components.Select(c => new WorkOrderComponentConsumption(c.ComponentProductId, c.QuantityRequired)).ToList()));
+            good,
+            _components.Select(c => new WorkOrderComponentConsumption(c.ComponentProductId, c.QuantityRequired)).ToList(),
+            scrapped,
+            YieldPercentage.Value));
+    }
+
+    /// <summary>
+    /// Issues (consumes on the shop floor) a quantity of one snapshotted component ahead
+    /// of this order's eventual completion — a floor-level progress signal distinct from
+    /// the final stock consumption WorkOrderCompleted implies. Only permitted while
+    /// Released; cannot push a component's issued total past its snapshotted QuantityRequired.
+    /// </summary>
+    public void IssueMaterial(Guid componentProductId, decimal quantity)
+    {
+        if (Status != WorkOrderStatus.Released)
+            throw new InvalidOperationException($"Material can only be issued to a Released work order (current status: {Status}).");
+        if (quantity <= 0)
+            throw new ArgumentException("Issue quantity must be greater than zero.", nameof(quantity));
+
+        var component = _components.FirstOrDefault(c => c.ComponentProductId == componentProductId)
+            ?? throw new ArgumentException($"Component '{componentProductId}' is not part of this work order.", nameof(componentProductId));
+
+        component.Issue(quantity);
+        Raise(new MaterialIssuedToWorkOrder(Id, CompanyId, WarehouseId, componentProductId, quantity));
+    }
+
+    /// <summary>Returns previously issued material for a component — the inverse of <see cref="IssueMaterial"/>. Only permitted while Released.</summary>
+    public void ReturnMaterial(Guid componentProductId, decimal quantity)
+    {
+        if (Status != WorkOrderStatus.Released)
+            throw new InvalidOperationException($"Material can only be returned on a Released work order (current status: {Status}).");
+        if (quantity <= 0)
+            throw new ArgumentException("Return quantity must be greater than zero.", nameof(quantity));
+
+        var component = _components.FirstOrDefault(c => c.ComponentProductId == componentProductId)
+            ?? throw new ArgumentException($"Component '{componentProductId}' is not part of this work order.", nameof(componentProductId));
+
+        component.Return(quantity);
+        Raise(new MaterialReturnedFromWorkOrder(Id, CompanyId, WarehouseId, componentProductId, quantity));
     }
 
     /// <summary>Cancels a not-yet-completed work order. A completed order cannot be cancelled — its stock movements have already posted.</summary>

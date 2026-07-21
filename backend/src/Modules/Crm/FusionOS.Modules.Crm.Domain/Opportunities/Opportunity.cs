@@ -24,6 +24,13 @@ public sealed class Opportunity : TenantAggregateRoot
     public OpportunityStage Stage { get; private set; }
     public string? CustomerCode { get; private set; }
 
+    /// <summary>
+    /// Optional same-module reference to an Account (Phase 4 CRM depth pass) — same
+    /// nullable, handler-validated reference convention as Contact.AccountId
+    /// and Lead.AccountId, set via <see cref="AssignAccount"/>.
+    /// </summary>
+    public Guid? AccountId { get; private set; }
+
     private Opportunity() { }
 
     public static Opportunity Create(Guid companyId, Guid leadId, string name, string customerName, string? contactEmail, decimal estimatedValue)
@@ -76,4 +83,7 @@ public sealed class Opportunity : TenantAggregateRoot
 
         Stage = OpportunityStage.Lost;
     }
+
+    /// <summary>Sets or clears (pass null) which Account this opportunity's organization corresponds to.</summary>
+    public void AssignAccount(Guid? accountId) => AccountId = accountId;
 }

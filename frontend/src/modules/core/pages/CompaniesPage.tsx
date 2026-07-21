@@ -8,6 +8,8 @@ import { apiClient, ApiError } from '../../../shared/api/client';
 import { Button } from '../../../shared/ui/Button';
 import { Card } from '../../../shared/ui/Card';
 import { PageHeader } from '../../../shared/ui/PageHeader';
+import { BranchesPanel } from './BranchesPanel';
+import { DepartmentsPanel } from './DepartmentsPanel';
 
 /**
  * The one real, end-to-end vertical slice in this scaffold: create + list
@@ -119,6 +121,10 @@ export function CompaniesPage() {
         <Link to="/core/settings" className="font-medium text-primary underline underline-offset-2">
           Settings
         </Link>
+        {' · '}
+        <Link to="/core/feature-flags" className="font-medium text-primary underline underline-offset-2">
+          Feature flags
+        </Link>
       </p>
 
       <Card className="mb-6">
@@ -215,6 +221,9 @@ export function CompaniesPage() {
           onClose={() => setEditingCompanyId(null)}
         />
       )}
+
+      <BranchesPanel />
+      <DepartmentsPanel />
     </div>
   );
 }

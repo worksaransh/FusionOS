@@ -7,6 +7,7 @@ public sealed class Branch : TenantAggregateRoot
     public string Name { get; private set; } = default!;
     public string Code { get; private set; } = default!;
     public bool IsHeadOffice { get; private set; }
+    public bool IsActive { get; private set; } = true;
 
     private Branch() { }
 
@@ -23,4 +24,15 @@ public sealed class Branch : TenantAggregateRoot
             IsHeadOffice = isHeadOffice,
         };
     }
+
+    /// <summary>Updates the mutable master-data fields. Code is the tenant-scoped business key and stays immutable after creation, same convention as CostCenter/Company.</summary>
+    public void UpdateDetails(string name, bool isHeadOffice)
+    {
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Branch name is required.", nameof(name));
+
+        Name = name.Trim();
+        IsHeadOffice = isHeadOffice;
+    }
+
+    public void Deactivate() => IsActive = false;
 }

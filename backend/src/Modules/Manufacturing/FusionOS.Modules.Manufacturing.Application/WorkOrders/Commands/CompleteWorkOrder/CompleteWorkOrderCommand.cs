@@ -3,7 +3,7 @@ using FusionOS.Modules.Manufacturing.Application.WorkOrders.Contracts;
 
 namespace FusionOS.Modules.Manufacturing.Application.WorkOrders.Commands.CompleteWorkOrder;
 
-public sealed record CompleteWorkOrderCommand(Guid CompanyId, Guid WorkOrderId)
+public sealed record CompleteWorkOrderCommand(Guid CompanyId, Guid WorkOrderId, decimal? QuantityGoodProduced = null, decimal? QuantityScrapped = null)
     : ICommand<WorkOrderDto>, IRequirePermission, IAuditableCommand
 {
     public string[] RequiredPermissions => new[] { "manufacturing.work-order.complete" };

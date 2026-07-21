@@ -26,20 +26,21 @@ public sealed class DispatchRepository : IDispatchRepository
     public Task<int> CountAsync(Guid companyId, CancellationToken cancellationToken = default) =>
         _context.Dispatches.CountAsync(d => d.CompanyId == companyId, cancellationToken);
 
-    // Loads matching dispatches with their lines and sums in memory rather than
-    // relying on EF translating a SelectMany over DispatchLine (a private-field-backed
-    // owned collection) directly into SQL - safer to verify by reading given no
-    // compiler is available in this environment (2026-07-14 coverage-audit follow-up).
-    public async Task<decimal> GetDispatchedQuantityAsync(Guid companyId, Guid salesOrderId, Guid productId, CancellationToken cancellationToken = default)
+    // DispatchLine is a plain FK-mapped entity (DispatchConfiguration: HasMany(...).WithOne()
+    // .HasForeignKey("DispatchId")), not an EF owned type, so a SelectMany over the Lines
+    // navigation translates to a single SQL join+SUM - same shape as
+    // JournalEntryRepository.SumPostedAmountByAccountAsync (Finance). Fixed 2026-07-21:
+    // the previous version loaded every dispatch + all lines for the sales order into
+    // memory and summed client-side.
+    public Task<decimal> GetDispatchedQuantityAsync(Guid companyId, Guid salesOrderId, Guid productId, CancellationToken cancellationToken = default)
     {
-        var dispatches = await _context.Dispatches
-            .Include(d => d.Lines)
-            .Where(d => d.CompanyId == companyId && d.SalesOrderId == salesOrderId)
-            .ToListAsync(cancellationToken);
+        var lines =
+            from dispatch in _context.Dispatches
+            where dispatch.CompanyId == companyId && dispatch.SalesOrderId == salesOrderId
+            from line in dispatch.Lines
+            where line.ProductId == productId
+            select line;
 
-        return dispatches
-            .SelectMany(d => d.Lines)
-            .Where(l => l.ProductId == productId)
-            .Sum(l => l.QuantityDispatched);
+        return lines.SumAsync(l => l.QuantityDispatched, cancellationToken);
     }
 }

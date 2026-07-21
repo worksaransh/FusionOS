@@ -17,6 +17,13 @@ public sealed class ProductRepository : IProductRepository
     public Task<bool> SkuExistsAsync(Guid companyId, string sku, CancellationToken cancellationToken = default) =>
         _context.Products.AnyAsync(p => p.CompanyId == companyId && p.Sku == sku.Trim().ToUpper(), cancellationToken);
 
+    // Barcode/QR support (2026-07-21). Unlike Sku, Barcode isn't case-normalized on assignment
+    // (see Product.AssignBarcode — a QR payload could legitimately be a case-sensitive string
+    // such as a URL), so this is an exact match on the trimmed input, not a case-insensitive one.
+    public Task<Product?> GetByBarcodeAsync(Guid companyId, string barcode, CancellationToken cancellationToken = default) =>
+        _context.Products.Include(p => p.UnitOfMeasureConversions)
+            .FirstOrDefaultAsync(p => p.CompanyId == companyId && p.Barcode == barcode.Trim(), cancellationToken);
+
     public async Task AddAsync(Product product, CancellationToken cancellationToken = default) =>
         await _context.Products.AddAsync(product, cancellationToken);
 

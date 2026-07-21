@@ -1,3 +1,4 @@
+using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.AssignMaintenanceRequestTechnician;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.CompleteMaintenanceRequest;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.CreateMaintenanceRequest;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.StartMaintenanceRequest;
@@ -69,7 +70,18 @@ public sealed class MaintenanceRequestsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Complete(Guid id, [FromBody] CompleteMaintenanceRequestRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new CompleteMaintenanceRequestCommand(request.CompanyId, id, request.ResolutionNotes), cancellationToken);
+        var result = await _sender.Send(new CompleteMaintenanceRequestCommand(request.CompanyId, id, request.ResolutionNotes, request.ActualDowntimeMinutes), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/assign-technician")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AssignTechnician(Guid id, [FromBody] AssignMaintenanceRequestTechnicianRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new AssignMaintenanceRequestTechnicianCommand(request.CompanyId, id, request.TechnicianUserId), cancellationToken);
         return Ok(result);
     }
 }
@@ -78,4 +90,6 @@ public sealed record CreateMaintenanceRequestRequest(Guid CompanyId, Guid AssetI
 
 public sealed record MaintenanceRequestActionRequest(Guid CompanyId);
 
-public sealed record CompleteMaintenanceRequestRequest(Guid CompanyId, string? ResolutionNotes);
+public sealed record CompleteMaintenanceRequestRequest(Guid CompanyId, string? ResolutionNotes, int? ActualDowntimeMinutes = null);
+
+public sealed record AssignMaintenanceRequestTechnicianRequest(Guid CompanyId, Guid TechnicianUserId);

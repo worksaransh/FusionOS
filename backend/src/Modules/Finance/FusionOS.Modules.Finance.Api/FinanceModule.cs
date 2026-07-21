@@ -76,6 +76,7 @@ public sealed class FinanceModule : IModule
         services.AddScoped<IBudgetLineRepository, BudgetLineRepository>();
         services.AddScoped<IFixedAssetRepository, FixedAssetRepository>();
         services.AddScoped<IFinanceSettingsRepository, FinanceSettingsRepository>();
+        services.AddScoped<IPurchaseOrderFactRepository, PurchaseOrderFactRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProcessedIntegrationEventStore, EfProcessedIntegrationEventStore<FinanceDbContext>>();
 
@@ -94,6 +95,11 @@ public sealed class FinanceModule : IModule
         // Accounts Payable charge automatically — closes the auto-charge
         // blocker documented on ApLedgerEntry (Phase M8c / Step-2 integration gaps).
         services.AddScoped<IIntegrationEventConsumer, PurchaseOrderGoodsReceiptCostedConsumer>();
+
+        // Finance reacts to Procurement's approved purchase orders by recording
+        // the ordered-amount leg of the three-way match's local PurchaseOrderFact
+        // read-model — see PurchaseOrderFact's class doc comment.
+        services.AddScoped<IIntegrationEventConsumer, PurchaseOrderApprovedConsumer>();
 
         services.AddControllers().AddApplicationPart(typeof(FinanceModule).Assembly);
 

@@ -1,6 +1,8 @@
 using FluentAssertions;
 using FusionOS.BuildingBlocks.Application.Exceptions;
+using FusionOS.Modules.Crm.Application.Accounts.Contracts;
 using FusionOS.Modules.Crm.Application.Leads.Contracts;
+using FusionOS.Modules.Crm.Application.Opportunities.Commands.AssignOpportunityAccount;
 using FusionOS.Modules.Crm.Application.Opportunities.Commands.CreateOpportunity;
 using FusionOS.Modules.Crm.Application.Opportunities.Commands.WinOpportunity;
 using FusionOS.Modules.Crm.Application.Opportunities.Contracts;
@@ -63,5 +65,42 @@ public class OpportunityCommandHandlerTests
         result.Stage.Should().Be("Won");
         result.CustomerCode.Should().Be("ACME");
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AssignOpportunityAccount_WithExistingAccount_Assigns()
+    {
+        var companyId = Guid.NewGuid();
+        var accountId = Guid.NewGuid();
+        var opp = Opportunity.Create(companyId, Guid.NewGuid(), "Deal", "Acme Corp", null, 1000m);
+
+        var opportunityRepository = Substitute.For<IOpportunityRepository>();
+        opportunityRepository.GetByIdAsync(companyId, opp.Id, Arg.Any<CancellationToken>()).Returns(opp);
+        var accountRepository = Substitute.For<IAccountRepository>();
+        accountRepository.ExistsAsync(companyId, accountId, Arg.Any<CancellationToken>()).Returns(true);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var handler = new AssignOpportunityAccountCommandHandler(opportunityRepository, accountRepository, unitOfWork);
+
+        var result = await handler.Handle(new AssignOpportunityAccountCommand(companyId, opp.Id, accountId), CancellationToken.None);
+
+        result.AccountId.Should().Be(accountId);
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AssignOpportunityAccount_WhenAccountMissing_ThrowsValidationException()
+    {
+        var companyId = Guid.NewGuid();
+        var opp = Opportunity.Create(companyId, Guid.NewGuid(), "Deal", "Acme Corp", null, 1000m);
+
+        var opportunityRepository = Substitute.For<IOpportunityRepository>();
+        opportunityRepository.GetByIdAsync(companyId, opp.Id, Arg.Any<CancellationToken>()).Returns(opp);
+        var accountRepository = Substitute.For<IAccountRepository>();
+        accountRepository.ExistsAsync(companyId, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        var handler = new AssignOpportunityAccountCommandHandler(opportunityRepository, accountRepository, Substitute.For<IUnitOfWork>());
+
+        var act = () => handler.Handle(new AssignOpportunityAccountCommand(companyId, opp.Id, Guid.NewGuid()), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ValidationException>();
     }
 }

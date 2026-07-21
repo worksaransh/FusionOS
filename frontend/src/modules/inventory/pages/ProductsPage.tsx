@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,6 +9,7 @@ import { Card } from '../../../shared/ui/Card';
 import { CrudListPage } from '../../../shared/ui/CrudListPage';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import type { PagedResult } from '../../../shared/api/types';
+import { BarcodeLabel } from '../../../shared/barcode/BarcodeLabel';
 import { StockLedgerPanel } from './StockLedgerPanel';
 import { InventoryValuationPanel } from './InventoryValuationPanel';
 import { ReservationsPanel } from './ReservationsPanel';
@@ -54,7 +55,17 @@ interface ProductDto {
   createdAt: string;
   unitOfMeasureConversions: UnitOfMeasureConversionDto[];
   variants: ProductVariantDto[];
+  barcode: string | null;
 }
+
+// Barcode/QR support (2026-07-21). Barcode itself is any string (a QR payload could be a
+// case-sensitive URL, for instance) — the backend doesn't restrict its charset, so this schema
+// doesn't either. Code 39's narrower charset is only enforced where it matters: by BarcodeLabel
+// when it tries to render a scannable image (shared/barcode/code39.ts).
+const barcodeSchema = z.object({
+  barcode: z.string().max(64, 'Must be 64 characters or fewer').optional(),
+});
+type BarcodeFormValues = z.infer<typeof barcodeSchema>;
 
 // M9-remaining e: Multi-UOM. This is a small standalone schema/form for the
 // add-conversion input inside ProductEditPanel — kept separate from
@@ -82,6 +93,17 @@ export function ProductsPage() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  // Barcode/QR support (2026-07-21) — a barcode lookup can find a product outside the current
+  // list page (products list is paginated), so the matched product is held here rather than
+  // relying solely on `productsQuery`'s current page to contain it.
+  const [scannedProduct, setScannedProduct] = useState<ProductDto | null>(null);
+  const editPanelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (editingProductId) {
+      editPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [editingProductId]);
 
   const productsQuery = useQuery({
     queryKey: ['products', companyId],
@@ -121,6 +143,13 @@ export function ProductsPage() {
 
   return (
     <div>
+      <BarcodeLookupPanel
+        companyId={companyId}
+        onFound={(product) => {
+          setScannedProduct(product);
+          setEditingProductId(product.id);
+        }}
+      />
       <CrudListPage<ProductDto>
       title="Products"
       description="SKU / reference data — Inventory, Phase 1"
@@ -187,11 +216,19 @@ export function ProductsPage() {
       )}
 
       {editingProductId && (
-        <ProductEditPanel
-          companyId={companyId}
-          product={productsQuery.data?.data.find((p) => p.id === editingProductId) ?? null}
-          onClose={() => setEditingProductId(null)}
-        />
+        <div ref={editPanelRef}>
+          <ProductEditPanel
+            companyId={companyId}
+            product={
+              productsQuery.data?.data.find((p) => p.id === editingProductId) ??
+              (scannedProduct?.id === editingProductId ? scannedProduct : null)
+            }
+            onClose={() => {
+              setEditingProductId(null);
+              setScannedProduct(null);
+            }}
+          />
+        </div>
       )}
 
       <StockLedgerPanel />
@@ -267,6 +304,7 @@ function ProductEditPanel({ companyId, product, onClose }: ProductEditPanelProps
 
       <UnitOfMeasureConversionsPanel companyId={companyId} product={product} />
       <ProductVariantsPanel companyId={companyId} product={product} />
+      <ProductBarcodePanel companyId={companyId} product={product} />
     </Card>
   );
 }
@@ -479,6 +517,138 @@ function ProductVariantsPanel({ companyId, product }: ProductVariantsPanelProps)
       )}
       {deactivateVariant.isError && (
         <p role="alert" className="mt-2 text-sm text-danger">Could not deactivate that variant.</p>
+      )}
+    </div>
+  );
+}
+
+interface BarcodeLookupPanelProps {
+  companyId: string;
+  onFound: (product: ProductDto) => void;
+}
+
+// Barcode/QR support (2026-07-21) — the actual point of this feature for a warehouse worker: a
+// USB barcode scanner "gun" behaves exactly like a keyboard (types the encoded characters, then
+// Enter), so a plain text input that reacts to Enter is all a scanner integration needs — no
+// camera/decoding code required on this end. Hits GET by-barcode/{barcode} (new
+// GetProductByBarcodeQuery, gated by the existing "inventory.product.read" permission).
+function BarcodeLookupPanel({ companyId, onFound }: BarcodeLookupPanelProps) {
+  const [barcodeInput, setBarcodeInput] = useState('');
+
+  const lookup = useMutation({
+    mutationFn: (barcode: string) =>
+      apiClient.get<ProductDto>(`/inventory/products/by-barcode/${encodeURIComponent(barcode)}?companyId=${companyId}`),
+    onSuccess: (product) => onFound(product),
+  });
+
+  const notFound = lookup.isError && lookup.error instanceof ApiError && lookup.error.problem.status === 404;
+  const trimmedInput = barcodeInput.trim();
+
+  const runLookup = () => {
+    if (trimmedInput) lookup.mutate(trimmedInput);
+  };
+
+  return (
+    <Card className="mb-6">
+      <h2 className="mb-1 text-sm font-semibold text-text">Scan / look up by barcode</h2>
+      <p className="mb-3 text-xs text-text-muted">
+        Scan with a USB barcode scanner (it types the code and presses Enter for you) or type a
+        barcode/QR value and press Enter — jumps straight to that product below.
+      </p>
+      <div className="flex items-end gap-2">
+        <label className="flex flex-1 flex-col gap-1 text-sm">
+          Barcode
+          <input
+            className="rounded-md border border-border bg-surface px-2 py-1.5"
+            value={barcodeInput}
+            onChange={(event) => setBarcodeInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                runLookup();
+              }
+            }}
+          />
+        </label>
+        <Button type="button" disabled={!trimmedInput || lookup.isPending} onClick={runLookup}>
+          {lookup.isPending ? 'Looking up…' : 'Look up'}
+        </Button>
+      </div>
+      {lookup.isSuccess && (
+        <p className="mt-2 text-sm text-text">
+          Found <strong>{lookup.data.sku}</strong> — {lookup.data.name}. Opened it below.
+        </p>
+      )}
+      {notFound && (
+        <p role="alert" className="mt-2 text-sm text-danger">No product matches barcode &quot;{trimmedInput}&quot;.</p>
+      )}
+      {lookup.isError && !notFound && (
+        <p role="alert" className="mt-2 text-sm text-danger">Could not look up that barcode.</p>
+      )}
+    </Card>
+  );
+}
+
+interface ProductBarcodePanelProps {
+  companyId: string;
+  product: ProductDto;
+}
+
+// Barcode/QR support (2026-07-21) — assigns/clears the product's single canonical barcode/QR-
+// payload value (see Product.AssignBarcode's doc comment for the full scope decision: this
+// stores the VALUE and looks up by it, it doesn't render QR images itself). Clearing the field
+// and saving sends barcode: null, which AssignProductBarcodeCommand treats as "remove it".
+function ProductBarcodePanel({ companyId, product }: ProductBarcodePanelProps) {
+  const queryClient = useQueryClient();
+
+  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<BarcodeFormValues>({
+    resolver: zodResolver(barcodeSchema),
+    values: { barcode: product.barcode ?? '' },
+  });
+
+  const assignBarcode = useMutation({
+    mutationFn: (values: BarcodeFormValues) =>
+      apiClient.post<ProductDto>(`/inventory/products/${product.id}/barcode`, {
+        companyId,
+        barcode: values.barcode?.trim() ? values.barcode.trim() : null,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products', companyId] }),
+    onError: (error) => {
+      if (error instanceof ApiError && error.problem.errors) {
+        for (const [field, messages] of Object.entries(error.problem.errors)) {
+          setError(field as keyof BarcodeFormValues, { message: messages[0] });
+        }
+      }
+    },
+  });
+
+  return (
+    <div className="mt-6 border-t border-border pt-4">
+      <h3 className="mb-2 text-sm font-semibold text-text">Barcode / QR value</h3>
+      <p className="mb-3 text-xs text-text-muted">
+        FusionOS stores one canonical barcode/QR-payload string per product and can look products
+        up by it (e.g. from a USB scanner gun) — see the lookup box above. It does not generate QR
+        images itself; encode this same value with your label printer/software for QR or other
+        symbologies. A scannable Code 39 barcode (uppercase A-Z, 0-9, and - . $ / + % space only)
+        can be previewed below whenever the value fits that character set.
+      </p>
+      <form onSubmit={handleSubmit((values) => assignBarcode.mutate(values))} className="flex items-end gap-2">
+        <label className="flex flex-1 flex-col gap-1 text-sm">
+          Barcode value
+          <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="e.g. 012345678905" {...register('barcode')} />
+          {errors.barcode && <span className="text-xs text-danger">{errors.barcode.message}</span>}
+        </label>
+        <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save barcode'}</Button>
+      </form>
+      {assignBarcode.isError && (
+        <p role="alert" className="mt-2 text-sm text-danger">
+          Could not save that barcode — it may already be assigned to another product.
+        </p>
+      )}
+      {product.barcode && (
+        <div className="mt-4">
+          <BarcodeLabel value={product.barcode} />
+        </div>
       )}
     </div>
   );

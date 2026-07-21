@@ -1,3 +1,4 @@
+using FusionOS.BuildingBlocks.Application.Abstractions;
 using FusionOS.Modules.Hrms.Application.Employees.Contracts;
 using MediatR;
 

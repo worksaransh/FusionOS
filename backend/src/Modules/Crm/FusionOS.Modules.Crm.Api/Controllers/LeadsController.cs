@@ -1,3 +1,4 @@
+using FusionOS.Modules.Crm.Application.Leads.Commands.AssignLeadAccount;
 using FusionOS.Modules.Crm.Application.Leads.Commands.CreateLead;
 using FusionOS.Modules.Crm.Application.Leads.Commands.DisqualifyLead;
 using FusionOS.Modules.Crm.Application.Leads.Commands.QualifyLead;
@@ -71,8 +72,21 @@ public sealed class LeadsController : ControllerBase
         var result = await _sender.Send(new DisqualifyLeadCommand(request.CompanyId, id), cancellationToken);
         return Ok(result);
     }
+
+    [HttpPost("{id:guid}/assign-account")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AssignAccount(Guid id, [FromBody] AssignLeadAccountRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new AssignLeadAccountCommand(request.CompanyId, id, request.AccountId), cancellationToken);
+        return Ok(result);
+    }
 }
 
 public sealed record CreateLeadRequest(Guid CompanyId, string Name, string? ContactEmail, string? ContactPhone, string? Source);
 
 public sealed record LeadActionRequest(Guid CompanyId);
+
+public sealed record AssignLeadAccountRequest(Guid CompanyId, Guid? AccountId);

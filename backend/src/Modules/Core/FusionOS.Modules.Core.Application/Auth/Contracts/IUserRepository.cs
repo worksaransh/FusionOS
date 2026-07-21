@@ -36,8 +36,12 @@ public interface IUserRepository
     // that same convention rather than fragmenting Role/Permission access across
     // a second repository for what is, today, a single Core-module concern.
 
-    /// <summary>True if a role with this name already exists for the company (case-insensitive).</summary>
-    Task<bool> RoleNameExistsAsync(Guid companyId, string name, CancellationToken ct);
+    /// <summary>
+    /// True if a role with this name already exists for the company (case-insensitive).
+    /// <paramref name="excludeRoleId"/> excludes one role (the one being renamed) from
+    /// the check, so renaming a role to its own current name doesn't collide with itself.
+    /// </summary>
+    Task<bool> RoleNameExistsAsync(Guid companyId, string name, Guid? excludeRoleId, CancellationToken ct);
 
     Task AddRoleAsync(Role role, CancellationToken ct);
 
@@ -58,7 +62,7 @@ public interface IUserRepository
     /// Every user linked to this company, with the name of whichever role they
     /// currently hold. Search (Phase M5, 2026-07-15) matches on Email or FullName.
     /// </summary>
-    Task<IReadOnlyList<(Guid UserId, string Email, string FullName, Guid RoleId, string RoleName)>> ListCompanyUsersAsync(Guid companyId, string? search, CancellationToken ct);
+    Task<IReadOnlyList<(Guid UserId, string Email, string FullName, Guid RoleId, string RoleName, bool IsActive)>> ListCompanyUsersAsync(Guid companyId, string? search, CancellationToken ct);
 
     /// <summary>
     /// Sets the user's role within this company to exactly this one role,

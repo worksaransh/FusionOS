@@ -44,39 +44,71 @@ public sealed class PurchaseOrderRepository : IPurchaseOrderRepository
 
     public async Task<IReadOnlyList<(Guid SupplierId, int OrderCount, decimal TotalOrderValue, int FullyReceivedCount)>> GetSupplierOrderStatsAsync(Guid companyId, CancellationToken cancellationToken = default)
     {
-        // TotalAmount is EF-Ignore()'d (computed in-memory from _lines.Sum(...)),
-        // so it can't be summed via SQL translation — materialize matching orders
-        // first, then group/sum in memory. Same fix already documented on
-        // InvoiceRepository.GetIssuedInvoiceTotalsBySalesPersonAsync.
-        var orders = await _context.PurchaseOrders
-            .Include(x => x.Lines)
+        // TotalAmount itself is EF-Ignore()'d (it's a computed in-memory property,
+        // _lines.Sum(l => l.LineTotal)), but LineTotal — the persisted column it's
+        // built from — is a real mapped property. So instead of materializing every
+        // purchase order (with every line) the company has ever created and grouping
+        // in memory, this runs two SQL-translated grouped aggregations and merges the
+        // (small, one-row-per-supplier) results in memory:
+        //  - order-level counts straight off PurchaseOrders, same GroupBy/Count shape
+        //    as CountByStatusAsync above;
+        //  - TotalOrderValue via the exact from-from-groupby-line flattening template
+        //    JournalEntryRepository uses for its line aggregations. Lines is a plain
+        //    FK-mapped HasMany/WithOne collection (see PurchaseOrderConfiguration),
+        //    not an EF owned type, so it flattens/groups in SQL the same way.
+        var counts = await _context.PurchaseOrders
             .Where(x => x.CompanyId == companyId)
+            .GroupBy(x => x.SupplierId)
+            .Select(g => new
+            {
+                SupplierId = g.Key,
+                OrderCount = g.Count(),
+                FullyReceivedCount = g.Count(o => o.Status == PurchaseOrderStatus.FullyReceived),
+            })
             .ToListAsync(cancellationToken);
 
-        return orders
-            .GroupBy(o => o.SupplierId)
-            .Select(g => (
-                SupplierId: g.Key,
-                OrderCount: g.Count(),
-                TotalOrderValue: g.Sum(o => o.TotalAmount),
-                FullyReceivedCount: g.Count(o => o.Status == PurchaseOrderStatus.FullyReceived)))
+        var totals = await (
+            from po in _context.PurchaseOrders
+            where po.CompanyId == companyId
+            from line in po.Lines
+            group line by po.SupplierId into g
+            select new { SupplierId = g.Key, TotalOrderValue = g.Sum(l => l.LineTotal) })
+            .ToListAsync(cancellationToken);
+
+        var totalsBySupplier = totals.ToDictionary(t => t.SupplierId, t => t.TotalOrderValue);
+
+        return counts
+            .Select(c => (
+                c.SupplierId,
+                c.OrderCount,
+                totalsBySupplier.TryGetValue(c.SupplierId, out var total) ? total : 0m,
+                c.FullyReceivedCount))
             .ToList();
     }
 
     public async Task<IReadOnlyList<(Guid PurchaseOrderId, Guid SupplierId, DateTimeOffset OrderDate, decimal UnitPrice, decimal Quantity)>> GetPriceHistoryAsync(Guid companyId, Guid productId, CancellationToken cancellationToken = default)
     {
-        // Same "materialize then project in memory" fix as GetSupplierOrderStatsAsync above —
-        // Lines is a navigation collection, not something SQL can flatten alongside OrderDate/Id in one translated query.
-        var orders = await _context.PurchaseOrders
-            .Include(x => x.Lines)
-            .Where(x => x.CompanyId == companyId && x.Lines.Any(l => l.ProductId == productId))
-            .OrderBy(x => x.OrderDate)
+        // Pushes the ProductId filter into the query itself (same flattened
+        // from-from-select shape as JournalEntryRepository's line aggregations) so
+        // only the lines that actually match productId are ever transferred from
+        // the database, instead of loading every purchase order (with all of its
+        // lines) that ever touched the product and filtering client-side.
+        var rows = await (
+            from po in _context.PurchaseOrders
+            where po.CompanyId == companyId
+            from line in po.Lines
+            where line.ProductId == productId
+            orderby po.OrderDate
+            select new
+            {
+                PurchaseOrderId = po.Id,
+                SupplierId = po.SupplierId,
+                OrderDate = po.OrderDate,
+                UnitPrice = line.UnitPrice,
+                Quantity = line.Quantity,
+            })
             .ToListAsync(cancellationToken);
 
-        return orders
-            .SelectMany(o => o.Lines
-                .Where(l => l.ProductId == productId)
-                .Select(l => (PurchaseOrderId: o.Id, SupplierId: o.SupplierId, OrderDate: o.OrderDate, UnitPrice: l.UnitPrice, Quantity: l.Quantity)))
-            .ToList();
+        return rows.Select(r => (r.PurchaseOrderId, r.SupplierId, r.OrderDate, r.UnitPrice, r.Quantity)).ToList();
     }
 }

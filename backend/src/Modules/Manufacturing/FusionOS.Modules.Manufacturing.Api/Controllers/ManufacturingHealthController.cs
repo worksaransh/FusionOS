@@ -13,6 +13,6 @@ public sealed class ManufacturingHealthController : ControllerBase
         module = "Manufacturing",
         status = "active",
         roadmapPhase = "Phase 3 — Manufacturing ERP",
-        slices = new[] { "bills-of-materials", "work-orders" },
+        slices = new[] { "bills-of-materials", "work-orders", "routing", "material-issue-return", "scrap-yield" },
     });
 }

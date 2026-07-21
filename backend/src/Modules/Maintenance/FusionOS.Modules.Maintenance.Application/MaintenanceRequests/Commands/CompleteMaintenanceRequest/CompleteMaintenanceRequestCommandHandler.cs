@@ -20,7 +20,7 @@ public sealed class CompleteMaintenanceRequestCommandHandler : IRequestHandler<C
         var maintenanceRequest = await _repository.GetByIdAsync(request.CompanyId, request.MaintenanceRequestId, cancellationToken)
             ?? throw new KeyNotFoundException($"Maintenance request '{request.MaintenanceRequestId}' was not found.");
 
-        maintenanceRequest.Complete(request.ResolutionNotes);
+        maintenanceRequest.Complete(request.ResolutionNotes, request.ActualDowntimeMinutes);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return MaintenanceRequestMapper.ToDto(maintenanceRequest);

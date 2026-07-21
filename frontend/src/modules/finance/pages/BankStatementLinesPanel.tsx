@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -47,19 +48,33 @@ interface ReconciliationSummaryDto {
   unreconciledTotalAmount: number;
 }
 
+interface JournalEntryMatchCandidateDto {
+  journalEntryId: string;
+  entryDate: string;
+  reference: string | null;
+  amount: number;
+}
+
 /**
  * Bank Statement Lines — M8d, Finance depth: bank reconciliation. Pick a
  * bank account (via the new useBankAccountOptions hook), then record
  * manually-entered statement lines against it (no bank-feed/file-import —
  * see BankStatementLine.cs's class doc comment) and reconcile/unreconcile
- * them one at a time against an optional, manually-picked JournalEntry (no
- * auto-matching algorithm — same doc comment). Mirrors PayablesPanel's
- * "pick an entity, then manage its records" shape, plus the reconciliation
- * summary rollup from GetReconciliationSummaryQuery.
+ * them one at a time against an optional JournalEntry (no auto-matching
+ * algorithm — same doc comment: the user always confirms the match
+ * themselves). Each line now has a "Suggest matches" action wired to
+ * SuggestMatchesForStatementLineQuery (GET .../{id}/match-suggestions) —
+ * same-amount, within-date-window candidates the user can click to fill the
+ * matched-journal-entry field below, falling back to the manual
+ * EntityCombobox search when there are no suggestions or the user wants a
+ * different entry. Mirrors PayablesPanel's "pick an entity, then manage its
+ * records" shape, plus the reconciliation summary rollup from
+ * GetReconciliationSummaryQuery.
  */
 export function BankStatementLinesPanel() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
+  const [suggestingLineId, setSuggestingLineId] = useState<string | null>(null);
 
   const bankAccountOptions = useBankAccountOptions(companyId);
   const journalEntryOptions = useJournalEntryOptions(companyId);
@@ -111,10 +126,20 @@ export function BankStatementLinesPanel() {
     control: reconcileControl,
     handleSubmit: handleReconcileSubmit,
     reset: resetReconcile,
+    setValue: setReconcileValue,
     formState: { errors: reconcileErrors },
   } = useForm<ReconcileFormValues>({
     resolver: zodResolver(reconcileSchema),
     defaultValues: { matchedJournalEntryId: '' },
+  });
+
+  const matchSuggestionsQuery = useQuery({
+    queryKey: ['bank-statement-line-match-suggestions', companyId, bankAccountId, suggestingLineId],
+    queryFn: () =>
+      apiClient.get<JournalEntryMatchCandidateDto[]>(
+        `/finance/bank-accounts/${bankAccountId}/statement-lines/${suggestingLineId}/match-suggestions?companyId=${companyId}`,
+      ),
+    enabled: Boolean(companyId && bankAccountId && suggestingLineId),
   });
 
   const reconcileLine = useMutation({
@@ -266,6 +291,14 @@ export function BankStatementLinesPanel() {
                       <Button
                         type="button"
                         variant="secondary"
+                        disabled={line.isReconciled}
+                        onClick={() => setSuggestingLineId(line.id)}
+                      >
+                        Suggest matches
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
                         disabled={line.isReconciled || reconcileLine.isPending}
                         onClick={handleReconcileSubmit((values) =>
                           reconcileLine.mutate({ lineId: line.id, matchedJournalEntryId: values.matchedJournalEntryId }),
@@ -296,6 +329,60 @@ export function BankStatementLinesPanel() {
           {(reconcileLine.isError || unreconcileLine.isError) && (
             <p role="alert" className="mt-2 text-sm text-danger">Could not update that statement line's reconciliation state.</p>
           )}
+
+          {(() => {
+            const suggestingLine = linesQuery.data?.data.find((line) => line.id === suggestingLineId) ?? null;
+            if (!suggestingLine) return null;
+            return (
+              <Card className="mt-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-text">
+                    Suggested matches — {suggestingLine.description} ({suggestingLine.amount.toLocaleString()})
+                  </h3>
+                  <Button variant="secondary" onClick={() => setSuggestingLineId(null)}>Close</Button>
+                </div>
+                <p className="mb-3 text-xs text-text-muted">
+                  Same-amount candidates within a few days of this line's date — pick one to fill the "Matched journal
+                  entry" field above, then click Reconcile on the line. No auto-matching: you still confirm the match
+                  yourself.
+                </p>
+                {matchSuggestionsQuery.isLoading && <p role="status" className="text-text-muted">Loading…</p>}
+                {matchSuggestionsQuery.isError && (
+                  <p role="alert" className="text-danger">Could not load match suggestions.</p>
+                )}
+                {matchSuggestionsQuery.data && matchSuggestionsQuery.data.length === 0 && (
+                  <p className="text-sm text-text-muted">
+                    No candidates found — use the manual "Matched journal entry" search above instead.
+                  </p>
+                )}
+                {matchSuggestionsQuery.data && matchSuggestionsQuery.data.length > 0 && (
+                  <ul className="flex flex-col gap-2">
+                    {matchSuggestionsQuery.data.map((candidate) => (
+                      <li
+                        key={candidate.journalEntryId}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-2 text-sm"
+                      >
+                        <span>
+                          {candidate.reference ?? candidate.journalEntryId.slice(0, 8)} ·{' '}
+                          {new Date(candidate.entryDate).toLocaleDateString()} · {candidate.amount.toLocaleString()}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setReconcileValue('matchedJournalEntryId', candidate.journalEntryId);
+                            setSuggestingLineId(null);
+                          }}
+                        >
+                          Use this match
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            );
+          })()}
         </>
       )}
     </div>

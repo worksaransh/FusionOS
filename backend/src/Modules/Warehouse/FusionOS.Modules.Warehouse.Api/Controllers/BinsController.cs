@@ -1,3 +1,4 @@
+using FusionOS.Modules.Warehouse.Application.Bins.Commands.AssignBinShelf;
 using FusionOS.Modules.Warehouse.Application.Bins.Commands.CreateBin;
 using FusionOS.Modules.Warehouse.Application.Bins.Commands.DeactivateBin;
 using FusionOS.Modules.Warehouse.Application.Bins.Commands.UpdateBin;
@@ -68,8 +69,23 @@ public sealed class BinsController : ControllerBase
         var result = await _sender.Send(new DeactivateBinCommand(request.CompanyId, id), cancellationToken);
         return Ok(result);
     }
+
+    // Assigns (or clears, when request.ShelfId is null) this bin's optional Shelf
+    // refinement — reuses "warehouse.bin.update" (see AssignBinShelfCommand), not
+    // a new permission-worthy action. AssignBinShelfCommandHandler rejects the
+    // assignment if the shelf's rack's zone doesn't match this bin's own zoneId.
+    [HttpPost("{id:guid}/shelf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> AssignShelf(Guid warehouseId, Guid zoneId, Guid id, [FromBody] AssignBinShelfRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new AssignBinShelfCommand(request.CompanyId, id, request.ShelfId), cancellationToken);
+        return Ok(result);
+    }
 }
 
 public sealed record CreateBinRequest(Guid CompanyId, string Name, string Code);
 public sealed record UpdateBinRequest(Guid CompanyId, string Name);
 public sealed record DeactivateBinRequest(Guid CompanyId);
+public sealed record AssignBinShelfRequest(Guid CompanyId, Guid? ShelfId);

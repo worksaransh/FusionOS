@@ -10,5 +10,8 @@ public static class WorkOrderMapper
         workOrder.WarehouseId,
         workOrder.QuantityToProduce,
         workOrder.Status.ToString(),
-        workOrder.Components.Select(c => new WorkOrderComponentDto(c.Id, c.ComponentProductId, c.QuantityRequired)).ToList());
+        workOrder.Components.Select(c => new WorkOrderComponentDto(c.Id, c.ComponentProductId, c.QuantityRequired, c.QuantityIssued)).ToList(),
+        workOrder.QuantityGoodProduced,
+        workOrder.QuantityScrapped,
+        workOrder.YieldPercentage);
 }

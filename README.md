@@ -26,9 +26,10 @@ docker-compose.yml     Local dev stack: Postgres, Redis, Kafka, API, web, full o
 
 ![FusionOS architecture overview](docs/images/architecture-overview.svg)
 
-Solid blue boxes are modules with real, working business logic; dashed gray boxes are Phase F
-modules that are scaffolded (domain shell only, no business logic yet). See
-`docs/blueprint/05_MODULE_ROADMAP.md` for the module-by-module status.
+Solid blue boxes are modules with real, working business logic; dashed gray boxes were Phase F
+modules that were scaffold-only when this diagram was drawn. That split is now stale — every
+formerly-dashed module has since gained at least one real vertical slice (the diagram has not been
+redrawn). See `docs/PROJECT_TRACKER.md` for the current module-by-module status.
 
 ### Auth and request flow
 
@@ -56,8 +57,9 @@ This has grown well past the original Phase 0/1/2 scaffold. A 28-page enterprise
 run against the codebase (architecture, database, API, frontend/UX, security, DevOps, testing,
 performance, AI/SAP/competitor positioning), and every critical/high-priority finding from that
 audit's Phases A through E has since been remediated. Phase F (Manufacturing/AI-platform/SAP
-migration) is explicitly out of scope for this remediation pass — see
-`docs/blueprint/05_MODULE_ROADMAP.md` for when those modules' real business logic begins.
+migration) was explicitly out of scope for this remediation pass, but has since begun in later
+passes — `docs/PROJECT_TRACKER.md` is the current per-module status;
+`docs/blueprint/05_MODULE_ROADMAP.md` is the original plan.
 
 ### Phase A — Security foundation (authentication was completely missing before this)
 
@@ -166,9 +168,12 @@ migration) is explicitly out of scope for this remediation pass — see
   running (registered as hosted services) — Inventory's Stock Ledger is credited/debited off
   Goods Receipt / Dispatch events; Procurement and Finance now consume events too (Phase C, above).
 - Every other module (Manufacturing, CRM, HRMS, Quality, Maintenance, Business Intelligence, AI,
-  Marketplace, IntegrationHub) remains **structurally scaffolded only** — all four layers exist,
-  each has its own DbContext/schema and a `/api/v1/{module}/health` endpoint, but no business logic.
-  This is Phase F territory and was explicitly excluded from this remediation pass.
+  Marketplace, IntegrationHub) was **structurally scaffolded only** at the time of this pass —
+  all four layers, own DbContext/schema, a `/api/v1/{module}/health` endpoint, no business logic.
+  **This is no longer true**: later passes gave every one of them real business logic (aggregates,
+  CQRS, controllers, tests, frontend panels) — see `docs/PROJECT_TRACKER.md` for what each now has.
+  That backend code carries the same "written, never compiled" caveat described under
+  "Verification" below.
 
 ## Sprint audit (2026-07-14)
 

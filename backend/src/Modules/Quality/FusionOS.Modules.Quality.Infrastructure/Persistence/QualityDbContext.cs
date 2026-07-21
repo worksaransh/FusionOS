@@ -15,6 +15,8 @@ public sealed class QualityDbContext : BaseDbContext
         : base(options, currentUser) { }
 
     public DbSet<FusionOS.Modules.Quality.Domain.Inspections.Inspection> Inspections => Set<FusionOS.Modules.Quality.Domain.Inspections.Inspection>();
+    public DbSet<FusionOS.Modules.Quality.Domain.NonConformanceReports.NonConformanceReport> NonConformanceReports => Set<FusionOS.Modules.Quality.Domain.NonConformanceReports.NonConformanceReport>();
+    public DbSet<FusionOS.Modules.Quality.Domain.CorrectiveActions.CorrectiveAction> CorrectiveActions => Set<FusionOS.Modules.Quality.Domain.CorrectiveActions.CorrectiveAction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

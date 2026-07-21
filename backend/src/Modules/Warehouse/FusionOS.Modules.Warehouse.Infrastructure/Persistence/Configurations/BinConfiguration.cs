@@ -15,6 +15,8 @@ public sealed class BinConfiguration : IEntityTypeConfiguration<Bin>
         builder.UseXminAsConcurrencyToken();
         builder.Ignore(x => x.RowVersion);
         builder.HasIndex(x => new { x.CompanyId, x.ZoneId, x.Code }).IsUnique();
+        // Additive — Bin's optional Shelf refinement (Bin.ShelfId), non-unique since not every bin has one.
+        builder.HasIndex(x => x.ShelfId);
         builder.Ignore(x => x.DomainEvents);
     }
 }

@@ -1,21 +1,26 @@
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { useState } from 'react';
+import { Controller, FormProvider, useFieldArray, useForm, useFormContext, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Trash2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../../shared/api/client';
+import { ActivityTimelinePanel } from '../../../shared/ui/ActivityTimelinePanel';
 import { Button } from '../../../shared/ui/Button';
 import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
-import { useProductOptions, useSupplierOptions } from '../../../shared/api/entityOptions';
+import { useProductOptions, useSupplierOptions, useTaxJurisdictionOptions, useTaxRateOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
 const lineSchema = z.object({
   productId: z.string().uuid('Pick a product'),
   quantity: z.string().refine((v) => Number(v) > 0, 'Quantity must be greater than zero'),
   unitPrice: z.string().refine((v) => Number(v) >= 0, 'Unit price cannot be negative'),
+  taxJurisdictionId: z.string().optional(),
+  taxRateId: z.string().optional(),
+  taxAmount: z.string().optional(),
 });
 
 const schema = z.object({
@@ -24,12 +29,16 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+const EMPTY_LINE = { productId: '', quantity: '1', unitPrice: '0', taxJurisdictionId: '', taxRateId: '', taxAmount: '0' };
+
 interface PurchaseOrderLineDto {
   id: string;
   productId: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  taxRateId: string | null;
+  taxAmount: number;
 }
 
 interface PurchaseOrderDto {
@@ -41,21 +50,38 @@ interface PurchaseOrderDto {
   lines: PurchaseOrderLineDto[];
 }
 
+interface LineTaxResultDto {
+  netAmount: number;
+  taxRateId: string;
+  taxRateCode: string;
+  percentage: number;
+  taxAmount: number;
+  grossAmount: number;
+}
+
 /**
  * Purchase Orders — next slice after Supplier (05_MODULE_ROADMAP.md Phase 1).
  * Supplier and each line's Product are picked via the shared EntityCombobox.
+ *
+ * Tax (Phase 2 closeout, 2026-07-18): each line optionally picks a tax
+ * jurisdiction then a rate within it, and a "Calculate tax" button calls
+ * Finance's CalculateLineTaxQuery (previously wired end-to-end in the schema
+ * but never actually invoked by any UI) to fill in the line's tax amount —
+ * mirrors InvoicesPanel's identical addition.
  */
 export function PurchaseOrdersPanel() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const supplierOptions = useSupplierOptions(companyId);
   const productOptions = useProductOptions(companyId);
 
-  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const formMethods = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { supplierId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0' }] },
+    defaultValues: { supplierId: '', lines: [EMPTY_LINE] },
   });
+  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = formMethods;
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
 
   const ordersQuery = useQuery({
@@ -69,10 +95,16 @@ export function PurchaseOrdersPanel() {
       apiClient.post<PurchaseOrderDto>('/procurement/purchase-orders', {
         companyId,
         supplierId: values.supplierId,
-        lines: values.lines.map((l) => ({ productId: l.productId, quantity: Number(l.quantity), unitPrice: Number(l.unitPrice) })),
+        lines: values.lines.map((l) => ({
+          productId: l.productId,
+          quantity: Number(l.quantity),
+          unitPrice: Number(l.unitPrice),
+          taxRateId: l.taxRateId || null,
+          taxAmount: Number(l.taxAmount || 0),
+        })),
       }),
     onSuccess: () => {
-      reset({ supplierId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0' }] });
+      reset({ supplierId: '', lines: [EMPTY_LINE] });
       queryClient.invalidateQueries({ queryKey: ['purchase-orders', companyId] });
     },
   });
@@ -89,85 +121,52 @@ export function PurchaseOrdersPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Purchase Orders</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createOrder.mutate(values))} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1 text-sm">
-            Supplier
-            <Controller
-              control={control}
-              name="supplierId"
-              render={({ field }) => (
-                <EntityCombobox
-                  className="w-96"
-                  value={field.value}
-                  onChange={field.onChange}
-                  options={supplierOptions.options}
-                  isLoading={supplierOptions.isLoading}
-                  onSearchChange={supplierOptions.onSearchChange}
-                  placeholder="Search suppliers…"
+        <FormProvider {...formMethods}>
+          <form onSubmit={handleSubmit((values) => createOrder.mutate(values))} className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1 text-sm">
+              Supplier
+              <Controller
+                control={control}
+                name="supplierId"
+                render={({ field }) => (
+                  <EntityCombobox
+                    className="w-96"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={supplierOptions.options}
+                    isLoading={supplierOptions.isLoading}
+                    onSearchChange={supplierOptions.onSearchChange}
+                    placeholder="Search suppliers…"
+                  />
+                )}
+              />
+              {errors.supplierId && <span className="text-xs text-danger">{errors.supplierId.message}</span>}
+            </label>
+
+            <div className="flex flex-col gap-2">
+              {fields.map((field, index) => (
+                <PurchaseOrderLineFields
+                  key={field.id}
+                  index={index}
+                  companyId={companyId}
+                  productOptions={productOptions}
+                  onRemove={() => remove(index)}
+                  removeDisabled={fields.length === 1}
                 />
+              ))}
+              {errors.lines && typeof errors.lines.message === 'string' && (
+                <span className="text-xs text-danger">{errors.lines.message}</span>
               )}
-            />
-            {errors.supplierId && <span className="text-xs text-danger">{errors.supplierId.message}</span>}
-          </label>
+              <Button type="button" variant="secondary" onClick={() => append(EMPTY_LINE)} className="w-fit">
+                <Plus size={16} className="mr-1" /> Add line
+              </Button>
+            </div>
 
-          <div className="flex flex-col gap-2">
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex items-end gap-2">
-                <label className="flex flex-col gap-1 text-sm">
-                  Product
-                  <Controller
-                    control={control}
-                    name={`lines.${index}.productId`}
-                    render={({ field: lineField }) => (
-                      <EntityCombobox
-                        className="w-72"
-                        value={lineField.value}
-                        onChange={lineField.onChange}
-                        options={productOptions.options}
-                        isLoading={productOptions.isLoading}
-                        onSearchChange={productOptions.onSearchChange}
-                        placeholder="Search products…"
-                      />
-                    )}
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm">
-                  Quantity
-                  <Controller
-                    control={control}
-                    name={`lines.${index}.quantity`}
-                    render={({ field: lineField }) => (
-                      <input className="w-24 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
-                    )}
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm">
-                  Unit price
-                  <Controller
-                    control={control}
-                    name={`lines.${index}.unitPrice`}
-                    render={({ field: lineField }) => (
-                      <input className="w-28 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
-                    )}
-                  />
-                </label>
-                <Button type="button" variant="secondary" onClick={() => remove(index)} disabled={fields.length === 1}>
-                  <Trash2 size={16} />
-                </Button>
-              </div>
-            ))}
-            {errors.lines && typeof errors.lines.message === 'string' && (
-              <span className="text-xs text-danger">{errors.lines.message}</span>
-            )}
-            <Button type="button" variant="secondary" onClick={() => append({ productId: '', quantity: '1', unitPrice: '0' })} className="w-fit">
-              <Plus size={16} className="mr-1" /> Add line
+            <Button type="submit" disabled={isSubmitting} className="w-fit">
+              {isSubmitting ? 'Creating…' : 'Create purchase order'}
             </Button>
-          </div>
-
-          <Button type="submit" disabled={isSubmitting} className="w-fit">
-            {isSubmitting ? 'Creating…' : 'Create purchase order'}
-          </Button>
-        </form>
+          </form>
+        </FormProvider>
       </Card>
 
       {ordersQuery.data && (
@@ -187,6 +186,17 @@ export function PurchaseOrdersPanel() {
                     </Button>
                   ) : null,
               },
+              {
+                header: '',
+                render: (order: PurchaseOrderDto) => (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                  >
+                    {expandedOrderId === order.id ? 'Hide activity' : 'Activity'}
+                  </Button>
+                ),
+              },
             ]}
             rows={ordersQuery.data.data}
             isLoading={ordersQuery.isLoading}
@@ -195,9 +205,135 @@ export function PurchaseOrdersPanel() {
           />
         </Card>
       )}
+      {expandedOrderId && <ActivityTimelinePanel entityType="PurchaseOrder" entityId={expandedOrderId} />}
       {createOrder.isError && createOrder.error instanceof ApiError && (
         <p role="alert" className="mt-2 text-sm text-danger">{createOrder.error.problem.title}</p>
       )}
+    </div>
+  );
+}
+
+interface PurchaseOrderLineFieldsProps {
+  index: number;
+  companyId: string;
+  productOptions: ReturnType<typeof useProductOptions>;
+  onRemove: () => void;
+  removeDisabled: boolean;
+}
+
+/** One PO line's fields, including its own tax jurisdiction/rate pickers and "Calculate tax" action — mirrors InvoicesPanel's InvoiceLineFields exactly. */
+function PurchaseOrderLineFields({ index, companyId, productOptions, onRemove, removeDisabled }: PurchaseOrderLineFieldsProps) {
+  const { control, setValue } = useFormContext<FormValues>();
+  const taxJurisdictionId = useWatch({ control, name: `lines.${index}.taxJurisdictionId` });
+  const taxRateId = useWatch({ control, name: `lines.${index}.taxRateId` });
+  const quantity = useWatch({ control, name: `lines.${index}.quantity` });
+  const unitPrice = useWatch({ control, name: `lines.${index}.unitPrice` });
+
+  const taxJurisdictionOptions = useTaxJurisdictionOptions(companyId);
+  const taxRateOptions = useTaxRateOptions(companyId, taxJurisdictionId || undefined);
+
+  const calculateTax = useMutation({
+    mutationFn: () => {
+      const netAmount = Number(quantity) * Number(unitPrice);
+      return apiClient.get<LineTaxResultDto>(`/finance/tax-rates/calculate-line-tax?companyId=${companyId}&taxRateId=${taxRateId}&netAmount=${netAmount}`);
+    },
+    onSuccess: (result) => setValue(`lines.${index}.taxAmount`, String(result.taxAmount)),
+  });
+
+  return (
+    <div className="flex flex-wrap items-end gap-2 rounded-md border border-border p-2">
+      <label className="flex flex-col gap-1 text-sm">
+        Product
+        <Controller
+          control={control}
+          name={`lines.${index}.productId`}
+          render={({ field: lineField }) => (
+            <EntityCombobox
+              className="w-64"
+              value={lineField.value}
+              onChange={lineField.onChange}
+              options={productOptions.options}
+              isLoading={productOptions.isLoading}
+              onSearchChange={productOptions.onSearchChange}
+              placeholder="Search products…"
+            />
+          )}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Quantity
+        <Controller
+          control={control}
+          name={`lines.${index}.quantity`}
+          render={({ field: lineField }) => (
+            <input className="w-20 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
+          )}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Unit price
+        <Controller
+          control={control}
+          name={`lines.${index}.unitPrice`}
+          render={({ field: lineField }) => (
+            <input className="w-24 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
+          )}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Tax jurisdiction
+        <Controller
+          control={control}
+          name={`lines.${index}.taxJurisdictionId`}
+          render={({ field: lineField }) => (
+            <EntityCombobox
+              className="w-48"
+              value={lineField.value ?? ''}
+              onChange={(value) => {
+                lineField.onChange(value);
+                setValue(`lines.${index}.taxRateId`, '');
+              }}
+              options={taxJurisdictionOptions.options}
+              isLoading={taxJurisdictionOptions.isLoading}
+              onSearchChange={taxJurisdictionOptions.onSearchChange}
+              placeholder="Optional…"
+            />
+          )}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Tax rate
+        <Controller
+          control={control}
+          name={`lines.${index}.taxRateId`}
+          render={({ field: lineField }) => (
+            <EntityCombobox
+              className="w-48"
+              value={lineField.value ?? ''}
+              onChange={lineField.onChange}
+              options={taxRateOptions.options}
+              isLoading={taxRateOptions.isLoading}
+              placeholder={taxJurisdictionId ? 'Pick a rate…' : 'Pick a jurisdiction first'}
+            />
+          )}
+        />
+      </label>
+      <Button type="button" variant="secondary" disabled={!taxRateId || calculateTax.isPending} onClick={() => calculateTax.mutate()}>
+        {calculateTax.isPending ? 'Calculating…' : 'Calculate tax'}
+      </Button>
+      <label className="flex flex-col gap-1 text-sm">
+        Tax amount
+        <Controller
+          control={control}
+          name={`lines.${index}.taxAmount`}
+          render={({ field: lineField }) => (
+            <input className="w-24 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} readOnly />
+          )}
+        />
+      </label>
+      <Button type="button" variant="secondary" onClick={onRemove} disabled={removeDisabled}>
+        <Trash2 size={16} />
+      </Button>
     </div>
   );
 }

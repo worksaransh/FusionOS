@@ -21,8 +21,9 @@ public sealed class CompleteWorkOrderCommandHandler : IRequestHandler<CompleteWo
             ?? throw new KeyNotFoundException($"Work order '{request.WorkOrderId}' was not found.");
 
         // Raises WorkOrderCompleted; the outbox relays it to Kafka and Inventory's
-        // WorkOrderCompletedConsumer posts the real stock ledger movements.
-        workOrder.Complete();
+        // WorkOrderCompletedConsumer posts the real stock ledger movements. Scrap/yield
+        // params are optional — omitted, this behaves exactly as a plain completion always has.
+        workOrder.Complete(request.QuantityGoodProduced, request.QuantityScrapped);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return WorkOrderMapper.ToDto(workOrder);

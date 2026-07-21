@@ -15,6 +15,6 @@ public sealed class GetBinByIdQueryHandler : IRequestHandler<GetBinByIdQuery, Bi
         if (bin is null || bin.CompanyId != request.CompanyId)
             return null;
 
-        return new BinDto(bin.Id, bin.ZoneId, bin.Name, bin.Code, bin.IsActive, bin.CreatedAt);
+        return new BinDto(bin.Id, bin.ZoneId, bin.Name, bin.Code, bin.IsActive, bin.CreatedAt, bin.ShelfId);
     }
 }

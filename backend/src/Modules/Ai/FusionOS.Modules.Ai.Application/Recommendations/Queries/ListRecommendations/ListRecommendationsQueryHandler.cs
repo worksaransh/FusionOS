@@ -1,3 +1,4 @@
+using FusionOS.BuildingBlocks.Application.Abstractions;
 using FusionOS.Modules.Ai.Application.Recommendations.Contracts;
 using MediatR;
 

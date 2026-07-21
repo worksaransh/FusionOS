@@ -68,4 +68,17 @@ public class OpportunityTests
 
         opp.Stage.Should().Be(OpportunityStage.Lost);
     }
+
+    [Fact]
+    public void AssignAccount_SetsAndClearsAccountId()
+    {
+        var opp = Open();
+        var accountId = Guid.NewGuid();
+
+        opp.AssignAccount(accountId);
+        opp.AccountId.Should().Be(accountId);
+
+        opp.AssignAccount(null);
+        opp.AccountId.Should().BeNull();
+    }
 }

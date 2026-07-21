@@ -12,6 +12,9 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(x => x.QuantityToProduce).HasColumnType("numeric(19,4)").IsRequired();
+        builder.Property(x => x.QuantityGoodProduced).HasColumnType("numeric(19,4)");
+        builder.Property(x => x.QuantityScrapped).HasColumnType("numeric(19,4)").IsRequired();
+        builder.Property(x => x.YieldPercentage).HasColumnType("numeric(5,2)");
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md)
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);
@@ -34,5 +37,6 @@ public sealed class WorkOrderComponentConfiguration : IEntityTypeConfiguration<W
         builder.ToTable("work_order_components");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.QuantityRequired).HasColumnType("numeric(19,4)").IsRequired();
+        builder.Property(x => x.QuantityIssued).HasColumnType("numeric(19,4)").IsRequired();
     }
 }

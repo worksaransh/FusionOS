@@ -21,12 +21,16 @@ namespace FusionOS.Modules.Manufacturing.Domain.BillOfMaterials;
 public sealed class BillOfMaterials : TenantAggregateRoot
 {
     private readonly List<BomLine> _lines = new();
+    private readonly List<RoutingOperation> _operations = new();
 
     public string Code { get; private set; } = default!;
     public string Name { get; private set; } = default!;
     public Guid ProductId { get; private set; }
     public bool IsActive { get; private set; } = true;
     public IReadOnlyList<BomLine> Lines => _lines.AsReadOnly();
+
+    /// <summary>The routing's operations in production order — always sorted by SequenceNumber for consumers, regardless of insertion/storage order.</summary>
+    public IReadOnlyList<RoutingOperation> Operations => _operations.OrderBy(o => o.SequenceNumber).ToList();
 
     private BillOfMaterials() { }
 
@@ -66,4 +70,48 @@ public sealed class BillOfMaterials : TenantAggregateRoot
 
     /// <summary>The standard soft-deactivate — a superseded BOM is hidden from active lists, never hard-deleted.</summary>
     public void Deactivate() => IsActive = false;
+
+    /// <summary>Appends a new routing operation at the end of the sequence (current max SequenceNumber + 1, or 1 if none exist yet).</summary>
+    public RoutingOperation AddOperation(string operationName, string workCenter, decimal standardMinutes)
+    {
+        var nextSequenceNumber = _operations.Count == 0 ? 1 : _operations.Max(o => o.SequenceNumber) + 1;
+        var operation = RoutingOperation.Create(nextSequenceNumber, operationName, workCenter, standardMinutes);
+
+        _operations.Add(operation);
+        Raise(new RoutingOperationAdded(Id, CompanyId, operation.Id, operation.SequenceNumber, operation.OperationName));
+        return operation;
+    }
+
+    /// <summary>Removes a routing operation. The remaining operations keep their existing SequenceNumber (gaps are fine — Operations is always exposed in SequenceNumber order).</summary>
+    public void RemoveOperation(Guid operationId)
+    {
+        var operation = _operations.FirstOrDefault(o => o.Id == operationId)
+            ?? throw new ArgumentException($"Routing operation '{operationId}' does not exist on this bill of materials.", nameof(operationId));
+
+        _operations.Remove(operation);
+        Raise(new RoutingOperationRemoved(Id, CompanyId, operationId));
+    }
+
+    /// <summary>
+    /// Reassigns every operation's SequenceNumber (1-based) to match the given order.
+    /// <paramref name="orderedOperationIds"/> must be a permutation of every operation
+    /// id currently on this bill of materials — no partial reorders, no unknown ids.
+    /// </summary>
+    public void ReorderOperations(IReadOnlyList<Guid> orderedOperationIds)
+    {
+        if (orderedOperationIds is null || orderedOperationIds.Count != _operations.Count)
+            throw new ArgumentException("The reordered list must include every routing operation on this bill of materials exactly once.", nameof(orderedOperationIds));
+
+        var existingIds = _operations.Select(o => o.Id).ToHashSet();
+        if (orderedOperationIds.Distinct().Count() != orderedOperationIds.Count || !orderedOperationIds.All(existingIds.Contains))
+            throw new ArgumentException("The reordered list must include every routing operation on this bill of materials exactly once.", nameof(orderedOperationIds));
+
+        for (var i = 0; i < orderedOperationIds.Count; i++)
+        {
+            var operation = _operations.First(o => o.Id == orderedOperationIds[i]);
+            operation.Resequence(i + 1);
+        }
+
+        Raise(new RoutingOperationsReordered(Id, CompanyId, orderedOperationIds));
+    }
 }

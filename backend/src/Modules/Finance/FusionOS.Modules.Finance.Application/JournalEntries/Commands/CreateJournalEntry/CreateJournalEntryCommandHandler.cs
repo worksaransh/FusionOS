@@ -2,6 +2,7 @@ using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Finance.Application.Accounts.Contracts;
 using FusionOS.Modules.Finance.Application.CostCenters.Contracts;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
+using FusionOS.Modules.Finance.Domain.JournalEntries;
 using MediatR;
 
 namespace FusionOS.Modules.Finance.Application.JournalEntries.Commands.CreateJournalEntry;
@@ -23,22 +24,27 @@ public sealed class CreateJournalEntryCommandHandler : IRequestHandler<CreateJou
 
     public async Task<JournalEntryDto> Handle(CreateJournalEntryCommand request, CancellationToken cancellationToken)
     {
-        foreach (var line in request.Lines)
+        // Lines are grouped by AccountId (and separately by CostCenterId) before
+        // checking, so the same account/cost center referenced by several request
+        // lines is only looked up once instead of once per line.
+        foreach (var accountLines in request.Lines.GroupBy(l => l.AccountId))
         {
-            if (!await _accountRepository.ExistsAsync(request.CompanyId, line.AccountId, cancellationToken))
+            if (!await _accountRepository.ExistsAsync(request.CompanyId, accountLines.Key, cancellationToken))
             {
                 throw new ValidationException(new[]
                 {
-                    new FluentValidation.Results.ValidationFailure(nameof(line.AccountId), $"Account '{line.AccountId}' does not exist for this company."),
+                    new FluentValidation.Results.ValidationFailure(nameof(JournalEntryLineInput.AccountId), $"Account '{accountLines.Key}' does not exist for this company."),
                 });
             }
+        }
 
-            if (line.CostCenterId is { } costCenterId
-                && await _costCenterRepository.GetByIdAsync(request.CompanyId, costCenterId, cancellationToken) is null)
+        foreach (var costCenterLines in request.Lines.Where(l => l.CostCenterId is not null).GroupBy(l => l.CostCenterId!.Value))
+        {
+            if (await _costCenterRepository.GetByIdAsync(request.CompanyId, costCenterLines.Key, cancellationToken) is null)
             {
                 throw new ValidationException(new[]
                 {
-                    new FluentValidation.Results.ValidationFailure(nameof(line.CostCenterId), $"Cost center '{costCenterId}' does not exist for this company."),
+                    new FluentValidation.Results.ValidationFailure(nameof(JournalEntryLineInput.CostCenterId), $"Cost center '{costCenterLines.Key}' does not exist for this company."),
                 });
             }
         }

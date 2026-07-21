@@ -1,3 +1,4 @@
+using FusionOS.BuildingBlocks.Application.Abstractions;
 using FusionOS.Modules.Procurement.Application.VendorReturns.Contracts;
 using MediatR;
 

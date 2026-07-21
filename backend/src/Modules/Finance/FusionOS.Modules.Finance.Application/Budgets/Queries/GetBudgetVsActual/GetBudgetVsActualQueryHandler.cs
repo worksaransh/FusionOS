@@ -49,14 +49,33 @@ public sealed class GetBudgetVsActualQueryHandler : IRequestHandler<GetBudgetVsA
 
         var budgetLines = await _budgetLineRepository.ListAllByBudgetAsync(request.CompanyId, request.BudgetId, cancellationToken);
 
+        // One bulk fetch of the whole chart of accounts into a dictionary, then an
+        // in-memory lookup per budget line - same pattern as GetTrialBalanceQueryHandler/
+        // GetBalanceSheetReportQueryHandler/GetProfitAndLossReportQueryHandler - instead
+        // of one GetByIdAsync query per budget line.
+        var accounts = (await _accountRepository.ListAllAsync(request.CompanyId, cancellationToken)).ToDictionary(a => a.Id);
+
+        // Actual-amount lookups are deduplicated by (AccountId, CostCenterId) pair
+        // before calling SumPostedAmountByAccountAsync, so two budget lines that
+        // happen to share the same account+cost-center combination only pay for one
+        // query instead of one per line. SumPostedAmountByAccountAsync itself still
+        // takes a single pair at a time; teaching it to accept a batch of pairs and
+        // return a dictionary in one grouped query is a natural follow-up if this
+        // per-pair round trip ever shows up as a bottleneck.
+        var actualAmountsByAccountAndCostCenter = new Dictionary<(Guid AccountId, Guid? CostCenterId), decimal>();
+        foreach (var pair in budgetLines.Select(l => (l.AccountId, l.CostCenterId)).Distinct())
+        {
+            actualAmountsByAccountAndCostCenter[pair] = await _journalEntryRepository.SumPostedAmountByAccountAsync(
+                request.CompanyId, pair.AccountId, budget.PeriodStart, budget.PeriodEnd, pair.CostCenterId, cancellationToken);
+        }
+
         var results = new List<BudgetVsActualLineDto>();
         foreach (var line in budgetLines)
         {
-            var account = await _accountRepository.GetByIdAsync(request.CompanyId, line.AccountId, cancellationToken)
-                ?? throw new KeyNotFoundException($"Account '{line.AccountId}' referenced by budget line '{line.Id}' was not found.");
+            if (!accounts.TryGetValue(line.AccountId, out var account))
+                throw new KeyNotFoundException($"Account '{line.AccountId}' referenced by budget line '{line.Id}' was not found.");
 
-            var actualAmount = await _journalEntryRepository.SumPostedAmountByAccountAsync(
-                request.CompanyId, line.AccountId, budget.PeriodStart, budget.PeriodEnd, line.CostCenterId, cancellationToken);
+            var actualAmount = actualAmountsByAccountAndCostCenter[(line.AccountId, line.CostCenterId)];
 
             results.Add(new BudgetVsActualLineDto(
                 line.AccountId,

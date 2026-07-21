@@ -17,7 +17,7 @@ public class CreateRoleCommandHandlerTests
         var users = Substitute.For<IUserRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var companyId = Guid.NewGuid();
-        users.RoleNameExistsAsync(companyId, "Warehouse Clerk", Arg.Any<CancellationToken>()).Returns(false);
+        users.RoleNameExistsAsync(companyId, "Warehouse Clerk", Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(false);
         var handler = new CreateRoleCommandHandler(users, unitOfWork);
 
         var result = await handler.Handle(new CreateRoleCommand(companyId, "Warehouse Clerk"), CancellationToken.None);
@@ -34,7 +34,7 @@ public class CreateRoleCommandHandlerTests
         var users = Substitute.For<IUserRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var companyId = Guid.NewGuid();
-        users.RoleNameExistsAsync(companyId, "Owner", Arg.Any<CancellationToken>()).Returns(true);
+        users.RoleNameExistsAsync(companyId, "Owner", Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
         var handler = new CreateRoleCommandHandler(users, unitOfWork);
 
         var act = () => handler.Handle(new CreateRoleCommand(companyId, "Owner"), CancellationToken.None);

@@ -11,6 +11,10 @@ public interface IDispatchRepository
     /// dispatch against this sales order (2026-07-14 coverage-audit follow-up:
     /// CreateDispatchCommandHandler previously fetched the sales order only to
     /// check it existed, never to bound how much of it could be dispatched).
+    /// Counting rule (2026-07-20): every persisted dispatch counts - Dispatch
+    /// has no status/lifecycle (no cancelled or returned state), so each line is
+    /// goods that physically left against this order. If a cancellation/return
+    /// state is ever added, this sum must exclude it.
     /// </summary>
     Task<decimal> GetDispatchedQuantityAsync(Guid companyId, Guid salesOrderId, Guid productId, CancellationToken cancellationToken = default);
 }

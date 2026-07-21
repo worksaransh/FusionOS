@@ -1,3 +1,4 @@
+using FusionOS.BuildingBlocks.Application.Abstractions;
 using FusionOS.Modules.Maintenance.Application.Assets.Contracts;
 using MediatR;
 

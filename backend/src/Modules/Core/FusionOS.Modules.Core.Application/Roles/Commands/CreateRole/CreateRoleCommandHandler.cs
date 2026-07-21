@@ -21,7 +21,7 @@ public sealed class CreateRoleCommandHandler : IRequestHandler<CreateRoleCommand
 
     public async Task<RoleDto> Handle(CreateRoleCommand request, CancellationToken cancellationToken)
     {
-        if (await _users.RoleNameExistsAsync(request.CompanyId, request.Name, cancellationToken))
+        if (await _users.RoleNameExistsAsync(request.CompanyId, request.Name, null, cancellationToken))
             throw new ValidationException(new[] { new ValidationFailure("name", "A role with that name already exists.") });
 
         var role = Role.CreateCompanyRole(request.CompanyId, request.Name.Trim());

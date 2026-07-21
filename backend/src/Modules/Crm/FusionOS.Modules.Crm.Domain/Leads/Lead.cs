@@ -19,6 +19,14 @@ public sealed class Lead : TenantAggregateRoot
     public string? Source { get; private set; }
     public LeadStatus Status { get; private set; }
 
+    /// <summary>
+    /// Optional same-module reference to an Account (Phase 4 CRM depth pass) — set once
+    /// the prospect's organization has an Account record, via <see cref="AssignAccount"/>.
+    /// Existence is validated by the command handler that calls it (IAccountRepository),
+    /// never enforced here, same division of responsibility as Customer.AssignPriceList.
+    /// </summary>
+    public Guid? AccountId { get; private set; }
+
     private Lead() { }
 
     public static Lead Create(Guid companyId, string name, string? contactEmail, string? contactPhone, string? source)
@@ -70,4 +78,7 @@ public sealed class Lead : TenantAggregateRoot
 
         Status = LeadStatus.Converted;
     }
+
+    /// <summary>Sets or clears (pass null) which Account this lead's organization corresponds to.</summary>
+    public void AssignAccount(Guid? accountId) => AccountId = accountId;
 }

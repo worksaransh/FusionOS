@@ -1,6 +1,9 @@
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
 using FusionOS.Modules.Core.Domain.Audit;
+using FusionOS.Modules.Core.Domain.Comments;
 using FusionOS.Modules.Core.Domain.Companies;
+using FusionOS.Modules.Core.Domain.Documents;
+using FusionOS.Modules.Core.Domain.FeatureFlags;
 using FusionOS.Modules.Core.Domain.Identity;
 using FusionOS.Modules.Core.Domain.Notifications;
 using FusionOS.Modules.Core.Domain.Organizations;
@@ -33,6 +36,9 @@ public sealed class CoreDbContext : BaseDbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
     public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
+    public DbSet<Document> Documents => Set<Document>();
+    public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
+    public DbSet<Comment> Comments => Set<Comment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

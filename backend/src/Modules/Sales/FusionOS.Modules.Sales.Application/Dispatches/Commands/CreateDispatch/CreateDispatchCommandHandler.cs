@@ -30,29 +30,41 @@ public sealed class CreateDispatchCommandHandler : IRequestHandler<CreateDispatc
             });
         }
 
-        // 2026-07-14 coverage-audit follow-up: previously nothing compared the
-        // requested dispatch lines to what the sales order actually ordered, or to
-        // what had already been dispatched against it - an order could be dispatched
-        // for any quantity, any number of times. Reject any line that would push
-        // the cumulative dispatched quantity for that product past what was ordered.
+        // Cross-aggregate quantity guard (2026-07-14 coverage-audit follow-up,
+        // tightened 2026-07-20): the cumulative dispatched quantity per product -
+        // every existing dispatch against this sales order plus every line of this
+        // request - must never exceed the quantity the order actually ordered.
+        //
+        // Counting rule: ALL persisted dispatches count toward the cap - a
+        // Dispatch has no status/lifecycle at all (no cancelled or returned
+        // state), so every persisted dispatch line is goods that physically left
+        // against this order. If a cancellation/return state is ever introduced,
+        // IDispatchRepository.GetDispatchedQuantityAsync must be updated to
+        // exclude it - the decision lives in that query, not here.
+        //
+        // Request lines are grouped by product before checking, so the same
+        // product split across several request lines cannot slip past the cap by
+        // each line passing individually; the cap itself sums every order line
+        // carrying the product, in case the order lists a product more than once.
         var failures = new List<FluentValidation.Results.ValidationFailure>();
-        foreach (var line in request.Lines)
+        foreach (var productLines in request.Lines.GroupBy(l => l.ProductId))
         {
-            var orderLine = salesOrder.Lines.FirstOrDefault(l => l.ProductId == line.ProductId);
-            if (orderLine is null)
+            if (!salesOrder.Lines.Any(l => l.ProductId == productLines.Key))
             {
                 failures.Add(new FluentValidation.Results.ValidationFailure(
-                    nameof(request.Lines), $"Product {line.ProductId} is not part of sales order {request.SalesOrderId}."));
+                    nameof(request.Lines), $"Product {productLines.Key} is not part of sales order {request.SalesOrderId}."));
                 continue;
             }
 
-            var alreadyDispatched = await _repository.GetDispatchedQuantityAsync(request.CompanyId, request.SalesOrderId, line.ProductId, cancellationToken);
-            if (alreadyDispatched + line.QuantityDispatched > orderLine.Quantity)
+            var orderedQuantity = salesOrder.Lines.Where(l => l.ProductId == productLines.Key).Sum(l => l.Quantity);
+            var requestedQuantity = productLines.Sum(l => l.QuantityDispatched);
+            var alreadyDispatched = await _repository.GetDispatchedQuantityAsync(request.CompanyId, request.SalesOrderId, productLines.Key, cancellationToken);
+            if (alreadyDispatched + requestedQuantity > orderedQuantity)
             {
                 failures.Add(new FluentValidation.Results.ValidationFailure(
                     nameof(request.Lines),
-                    $"Product {line.ProductId}: dispatching {line.QuantityDispatched} would exceed the sales order's remaining dispatchable quantity " +
-                    $"({orderLine.Quantity - alreadyDispatched} of {orderLine.Quantity} left, {alreadyDispatched} already dispatched)."));
+                    $"Product {productLines.Key}: dispatching {requestedQuantity} would exceed the sales order's remaining dispatchable quantity " +
+                    $"({orderedQuantity - alreadyDispatched} of {orderedQuantity} left, {alreadyDispatched} already dispatched)."));
             }
         }
 

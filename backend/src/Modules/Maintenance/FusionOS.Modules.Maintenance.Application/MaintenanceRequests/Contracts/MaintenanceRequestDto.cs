@@ -8,7 +8,9 @@ public sealed record MaintenanceRequestDto(
     string Status,
     DateTimeOffset ReportedAt,
     DateTimeOffset? CompletedAt,
-    string? ResolutionNotes);
+    string? ResolutionNotes,
+    Guid? AssignedTechnicianUserId,
+    int? ActualDowntimeMinutes);
 
 /// <summary>Single place that turns a MaintenanceRequest aggregate into its DTO, shared by every handler that returns one.</summary>
 public static class MaintenanceRequestMapper
@@ -21,5 +23,7 @@ public static class MaintenanceRequestMapper
         request.Status.ToString(),
         request.ReportedAt,
         request.CompletedAt,
-        request.ResolutionNotes);
+        request.ResolutionNotes,
+        request.AssignedTechnicianUserId,
+        request.ActualDowntimeMinutes);
 }
