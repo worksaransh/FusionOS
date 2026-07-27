@@ -5,6 +5,7 @@ using FusionOS.Modules.Procurement.Application.Rfqs.Commands.ConvertRfqToPurchas
 using FusionOS.Modules.Procurement.Application.Rfqs.Commands.CreateRfq;
 using FusionOS.Modules.Procurement.Application.Rfqs.Commands.SendRfq;
 using FusionOS.Modules.Procurement.Application.Rfqs.Commands.SubmitSupplierQuote;
+using FusionOS.Modules.Procurement.Application.Rfqs.Queries.GetRfqQuoteComparison;
 using FusionOS.Modules.Procurement.Application.Rfqs.Queries.ListRfqs;
 using FusionOS.Modules.Procurement.Domain.Rfqs;
 using MediatR;
@@ -76,6 +77,16 @@ public sealed class RfqsController : ControllerBase
     public async Task<IActionResult> Convert(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ConvertRfqToPurchaseOrderCommand(companyId, id), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("{id:guid}/quote-comparison")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetQuoteComparison(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetRfqQuoteComparisonQuery(companyId, id), cancellationToken);
         return Ok(result);
     }
 

@@ -80,7 +80,7 @@ export function CommissionsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Sales Commissions</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => setRate.mutate(values))} className="flex items-end gap-2">
+        <form noValidate onSubmit={handleSubmit((values) => setRate.mutate(values))} className="flex items-end gap-2">
           <label className="flex flex-col gap-1 text-sm">
             Salesperson
             <Controller

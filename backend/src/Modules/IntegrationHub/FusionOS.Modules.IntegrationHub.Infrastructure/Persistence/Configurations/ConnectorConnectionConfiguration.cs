@@ -12,6 +12,7 @@ public sealed class ConnectorConnectionConfiguration : IEntityTypeConfiguration<
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Label).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(x => x.CredentialReference).HasMaxLength(200);
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md)
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);

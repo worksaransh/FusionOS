@@ -15,11 +15,13 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
         builder.Property(x => x.QuantityGoodProduced).HasColumnType("numeric(19,4)");
         builder.Property(x => x.QuantityScrapped).HasColumnType("numeric(19,4)").IsRequired();
         builder.Property(x => x.YieldPercentage).HasColumnType("numeric(5,2)");
+        builder.Property(x => x.QuantityReworked).HasColumnType("numeric(19,4)").IsRequired();
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md)
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);
         builder.HasIndex(x => new { x.CompanyId, x.Status });
         builder.HasIndex(x => x.BillOfMaterialsId);
+        builder.HasIndex(x => x.SourceWorkOrderId);
 
         builder.HasMany(x => x.Components)
             .WithOne()
@@ -27,6 +29,13 @@ public sealed class WorkOrderConfiguration : IEntityTypeConfiguration<WorkOrder>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Navigation(x => x.Components).HasField("_components").UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(x => x.Operations)
+            .WithOne()
+            .HasForeignKey("WorkOrderId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(x => x.Operations).HasField("_operations").UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
 
@@ -38,5 +47,21 @@ public sealed class WorkOrderComponentConfiguration : IEntityTypeConfiguration<W
         builder.HasKey(x => x.Id);
         builder.Property(x => x.QuantityRequired).HasColumnType("numeric(19,4)").IsRequired();
         builder.Property(x => x.QuantityIssued).HasColumnType("numeric(19,4)").IsRequired();
+        builder.Property(x => x.UnitCost).HasColumnType("numeric(19,4)").IsRequired();
+    }
+}
+
+public sealed class WorkOrderOperationConfiguration : IEntityTypeConfiguration<WorkOrderOperation>
+{
+    public void Configure(EntityTypeBuilder<WorkOrderOperation> builder)
+    {
+        builder.ToTable("work_order_operations");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.SequenceNumber).IsRequired();
+        builder.Property(x => x.OperationName).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.WorkCenter).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.StandardMinutes).HasColumnType("numeric(19,4)").IsRequired();
+        builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.HasIndex(x => x.MachineId);
     }
 }

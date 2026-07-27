@@ -1,6 +1,7 @@
 using FusionOS.Modules.Quality.Application.Inspections.Commands.CreateInspection;
 using FusionOS.Modules.Quality.Application.Inspections.Commands.RecordInspectionResults;
 using FusionOS.Modules.Quality.Application.Inspections.Queries.GetInspectionById;
+using FusionOS.Modules.Quality.Application.Inspections.Queries.GetSpcDataForCharacteristic;
 using FusionOS.Modules.Quality.Application.Inspections.Queries.ListInspections;
 using FusionOS.Modules.Quality.Domain.Inspections;
 using MediatR;
@@ -27,7 +28,7 @@ public sealed class InspectionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create([FromBody] CreateInspectionRequest request, CancellationToken cancellationToken)
     {
-        var command = new CreateInspectionCommand(request.CompanyId, request.Type, request.ReferenceId, request.Characteristics);
+        var command = new CreateInspectionCommand(request.CompanyId, request.Type, request.ReferenceId, request.Characteristics, request.InspectionPlanId, request.ControlLimits);
         var result = await _sender.Send(command, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = result.Id, companyId = request.CompanyId }, result);
     }
@@ -44,9 +45,9 @@ public sealed class InspectionsController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] InspectionType? type = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
     {
-        var result = await _sender.Send(new ListInspectionsQuery(companyId, page, pageSize), cancellationToken);
+        var result = await _sender.Send(new ListInspectionsQuery(companyId, type, page, pageSize), cancellationToken);
         return Ok(result);
     }
 
@@ -57,12 +58,38 @@ public sealed class InspectionsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RecordResults(Guid id, [FromBody] RecordInspectionResultsRequest request, CancellationToken cancellationToken)
     {
-        var command = new RecordInspectionResultsCommand(request.CompanyId, id, request.Results);
+        var command = new RecordInspectionResultsCommand(request.CompanyId, id, request.Results, request.RaiseHoldOnFailure, request.HeldEntityType);
         var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Raw SPC data points (measured values) for one characteristic across every inspection in
+    /// the optional period, plus the latest control limits found for it — see
+    /// GetSpcDataForCharacteristicQuery's doc comment for the documented scope-out (no Cp/Cpk
+    /// computation here, just the series for a caller/frontend to chart).
+    /// </summary>
+    [HttpGet("spc")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetSpcData(
+        [FromQuery] Guid companyId,
+        [FromQuery] string characteristicName,
+        [FromQuery] DateTimeOffset? periodStart,
+        [FromQuery] DateTimeOffset? periodEnd,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetSpcDataForCharacteristicQuery(companyId, characteristicName, periodStart, periodEnd), cancellationToken);
         return Ok(result);
     }
 }
 
-public sealed record CreateInspectionRequest(Guid CompanyId, InspectionType Type, Guid ReferenceId, IReadOnlyList<string> Characteristics);
+public sealed record CreateInspectionRequest(
+    Guid CompanyId,
+    InspectionType Type,
+    Guid ReferenceId,
+    IReadOnlyList<string> Characteristics,
+    Guid? InspectionPlanId = null,
+    IReadOnlyList<InspectionCharacteristicControlLimits>? ControlLimits = null);
 
-public sealed record RecordInspectionResultsRequest(Guid CompanyId, IReadOnlyList<InspectionResultInput> Results);
+public sealed record RecordInspectionResultsRequest(Guid CompanyId, IReadOnlyList<InspectionResultInput> Results, bool RaiseHoldOnFailure = false, string? HeldEntityType = null);

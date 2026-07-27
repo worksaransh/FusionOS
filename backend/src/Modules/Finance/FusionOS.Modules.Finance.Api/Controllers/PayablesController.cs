@@ -58,7 +58,7 @@ public sealed class PayablesController : ControllerBase
     public async Task<IActionResult> RecordPayment([FromBody] RecordApPaymentRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
-            new RecordPaymentCommand(request.CompanyId, request.SupplierId, request.PurchaseOrderId, request.Amount, request.PaymentDate, request.Reference),
+            new RecordPaymentCommand(request.CompanyId, request.SupplierId, request.PurchaseOrderId, request.Amount, request.PaymentDate, request.Reference, request.BankAccountId),
             cancellationToken);
         return Ok(result);
     }
@@ -66,4 +66,5 @@ public sealed class PayablesController : ControllerBase
 
 public sealed record RecordBillChargeRequest(Guid CompanyId, Guid SupplierId, Guid? PurchaseOrderId, decimal Amount, string Description);
 
-public sealed record RecordApPaymentRequest(Guid CompanyId, Guid SupplierId, Guid? PurchaseOrderId, decimal Amount, DateTimeOffset? PaymentDate, string? Reference);
+/// <summary>BankAccountId is optional (bank-tied-payments follow-up) — see RecordPaymentCommand's own doc comment.</summary>
+public sealed record RecordApPaymentRequest(Guid CompanyId, Guid SupplierId, Guid? PurchaseOrderId, decimal Amount, DateTimeOffset? PaymentDate, string? Reference, Guid? BankAccountId = null);

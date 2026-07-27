@@ -30,6 +30,12 @@ public sealed class TaxJurisdictionRepository : ITaxJurisdictionRepository
     public Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default) =>
         Filtered(companyId, search).CountAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<TaxJurisdiction>> ListAllActiveAsync(Guid companyId, CancellationToken cancellationToken = default) =>
+        await _context.TaxJurisdictions
+            .Where(j => j.CompanyId == companyId && j.IsActive)
+            .OrderBy(j => j.Code)
+            .ToListAsync(cancellationToken);
+
     private IQueryable<TaxJurisdiction> Filtered(Guid companyId, string? search)
     {
         var query = _context.TaxJurisdictions.Where(j => j.CompanyId == companyId);

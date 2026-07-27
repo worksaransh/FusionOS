@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FusionOS.Modules.Manufacturing.Api.Controllers;
 
-/// <summary>The only endpoint this not-yet-implemented module exposes: proof it is registered and reachable.</summary>
+/// <summary>Reports genuine module status — Manufacturing has real BOM/work-order/routing/scheduling depth, not just a registration probe.</summary>
 [ApiController]
 [Route("api/v1/manufacturing/health")]
 public sealed class ManufacturingHealthController : ControllerBase

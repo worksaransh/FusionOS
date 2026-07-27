@@ -3,6 +3,30 @@
   <ItemGroup>
     <ProjectReference Include="../FusionOS.Modules.Ai.Domain/FusionOS.Modules.Ai.Domain.csproj" />
     <ProjectReference Include="../../../Shared/FusionOS.BuildingBlocks.Application/FusionOS.BuildingBlocks.Application.csproj" />
+
+    <!--
+      Phase 8 — AI & Integrations. The first cross-module Application-layer
+      references in this codebase (grepped every module's .csproj first: zero
+      precedent existed). ModuleBoundaryTests.cs only enforces that module
+      DOMAIN assemblies never reference another module's Domain/Infrastructure;
+      it says nothing about one module's Application project referencing
+      another's, and the DI wiring in FusionOS.BuildingBlocks.Application's
+      AddModuleApplication registers MediatR pipeline behaviors (Authorization,
+      TenantIsolation, Validation, ...) as open generics shared across every
+      module's assembly in the same container — so a query record type from
+      another module's Application project can be safely constructed here and
+      dispatched via ISender, and it will still run through that module's own
+      IRequirePermission gate exactly as if that module's own controller had
+      sent it. This is what keeps AI Search/Reports a translation layer over
+      existing authorized queries (12_AI_PLATFORM.md §4) rather than a bypass:
+      only these modules' plain Query/DTO record types are referenced, never
+      their Domain or Infrastructure assemblies.
+    -->
+    <ProjectReference Include="../../Sales/FusionOS.Modules.Sales.Application/FusionOS.Modules.Sales.Application.csproj" />
+    <ProjectReference Include="../../Inventory/FusionOS.Modules.Inventory.Application/FusionOS.Modules.Inventory.Application.csproj" />
+    <ProjectReference Include="../../Crm/FusionOS.Modules.Crm.Application/FusionOS.Modules.Crm.Application.csproj" />
+    <ProjectReference Include="../../Maintenance/FusionOS.Modules.Maintenance.Application/FusionOS.Modules.Maintenance.Application.csproj" />
+    <ProjectReference Include="../../BusinessIntelligence/FusionOS.Modules.BusinessIntelligence.Application/FusionOS.Modules.BusinessIntelligence.Application.csproj" />
   </ItemGroup>
 
 </Project>

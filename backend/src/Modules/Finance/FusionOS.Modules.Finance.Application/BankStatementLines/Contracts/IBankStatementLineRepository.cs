@@ -27,4 +27,12 @@ public interface IBankStatementLineRepository
     /// two different statement lines. "Unreconciled candidate" == not in this set.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetMatchedJournalEntryIdsAsync(Guid companyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Used by ImportBankStatementLinesCommandHandler to skip a row that's
+    /// already been imported for this bank account — "already imported" is
+    /// defined as an exact match on TransactionDate + Amount + Description
+    /// (post-trim), same fields BankStatementLine.Create itself validates.
+    /// </summary>
+    Task<bool> ExistsDuplicateAsync(Guid companyId, Guid bankAccountId, DateTimeOffset transactionDate, decimal amount, string description, CancellationToken cancellationToken = default);
 }

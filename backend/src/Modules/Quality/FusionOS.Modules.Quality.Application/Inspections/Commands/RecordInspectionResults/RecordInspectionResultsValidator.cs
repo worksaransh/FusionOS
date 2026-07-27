@@ -13,5 +13,9 @@ public sealed class RecordInspectionResultsValidator : AbstractValidator<RecordI
         {
             result.RuleFor(r => r.Characteristic).NotEmpty().MaximumLength(200);
         });
+        RuleFor(x => x.HeldEntityType)
+            .NotEmpty()
+            .WithMessage("HeldEntityType is required when RaiseHoldOnFailure is set.")
+            .When(x => x.RaiseHoldOnFailure);
     }
 }

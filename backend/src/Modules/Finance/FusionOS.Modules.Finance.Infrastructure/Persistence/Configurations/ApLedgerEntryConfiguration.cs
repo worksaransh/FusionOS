@@ -17,6 +17,7 @@ public sealed class ApLedgerEntryConfiguration : IEntityTypeConfiguration<ApLedg
         builder.Ignore(x => x.RowVersion);
         builder.HasIndex(x => new { x.CompanyId, x.SupplierId });
         builder.HasIndex(x => x.PurchaseOrderId);
+        builder.HasIndex(x => x.BankAccountId); // bank-tied-payments follow-up — optional, mapped by convention (nullable Guid column)
         builder.Ignore(x => x.DomainEvents);
     }
 }

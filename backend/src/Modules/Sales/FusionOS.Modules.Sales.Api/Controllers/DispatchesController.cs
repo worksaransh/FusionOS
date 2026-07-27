@@ -22,7 +22,7 @@ public sealed class DispatchesController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateDispatchRequest request, CancellationToken cancellationToken)
     {
         var lines = request.Lines.Select(l => new DispatchLineInput(l.ProductId, l.QuantityDispatched)).ToList();
-        var command = new CreateDispatchCommand(request.CompanyId, request.SalesOrderId, request.WarehouseId, lines);
+        var command = new CreateDispatchCommand(request.CompanyId, request.SalesOrderId, request.WarehouseId, lines, request.PickListId);
         var result = await _sender.Send(command, cancellationToken);
         return CreatedAtAction(nameof(List), new { companyId = request.CompanyId }, result);
     }
@@ -38,4 +38,4 @@ public sealed class DispatchesController : ControllerBase
 
 public sealed record CreateDispatchLineRequest(Guid ProductId, decimal QuantityDispatched);
 
-public sealed record CreateDispatchRequest(Guid CompanyId, Guid SalesOrderId, Guid WarehouseId, IReadOnlyList<CreateDispatchLineRequest> Lines);
+public sealed record CreateDispatchRequest(Guid CompanyId, Guid SalesOrderId, Guid WarehouseId, IReadOnlyList<CreateDispatchLineRequest> Lines, Guid? PickListId = null);

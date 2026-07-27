@@ -12,4 +12,14 @@ public interface IFixedAssetRepository
     Task<IReadOnlyList<Domain.FixedAssets.FixedAsset>> ListAsync(Guid companyId, bool? isDisposed, bool? isActive, int page, int pageSize, CancellationToken cancellationToken = default);
 
     Task<int> CountAsync(Guid companyId, bool? isDisposed, bool? isActive, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Every fixed asset for this company, unpaged — backs
+    /// GetCashFlowStatementReportQuery (2026-07-22), which needs to scan every
+    /// asset's AcquisitionDate/DisposedDate to find period activity, not a
+    /// page of it. Same "full unpaged list for a canned report to filter
+    /// itself" shape as IAccountRepository.ListAllAsync (used by the Balance
+    /// Sheet/P&amp;L reports).
+    /// </summary>
+    Task<IReadOnlyList<Domain.FixedAssets.FixedAsset>> ListAllAsync(Guid companyId, CancellationToken cancellationToken = default);
 }

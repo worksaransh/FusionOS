@@ -18,5 +18,11 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);
         builder.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique();
+        // No FK constraint for either reference: DepartmentId is an opaque cross-module reference
+        // into Core (never existence-validated, per 03_SYSTEM_ARCHITECTURE.md's cross-module
+        // convention); ManagerId is a same-module self-reference validated in the command handler,
+        // same "reference-by-id, no database FK" convention as LeaveRequest.EmployeeId.
+        builder.HasIndex(x => new { x.CompanyId, x.ManagerId });
+        builder.HasIndex(x => new { x.CompanyId, x.DepartmentId });
     }
 }

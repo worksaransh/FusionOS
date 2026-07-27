@@ -24,4 +24,18 @@ public interface IArLedgerRepository
     /// from Finance's own data, not a fabricated due date.
     /// </summary>
     Task<IReadOnlyList<(Guid CustomerId, Guid InvoiceId, decimal Balance, DateTimeOffset ChargeDate)>> GetOutstandingInvoiceBalancesAsync(Guid companyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Backs GetCashFlowStatementReportQuery's Operating-activities
+    /// working-capital adjustment (2026-07-22). Sums every entry's Amount
+    /// (charges positive, payments/credit notes negative — see
+    /// ArLedgerEntry's own doc comment) whose TransactionDate falls within
+    /// [dateFrom, dateTo] inclusive — i.e. the net movement in the AR balance
+    /// during that period, the same "one repository-owned sum" shape as
+    /// SumAmountAsync/SumAmountByInvoiceAsync above. A positive result means
+    /// AR grew during the period (revenue recognized but not yet collected in
+    /// cash); the caller applies the sign flip for the cash-flow adjustment
+    /// itself, same convention IJournalEntryRepository's balance methods use.
+    /// </summary>
+    Task<decimal> SumAmountInRangeAsync(Guid companyId, DateTimeOffset dateFrom, DateTimeOffset dateTo, CancellationToken cancellationToken = default);
 }

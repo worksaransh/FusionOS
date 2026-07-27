@@ -27,4 +27,27 @@ public sealed class OpportunityRepository : IOpportunityRepository
 
     public Task<int> CountAsync(Guid companyId, CancellationToken cancellationToken = default) =>
         _context.Opportunities.CountAsync(o => o.CompanyId == companyId, cancellationToken);
+
+    public async Task<IReadOnlyList<(OpportunityStage Stage, decimal EstimatedValueTotal, decimal WeightedValueTotal)>> GetOpenPipelineByStageAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        var grouped = await _context.Opportunities
+            .Where(o => o.CompanyId == companyId && o.Stage != OpportunityStage.Won && o.Stage != OpportunityStage.Lost)
+            .GroupBy(o => o.Stage)
+            .Select(g => new
+            {
+                Stage = g.Key,
+                EstimatedValueTotal = g.Sum(o => o.EstimatedValue),
+                WeightedValueTotal = g.Sum(o => o.EstimatedValue * (o.Probability ?? 100m) / 100m),
+            })
+            .ToListAsync(cancellationToken);
+
+        return grouped.Select(g => (g.Stage, g.EstimatedValueTotal, g.WeightedValueTotal)).ToList();
+    }
+
+    public async Task<(int WonCount, int LostCount)> GetClosedCountsAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        var wonCount = await _context.Opportunities.CountAsync(o => o.CompanyId == companyId && o.Stage == OpportunityStage.Won, cancellationToken);
+        var lostCount = await _context.Opportunities.CountAsync(o => o.CompanyId == companyId && o.Stage == OpportunityStage.Lost, cancellationToken);
+        return (wonCount, lostCount);
+    }
 }

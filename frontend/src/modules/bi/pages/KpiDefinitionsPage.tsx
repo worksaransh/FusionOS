@@ -97,7 +97,7 @@ export function KpiDefinitionsPage() {
       <p className="mb-4 text-sm text-text-muted">The KPI catalog — Business Intelligence, Phase 6.</p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createKpi.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form noValidate onSubmit={handleSubmit((values) => createKpi.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-sm">
             Code
             <Controller

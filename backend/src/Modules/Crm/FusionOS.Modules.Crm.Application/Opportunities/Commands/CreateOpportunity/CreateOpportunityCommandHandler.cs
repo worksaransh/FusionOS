@@ -32,7 +32,8 @@ public sealed class CreateOpportunityCommandHandler : IRequestHandler<CreateOppo
         // Snapshot the prospect's name/email from the lead so winning can create the Sales
         // Customer without a cross-module read.
         var opportunity = Domain.Opportunities.Opportunity.Create(
-            request.CompanyId, lead.Id, request.Name, lead.Name, lead.ContactEmail, request.EstimatedValue);
+            request.CompanyId, lead.Id, request.Name, lead.Name, lead.ContactEmail, request.EstimatedValue,
+            request.Probability, request.ExpectedCloseDate);
 
         // Same-module, same DbContext: mark the lead converted and add the opportunity, one SaveChanges.
         // Lead.MarkConverted enforces the lead is Qualified first (throws otherwise -> 409).

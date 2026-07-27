@@ -9,7 +9,9 @@ namespace FusionOS.Modules.Sales.Domain.Invoices;
 /// foreign keys (unlike ProductId on the lines), since SalesOrder and Customer
 /// both live in this module. This is the Sales-side commercial document; the
 /// actual General Ledger/Accounts Receivable posting from it is Finance's job
-/// (05_MODULE_ROADMAP.md Phase 2) and is not built yet — see InvoiceIssued.
+/// (05_MODULE_ROADMAP.md Phase 2) — see InvoiceIssued and Finance's
+/// InvoiceIssuedConsumer, which now does exactly that (posts the AR ledger
+/// entry and JournalEntry from this event).
 /// </summary>
 public sealed class Invoice : TenantAggregateRoot
 {
@@ -68,6 +70,13 @@ public sealed class Invoice : TenantAggregateRoot
             throw new InvalidOperationException($"Only a Draft invoice can be issued (current status: {Status}).");
 
         Status = InvoiceStatus.Issued;
-        Raise(new InvoiceIssued(Id, CompanyId, SalesOrderId, CustomerId, TotalAmount));
+
+        var taxLines = _lines
+            .Where(l => l.TaxRateId.HasValue)
+            .GroupBy(l => l.TaxRateId!.Value)
+            .Select(g => new InvoiceIssuedTaxLine(g.Key, g.Sum(l => l.TaxAmount)))
+            .ToList();
+
+        Raise(new InvoiceIssued(Id, CompanyId, SalesOrderId, CustomerId, TotalAmount, taxLines));
     }
 }

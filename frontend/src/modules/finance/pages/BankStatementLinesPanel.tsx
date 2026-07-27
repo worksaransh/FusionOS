@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient, ApiError } from '../../../shared/api/client';
+import { apiClient, ApiError, type ProblemDetails } from '../../../shared/api/client';
+import { useAuthStore } from '../../../shared/auth/authStore';
 import { Button } from '../../../shared/ui/Button';
 import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
@@ -11,6 +12,13 @@ import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import { useBankAccountOptions, useJournalEntryOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
+
+function authHeaders(): HeadersInit {
+  const session = useAuthStore.getState().session;
+  return session ? { Authorization: `Bearer ${session.accessToken}` } : {};
+}
 
 const pickerSchema = z.object({
   bankAccountId: z.string().uuid('Pick a bank account'),
@@ -53,6 +61,18 @@ interface JournalEntryMatchCandidateDto {
   entryDate: string;
   reference: string | null;
   amount: number;
+}
+
+interface ImportRowErrorDto {
+  rowNumber: number;
+  message: string;
+}
+
+interface BankStatementLineImportResultDto {
+  rowsParsed: number;
+  rowsImported: number;
+  rowsSkippedAsDuplicate: number;
+  errors: ImportRowErrorDto[];
 }
 
 /**
@@ -122,6 +142,37 @@ export function BankStatementLinesPanel() {
     },
   });
 
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+
+  const importLines = useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append('companyId', companyId ?? '');
+      form.append('file', file);
+
+      const response = await fetch(`${BASE_URL}/finance/bank-accounts/${bankAccountId}/statement-lines/import`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: form,
+      });
+      if (!response.ok) {
+        const problem = (await response.json().catch(() => ({
+          title: response.statusText,
+          status: response.status,
+        }))) as ProblemDetails;
+        throw new ApiError(problem);
+      }
+      return response.json() as Promise<BankStatementLineImportResultDto>;
+    },
+    onSuccess: () => {
+      setImportFile(null);
+      if (importFileInputRef.current) importFileInputRef.current.value = '';
+      queryClient.invalidateQueries({ queryKey: ['bank-statement-lines', companyId, bankAccountId] });
+      queryClient.invalidateQueries({ queryKey: ['bank-reconciliation-summary', companyId, bankAccountId] });
+    },
+  });
+
   const {
     control: reconcileControl,
     handleSubmit: handleReconcileSubmit,
@@ -170,8 +221,8 @@ export function BankStatementLinesPanel() {
     <div className="mt-8">
       <h2 className="mb-3 text-lg font-semibold text-text">Bank Reconciliation</h2>
       <p className="mb-3 text-xs text-text-muted">
-        Pick a bank account, record its statement lines by hand (no bank-feed/file import in this slice), and mark
-        each line reconciled or unreconciled — optionally against a matching journal entry you pick yourself (no
+        Pick a bank account, then record its statement lines one at a time or import a batch from a CSV file, and
+        mark each line reconciled or unreconciled — optionally against a matching journal entry you pick yourself (no
         auto-matching algorithm).
       </p>
 
@@ -211,7 +262,7 @@ export function BankStatementLinesPanel() {
 
           <Card className="mb-6">
             <h3 className="mb-3 text-sm font-semibold text-text">Record a statement line</h3>
-            <form onSubmit={handleLineSubmit((values) => recordLine.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <form noValidate onSubmit={handleLineSubmit((values) => recordLine.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <label className="flex flex-col gap-1 text-sm">
                 Date
                 <Controller
@@ -251,6 +302,52 @@ export function BankStatementLinesPanel() {
             </form>
             {recordLine.isError && recordLine.error instanceof ApiError && (
               <p role="alert" className="mt-2 text-sm text-danger">{recordLine.error.problem.title}</p>
+            )}
+          </Card>
+
+          <Card className="mb-6">
+            <h3 className="mb-3 text-sm font-semibold text-text">Bulk import from CSV</h3>
+            <p className="mb-3 text-xs text-text-muted">
+              A header row followed by rows of exactly three columns, in this order:{' '}
+              <code>TransactionDate,Description,Amount</code>. No quoted fields or embedded commas are supported. A
+              row already imported for this bank account (same date, description and amount) is skipped, not
+              duplicated; a malformed row is reported below without blocking the rest of the file.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                ref={importFileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="max-w-[14rem] text-xs text-text-muted"
+                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!importFile || importLines.isPending}
+                onClick={() => importFile && importLines.mutate(importFile)}
+              >
+                {importLines.isPending ? 'Importing…' : 'Import CSV'}
+              </Button>
+            </div>
+            {importLines.isError && importLines.error instanceof ApiError && (
+              <p role="alert" className="mt-2 text-sm text-danger">{importLines.error.problem.title}</p>
+            )}
+            {importLines.data && (
+              <div className="mt-3 text-sm">
+                <p>
+                  Parsed <span className="font-semibold text-text">{importLines.data.rowsParsed}</span>, imported{' '}
+                  <span className="font-semibold text-text">{importLines.data.rowsImported}</span>, skipped as
+                  duplicate <span className="font-semibold text-text">{importLines.data.rowsSkippedAsDuplicate}</span>.
+                </p>
+                {importLines.data.errors.length > 0 && (
+                  <ul className="mt-2 flex flex-col gap-1 text-xs text-danger">
+                    {importLines.data.errors.map((e) => (
+                      <li key={e.rowNumber}>Row {e.rowNumber}: {e.message}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </Card>
 

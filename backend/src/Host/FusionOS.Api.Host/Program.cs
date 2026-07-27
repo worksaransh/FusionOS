@@ -136,6 +136,20 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
+
+    // Customer Portal (2026-07-22): one JWT bearer scheme validates both staff
+    // and customer tokens (same signing key/issuer/audience - see
+    // Sales.Infrastructure.Security.PortalJwtTokenService), so no second
+    // scheme is needed. A customer token is told apart purely by claims: it
+    // carries "token_type": "customer" and deliberately no "permission"
+    // claims at all, which is what already keeps it from satisfying any
+    // staff endpoint's IRequirePermission check (AuthorizationBehavior). This
+    // policy is the other half - it lets PortalController's actions require
+    // "a valid customer token" specifically, so a staff token (which has no
+    // token_type claim) cannot reach the portal's own endpoints either.
+    options.AddPolicy("CustomerPortal", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("token_type", "customer"));
 });
 
 // --- Rate limiting (AspNetCoreRateLimit was referenced but never configured —
@@ -163,7 +177,75 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "FusionOS API", Version = "v1" });
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "FusionOS API",
+        Version = "v1",
+        Description = "FusionOS modular monolith ERP — REST API surface for every business module " +
+            "(Core, Inventory, Warehouse, Procurement, Sales, Finance, Manufacturing, CRM, HRMS, " +
+            "Quality, Maintenance, Business Intelligence, AI, Marketplace, Integration Hub). " +
+            "Every endpoint requires a bearer token unless explicitly marked [AllowAnonymous].",
+    });
+
+    // JWT bearer scheme so the Swagger UI "Authorize" button can attach a token to
+    // every request (08_API_STANDARDS.md) — previously undocumented, callers had to
+    // discover the Authorization header shape by reading the AddAuthentication setup.
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Paste the raw JWT (no \"Bearer \" prefix — Swagger adds it automatically).",
+    });
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer",
+                },
+            },
+            Array.Empty<string>()
+        },
+    });
+
+    // XML doc comments — one per module Api project (GenerateDocumentationFile is set
+    // repo-wide in backend/Directory.Build.props, so every *.Api.csproj already emits
+    // an XML file next to its assembly; ProjectReference copies it into the Host's
+    // own output directory alongside the assembly it documents). Kept as an explicit
+    // list, one per module registered in ModuleRegistry.All, so a new module that
+    // forgets to add itself here shows up as missing docs rather than silently
+    // resolving nothing.
+    var xmlModuleAssemblies = new[]
+    {
+        "FusionOS.Api.Host",
+        "FusionOS.Modules.Core.Api",
+        "FusionOS.Modules.Inventory.Api",
+        "FusionOS.Modules.Warehouse.Api",
+        "FusionOS.Modules.Procurement.Api",
+        "FusionOS.Modules.Sales.Api",
+        "FusionOS.Modules.Finance.Api",
+        "FusionOS.Modules.Manufacturing.Api",
+        "FusionOS.Modules.Crm.Api",
+        "FusionOS.Modules.Hrms.Api",
+        "FusionOS.Modules.Quality.Api",
+        "FusionOS.Modules.Maintenance.Api",
+        "FusionOS.Modules.BusinessIntelligence.Api",
+        "FusionOS.Modules.Ai.Api",
+        "FusionOS.Modules.Marketplace.Api",
+        "FusionOS.Modules.IntegrationHub.Api",
+    };
+    foreach (var assemblyName in xmlModuleAssemblies)
+    {
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, $"{assemblyName}.xml");
+        if (File.Exists(xmlPath))
+            c.IncludeXmlComments(xmlPath);
+    }
 });
 builder.Services.AddHealthChecks();
 
@@ -189,6 +271,28 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler();
 app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
+
+// Platform-wide security headers (Phase 9 hardening fix, 2026-07-25) —
+// 07_SECURITY.md §7 calls for these applied via middleware, not per-controller;
+// this was previously entirely absent. Applied to every response regardless of
+// auth outcome, so even a 401/403/error response carries them. This is a pure
+// API host (no server-rendered HTML), so the CSP is deliberately restrictive —
+// there is no first-party inline script/style to allow and no reason for the
+// API itself to load any remote resource; the SPA that actually renders pages
+// is a separate origin (Vite/nginx) with its own CSP to set independently.
+// HSTS is added here (not via UseHsts(), which ASP.NET Core skips in
+// Development by default) so it's present in every environment for testability;
+// it's a no-op over plain HTTP anyway since browsers only honor it on HTTPS.
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "no-referrer";
+    headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+    headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    await next();
+});
 
 // Rate limiting runs before CORS/auth so even unauthenticated brute-force
 // traffic against /core/auth/login gets throttled, not just already-signed-in

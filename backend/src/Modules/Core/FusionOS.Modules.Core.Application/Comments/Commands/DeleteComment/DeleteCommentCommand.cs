@@ -15,7 +15,7 @@ namespace FusionOS.Modules.Core.Application.Comments.Commands.DeleteComment;
 /// ICurrentUserContext (same escape hatch AuthorizationBehavior itself is
 /// built on: ICurrentUserContext.HasPermission(code)).
 /// </summary>
-public sealed record DeleteCommentCommand(Guid CompanyId, Guid CommentId) : ICommand, IAuditableCommand
+public sealed record DeleteCommentCommand(Guid CompanyId, Guid CommentId) : ICommand, IAuditableCommand, IPubliclyAccessible
 {
     public string EntityType => nameof(Domain.Comments.Comment);
     public Guid EntityId => CommentId;

@@ -4,6 +4,15 @@ using MediatR;
 
 namespace FusionOS.Modules.Hrms.Application.LeaveRequests.Commands.RejectLeaveRequest;
 
+/// <summary>
+/// No LeaveBalance restoration needed here: LeaveRequest.Reject() (see LeaveRequest.cs)
+/// requires Status == Requested, the same one-clear-starting-state discipline Approve()
+/// uses — a request can never be Approved then later Rejected in this state machine, so a
+/// balance deduction (which only happens on Approve, in ApproveLeaveRequestCommandHandler)
+/// can never have happened yet by the time Reject runs. There is currently no "reverse an
+/// already-approved request" transition anywhere in this module; if one is added later, that
+/// handler — not this one — would be the place to call LeaveBalance.Restore().
+/// </summary>
 public sealed class RejectLeaveRequestCommandHandler : IRequestHandler<RejectLeaveRequestCommand, LeaveRequestDto>
 {
     private readonly ILeaveRequestRepository _repository;

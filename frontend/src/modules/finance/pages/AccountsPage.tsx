@@ -11,6 +11,8 @@ import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import { useAccountOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
+import { Tabs } from '../../../shared/ui/Tabs';
+import { AccountingPeriodsPanel } from './AccountingPeriodsPanel';
 import { BankAccountsPanel } from './BankAccountsPanel';
 import { BankStatementLinesPanel } from './BankStatementLinesPanel';
 import { BudgetsPanel } from './BudgetsPanel';
@@ -21,8 +23,11 @@ import { FinancialStatementsPanel } from './FinancialStatementsPanel';
 import { FixedAssetsPanel } from './FixedAssetsPanel';
 import { JournalEntriesPanel } from './JournalEntriesPanel';
 import { PayablesPanel } from './PayablesPanel';
+import { RecurringJournalEntriesPanel } from './RecurringJournalEntriesPanel';
 import { ReceivablesPanel } from './ReceivablesPanel';
 import { TaxJurisdictionsPanel } from './TaxJurisdictionsPanel';
+import { GstReturnSummaryPanel } from './GstReturnSummaryPanel';
+import { TaxPeriodSummaryPanel } from './TaxPeriodSummaryPanel';
 import { TaxRatesPanel } from './TaxRatesPanel';
 
 const ACCOUNT_TYPES = ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'] as const;
@@ -65,6 +70,7 @@ export function AccountsPage() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const [activeFinanceTab, setActiveFinanceTab] = useState('gl');
 
   const accountOptions = useAccountOptions(companyId);
 
@@ -154,7 +160,7 @@ export function AccountsPage() {
         },
       ]}
       form={
-        <form onSubmit={handleSubmit((values) => createAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Code
             <Controller
@@ -228,19 +234,69 @@ export function AccountsPage() {
         />
       )}
 
-      <JournalEntriesPanel />
-      <ReceivablesPanel />
-      <CostCentersPanel />
-      <TaxJurisdictionsPanel />
-      <TaxRatesPanel />
-      <PayablesPanel />
-      <BankAccountsPanel />
-      <BankStatementLinesPanel />
-      <ExchangeRatesPanel />
-      <BudgetsPanel />
-      <FixedAssetsPanel />
-      <FinanceSettingsPanel />
-      <FinancialStatementsPanel />
+      <div className="mt-8 border-t border-border pt-6">
+        <h2 className="mb-4 text-lg font-bold text-text">Financial Backbone Sub-Modules</h2>
+        <Tabs
+          tabs={[
+            { id: 'gl', label: 'GL & Journals' },
+            { id: 'ap_ar', label: 'Receivables & Payables' },
+            { id: 'banking', label: 'Banking & Treasury' },
+            { id: 'taxes', label: 'Taxation & GST' },
+            { id: 'assets', label: 'Budgets & Assets' },
+            { id: 'statements', label: 'Financial Statements' },
+          ]}
+          activeTab={activeFinanceTab}
+          onChange={setActiveFinanceTab}
+          className="mb-6"
+        />
+
+        {activeFinanceTab === 'gl' && (
+          <div className="space-y-6">
+            <JournalEntriesPanel />
+            <AccountingPeriodsPanel />
+            <RecurringJournalEntriesPanel />
+          </div>
+        )}
+
+        {activeFinanceTab === 'ap_ar' && (
+          <div className="space-y-6">
+            <ReceivablesPanel />
+            <PayablesPanel />
+          </div>
+        )}
+
+        {activeFinanceTab === 'banking' && (
+          <div className="space-y-6">
+            <BankAccountsPanel />
+            <BankStatementLinesPanel />
+            <ExchangeRatesPanel />
+          </div>
+        )}
+
+        {activeFinanceTab === 'taxes' && (
+          <div className="space-y-6">
+            <TaxRatesPanel />
+            <TaxJurisdictionsPanel />
+            <TaxPeriodSummaryPanel />
+            <GstReturnSummaryPanel />
+          </div>
+        )}
+
+        {activeFinanceTab === 'assets' && (
+          <div className="space-y-6">
+            <BudgetsPanel />
+            <CostCentersPanel />
+            <FixedAssetsPanel />
+            <FinanceSettingsPanel />
+          </div>
+        )}
+
+        {activeFinanceTab === 'statements' && (
+          <div>
+            <FinancialStatementsPanel />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -291,7 +347,7 @@ function AccountEditPanel({ companyId, account, onClose }: AccountEditPanelProps
         <h2 className="text-lg font-semibold text-text">Edit account — {account.code}</h2>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <Controller

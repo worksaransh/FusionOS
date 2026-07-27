@@ -47,6 +47,23 @@ public sealed class InvoiceRepository : IInvoiceRepository
         return lines.SumAsync(l => l.Quantity, cancellationToken);
     }
 
+    // Batch counterpart of GetInvoicedQuantityAsync above (Phase 10 audit fix,
+    // 2026-07-27): groups by ProductId in a single SQL join+GROUP BY+SUM instead
+    // of one round trip per distinct product in the caller's GroupBy loop.
+    public async Task<IReadOnlyDictionary<Guid, decimal>> GetInvoicedQuantitiesAsync(Guid companyId, Guid salesOrderId, IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default)
+    {
+        var grouped = await (
+            from invoice in _context.Invoices
+            where invoice.CompanyId == companyId && invoice.SalesOrderId == salesOrderId
+            from line in invoice.Lines
+            where productIds.Contains(line.ProductId)
+            group line by line.ProductId into g
+            select new { ProductId = g.Key, Quantity = g.Sum(l => l.Quantity) })
+            .ToListAsync(cancellationToken);
+
+        return grouped.ToDictionary(g => g.ProductId, g => g.Quantity);
+    }
+
     // TotalAmount is a computed, EF-ignored property, so it can't be referenced inside a
     // translated query - but its constituent, LineTotal, is a real mapped column, so this
     // groups by SalesPersonId and sums LineTotal directly in a single grouped SQL query
@@ -67,4 +84,16 @@ public sealed class InvoiceRepository : IInvoiceRepository
 
         return grouped.Select(g => (g.SalesPersonId, g.TotalInvoicedRevenue)).ToList();
     }
+
+    public async Task<IReadOnlyList<Invoice>> ListByCustomerAsync(Guid customerId, int page, int pageSize, CancellationToken cancellationToken = default) =>
+        await _context.Invoices
+            .Include(i => i.Lines)
+            .Where(i => i.CustomerId == customerId)
+            .OrderByDescending(i => i.InvoiceDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+    public Task<int> CountByCustomerAsync(Guid customerId, CancellationToken cancellationToken = default) =>
+        _context.Invoices.CountAsync(i => i.CustomerId == customerId, cancellationToken);
 }

@@ -9,7 +9,7 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
-import { useProductOptions, useSalesOrderOptions, useWarehouseOptions } from '../../../shared/api/entityOptions';
+import { useProductOptions, usePickListOptions, useSalesOrderOptions, useWarehouseOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
 const lineSchema = z.object({
@@ -20,6 +20,7 @@ const lineSchema = z.object({
 const schema = z.object({
   salesOrderId: z.string().uuid('Pick a sales order'),
   warehouseId: z.string().uuid('Pick a warehouse'),
+  pickListId: z.string().refine((v) => v === '' || /^[0-9a-fA-F-]{36}$/.test(v), 'Must be blank or a valid pick list'),
   lines: z.array(lineSchema).min(1, 'At least one line is required'),
 });
 type FormValues = z.infer<typeof schema>;
@@ -34,6 +35,7 @@ interface DispatchDto {
   id: string;
   salesOrderId: string;
   warehouseId: string;
+  pickListId: string | null;
   dispatchDate: string;
   lines: DispatchLineDto[];
 }
@@ -44,6 +46,11 @@ interface DispatchDto {
  * line's Product are picked via the shared EntityCombobox. Recording a
  * dispatch here automatically debits the Inventory Stock Ledger via
  * DispatchLineDispatchedConsumer once the Kafka consumer host is running.
+ *
+ * Pick list (optional, 2026-07-21 Dispatch-PickList link follow-up): an opaque, unvalidated
+ * reference into Warehouse's own PickList aggregate (see backend Dispatch.cs's doc comment) —
+ * scoped to the warehouse already picked above, same "picker scoped by a sibling field" pattern
+ * as PickListsPanel's own Bin picker being scoped by Zone.
  */
 export function DispatchesPanel() {
   const { companyId } = useActiveCompany();
@@ -53,11 +60,13 @@ export function DispatchesPanel() {
   const warehouseOptions = useWarehouseOptions(companyId);
   const productOptions = useProductOptions(companyId);
 
-  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { control, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { salesOrderId: '', warehouseId: '', lines: [{ productId: '', quantityDispatched: '1' }] },
+    defaultValues: { salesOrderId: '', warehouseId: '', pickListId: '', lines: [{ productId: '', quantityDispatched: '1' }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
+  const watchedWarehouseId = watch('warehouseId');
+  const pickListOptions = usePickListOptions(companyId, watchedWarehouseId || undefined);
 
   const dispatchesQuery = useQuery({
     queryKey: ['dispatches', companyId],
@@ -71,10 +80,11 @@ export function DispatchesPanel() {
         companyId,
         salesOrderId: values.salesOrderId,
         warehouseId: values.warehouseId,
+        pickListId: values.pickListId || null,
         lines: values.lines.map((l) => ({ productId: l.productId, quantityDispatched: Number(l.quantityDispatched) })),
       }),
     onSuccess: () => {
-      reset({ salesOrderId: '', warehouseId: '', lines: [{ productId: '', quantityDispatched: '1' }] });
+      reset({ salesOrderId: '', warehouseId: '', pickListId: '', lines: [{ productId: '', quantityDispatched: '1' }] });
       queryClient.invalidateQueries({ queryKey: ['dispatches', companyId] });
     },
   });
@@ -86,7 +96,7 @@ export function DispatchesPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Dispatches</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createDispatch.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => createDispatch.mutate(values))} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               Sales Order
@@ -122,6 +132,24 @@ export function DispatchesPanel() {
                 )}
               />
               {errors.warehouseId && <span className="text-xs text-danger">{errors.warehouseId.message}</span>}
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Pick list (optional)
+              <Controller
+                control={control}
+                name="pickListId"
+                render={({ field }) => (
+                  <EntityCombobox
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={pickListOptions.options}
+                    isLoading={pickListOptions.isLoading}
+                    placeholder={watchedWarehouseId ? 'Search pick lists…' : 'Pick a warehouse first'}
+                    disabled={!watchedWarehouseId}
+                  />
+                )}
+              />
+              {errors.pickListId && <span className="text-xs text-danger">{errors.pickListId.message}</span>}
             </label>
           </div>
 
@@ -181,6 +209,7 @@ export function DispatchesPanel() {
             columns={[
               { header: 'Date', render: (dispatch: DispatchDto) => new Date(dispatch.dispatchDate).toLocaleString() },
               { header: 'Warehouse', render: (dispatch: DispatchDto) => warehouseOptions.options.find((w) => w.id === dispatch.warehouseId)?.label ?? dispatch.warehouseId },
+              { header: 'Pick list', render: (dispatch: DispatchDto) => (dispatch.pickListId ? pickListOptions.options.find((p) => p.id === dispatch.pickListId)?.label ?? dispatch.pickListId : '—') },
               { header: 'Lines', render: (dispatch: DispatchDto) => dispatch.lines.length },
             ]}
             rows={dispatchesQuery.data.data}

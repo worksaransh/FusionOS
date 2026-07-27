@@ -34,6 +34,14 @@ namespace FusionOS.Modules.Finance.Application.FixedAssets.Queries.GetDepreciati
 ///
 /// <b>AccumulatedDepreciation</b> = MonthlyDepreciationAmount * MonthsElapsed,
 /// and <b>BookValue</b> = AcquisitionCost - AccumulatedDepreciation.
+///
+/// <b>2026-07-22:</b> the actual calculation now lives on FixedAsset itself
+/// (CalculateMonthlyDepreciationAmount/CalculateMonthsElapsed/
+/// CalculateAccumulatedDepreciation/CalculateBookValue) so that
+/// DisposeFixedAssetCommandHandler's disposal gain/loss posting can reuse the
+/// exact same figures rather than re-deriving them independently. This
+/// handler is now a thin read-only wrapper around those methods; the
+/// numbers/behavior are unchanged.
 /// </summary>
 public sealed class GetDepreciationScheduleQueryHandler : IRequestHandler<GetDepreciationScheduleQuery, DepreciationScheduleDto>
 {
@@ -46,23 +54,11 @@ public sealed class GetDepreciationScheduleQueryHandler : IRequestHandler<GetDep
         var fixedAsset = await _repository.GetByIdAsync(request.CompanyId, request.FixedAssetId, cancellationToken)
             ?? throw new KeyNotFoundException($"Fixed asset '{request.FixedAssetId}' was not found.");
 
-        var monthlyDepreciationAmount = (fixedAsset.AcquisitionCost - fixedAsset.SalvageValue) / fixedAsset.UsefulLifeMonths;
-        var monthsElapsed = CalculateMonthsElapsed(fixedAsset.AcquisitionDate, request.AsOfDate, fixedAsset.UsefulLifeMonths);
-        var accumulatedDepreciation = monthlyDepreciationAmount * monthsElapsed;
-        var bookValue = fixedAsset.AcquisitionCost - accumulatedDepreciation;
+        var monthlyDepreciationAmount = fixedAsset.CalculateMonthlyDepreciationAmount();
+        var monthsElapsed = fixedAsset.CalculateMonthsElapsed(request.AsOfDate);
+        var accumulatedDepreciation = fixedAsset.CalculateAccumulatedDepreciation(request.AsOfDate);
+        var bookValue = fixedAsset.CalculateBookValue(request.AsOfDate);
 
         return new DepreciationScheduleDto(fixedAsset.Id, monthlyDepreciationAmount, monthsElapsed, accumulatedDepreciation, bookValue);
-    }
-
-    private static int CalculateMonthsElapsed(DateTimeOffset acquisitionDate, DateTimeOffset asOfDate, int usefulLifeMonths)
-    {
-        if (asOfDate < acquisitionDate)
-            return 0;
-
-        var months = ((asOfDate.Year - acquisitionDate.Year) * 12) + (asOfDate.Month - acquisitionDate.Month);
-        if (asOfDate.Day < acquisitionDate.Day)
-            months--;
-
-        return Math.Clamp(months, 0, usefulLifeMonths);
     }
 }

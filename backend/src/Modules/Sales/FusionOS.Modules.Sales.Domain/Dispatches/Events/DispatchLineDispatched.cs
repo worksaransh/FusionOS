@@ -3,12 +3,14 @@ using FusionOS.SharedKernel;
 namespace FusionOS.Modules.Sales.Domain.Dispatches.Events;
 
 /// <summary>
-/// Candidate cross-module integration event (03_SYSTEM_ARCHITECTURE.md §4.2),
-/// symmetric to Warehouse's GoodsReceiptLineReceived but for the outbound side.
-/// Intended consumers once wired up: Inventory (stock-out ledger entry —
-/// symmetric to GoodsReceipt crediting stock in), Warehouse (physical pick/pack/
-/// ship execution tracking). No consumer exists yet, same documented gap as
-/// every other integration-event candidate in this codebase.
+/// Cross-module integration event (03_SYSTEM_ARCHITECTURE.md §4.2), symmetric
+/// to Warehouse's GoodsReceiptLineReceived but for the outbound side. Now has
+/// three real consumers: Inventory's DispatchLineDispatchedConsumer (stock-out
+/// ledger entry, symmetric to GoodsReceipt crediting stock in), Quality's
+/// DispatchLineDispatchedConsumer (auto-opens an outbound Inspection), and
+/// Ai's DispatchLineDispatchedConsumer (demand-history signal for
+/// GetDemandForecastQuery). No longer the "no consumer yet" candidate this
+/// doc comment originally described.
 /// </summary>
 public sealed record DispatchLineDispatched(
     Guid DispatchId,

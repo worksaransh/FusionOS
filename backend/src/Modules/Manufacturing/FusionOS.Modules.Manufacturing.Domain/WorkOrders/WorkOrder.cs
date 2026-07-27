@@ -20,6 +20,7 @@ namespace FusionOS.Modules.Manufacturing.Domain.WorkOrders;
 public sealed class WorkOrder : TenantAggregateRoot
 {
     private readonly List<WorkOrderComponent> _components = new();
+    private readonly List<WorkOrderOperation> _operations = new();
 
     public Guid BillOfMaterialsId { get; private set; }
     public Guid ProductId { get; private set; }
@@ -27,6 +28,15 @@ public sealed class WorkOrder : TenantAggregateRoot
     public decimal QuantityToProduce { get; private set; }
     public WorkOrderStatus Status { get; private set; }
     public IReadOnlyList<WorkOrderComponent> Components => _components.AsReadOnly();
+
+    /// <summary>This order's routing operations, snapshotted from the BOM at creation (Phase 6, 2026-07-22) — always in SequenceNumber order, same convention as BillOfMaterials.Operations.</summary>
+    public IReadOnlyList<WorkOrderOperation> Operations => _operations.OrderBy(o => o.SequenceNumber).ToList();
+
+    /// <summary>The completed work order this one reworks the scrapped quantity of — null unless this order was created by CreateReworkWorkOrderCommand (Rework, Phase 6).</summary>
+    public Guid? SourceWorkOrderId { get; private set; }
+
+    /// <summary>How much of this (Completed) order's QuantityScrapped has already been sent into a rework order — never exceeds QuantityScrapped.</summary>
+    public decimal QuantityReworked { get; private set; }
 
     /// <summary>The actual good (non-scrap) quantity produced — set only once this order is Completed; null until then.</summary>
     public decimal? QuantityGoodProduced { get; private set; }
@@ -45,7 +55,9 @@ public sealed class WorkOrder : TenantAggregateRoot
         Guid productId,
         Guid warehouseId,
         decimal quantityToProduce,
-        IReadOnlyCollection<BomComponentSnapshot> components)
+        IReadOnlyCollection<BomComponentSnapshot> components,
+        IReadOnlyCollection<RoutingOperationSnapshot>? operations = null,
+        Guid? sourceWorkOrderId = null)
     {
         if (billOfMaterialsId == Guid.Empty)
             throw new ArgumentException("Bill of materials id is required.", nameof(billOfMaterialsId));
@@ -66,10 +78,20 @@ public sealed class WorkOrder : TenantAggregateRoot
             WarehouseId = warehouseId,
             QuantityToProduce = quantityToProduce,
             Status = WorkOrderStatus.Draft,
+            SourceWorkOrderId = sourceWorkOrderId,
         };
 
         foreach (var component in components)
-            workOrder._components.Add(WorkOrderComponent.Create(component.ComponentProductId, component.QuantityPerUnit * quantityToProduce));
+        {
+            workOrder._components.Add(WorkOrderComponent.Create(
+                component.ComponentProductId, component.QuantityPerUnit * quantityToProduce, component.UnitCost));
+        }
+
+        foreach (var operation in operations ?? Array.Empty<RoutingOperationSnapshot>())
+        {
+            workOrder._operations.Add(WorkOrderOperation.Create(
+                operation.RoutingOperationId, operation.SequenceNumber, operation.OperationName, operation.WorkCenter, operation.StandardMinutes));
+        }
 
         return workOrder;
     }
@@ -170,11 +192,78 @@ public sealed class WorkOrder : TenantAggregateRoot
 
         Status = WorkOrderStatus.Cancelled;
     }
+
+    /// <summary>Starts one of this order's snapshotted routing operations (Phase 6, 2026-07-22). Only permitted while the order itself is Released.</summary>
+    public void StartOperation(Guid workOrderOperationId, DateTimeOffset now)
+    {
+        if (Status != WorkOrderStatus.Released)
+            throw new InvalidOperationException($"Operations can only be started on a Released work order (current status: {Status}).");
+
+        var operation = _operations.FirstOrDefault(o => o.Id == workOrderOperationId)
+            ?? throw new ArgumentException($"Operation '{workOrderOperationId}' is not part of this work order.", nameof(workOrderOperationId));
+
+        operation.Start(now);
+    }
+
+    /// <summary>Completes one of this order's routing operations. Only permitted while the order itself is Released — does not itself complete the whole work order.</summary>
+    public void CompleteOperation(Guid workOrderOperationId, DateTimeOffset now)
+    {
+        if (Status != WorkOrderStatus.Released)
+            throw new InvalidOperationException($"Operations can only be completed on a Released work order (current status: {Status}).");
+
+        var operation = _operations.FirstOrDefault(o => o.Id == workOrderOperationId)
+            ?? throw new ArgumentException($"Operation '{workOrderOperationId}' is not part of this work order.", nameof(workOrderOperationId));
+
+        operation.Complete(now);
+    }
+
+    /// <summary>
+    /// Assigns a machine and time window to one of this order's routing operations
+    /// (Machine Scheduling, Phase 6). Cross-work-order conflict checking (does this
+    /// machine already have an overlapping schedule elsewhere) is the command
+    /// handler's job — it must query across every work order, which this aggregate
+    /// cannot see.
+    /// </summary>
+    public void ScheduleOperation(Guid workOrderOperationId, Guid machineId, DateTimeOffset scheduledStart, DateTimeOffset scheduledEnd)
+    {
+        var operation = _operations.FirstOrDefault(o => o.Id == workOrderOperationId)
+            ?? throw new ArgumentException($"Operation '{workOrderOperationId}' is not part of this work order.", nameof(workOrderOperationId));
+
+        operation.Schedule(machineId, scheduledStart, scheduledEnd);
+    }
+
+    /// <summary>
+    /// Records that <paramref name="quantity"/> of this (Completed) order's scrapped
+    /// output has been sent into a rework order (Rework, Phase 6) — the actual new
+    /// production run is a separate WorkOrder (see CreateReworkWorkOrderCommandHandler),
+    /// linked back via its SourceWorkOrderId; this just tracks how much of THIS order's
+    /// scrap has already been claimed, so the same scrapped units can't be reworked twice.
+    /// </summary>
+    public void RecordRework(decimal quantity)
+    {
+        if (Status != WorkOrderStatus.Completed)
+            throw new InvalidOperationException($"Only a Completed work order's scrap can be reworked (current status: {Status}).");
+        if (quantity <= 0)
+            throw new ArgumentException("Rework quantity must be greater than zero.", nameof(quantity));
+
+        var newTotal = QuantityReworked + quantity;
+        if (newTotal > QuantityScrapped)
+        {
+            throw new InvalidOperationException(
+                $"Cannot rework {quantity}: only {QuantityScrapped - QuantityReworked} of this order's scrapped quantity remains unclaimed.");
+        }
+
+        QuantityReworked = newTotal;
+    }
 }
 
 /// <summary>
 /// The per-unit component figures the command handler reads off a BillOfMaterials and hands
 /// to <see cref="WorkOrder.Create"/> — kept in Domain so the aggregate never takes a
-/// dependency on the Application layer that assembles it.
+/// dependency on the Application layer that assembles it. UnitCost (WIP support, Phase 6)
+/// is copied straight from BomLine.UnitCost.
 /// </summary>
-public sealed record BomComponentSnapshot(Guid ComponentProductId, decimal QuantityPerUnit);
+public sealed record BomComponentSnapshot(Guid ComponentProductId, decimal QuantityPerUnit, decimal UnitCost = 0m);
+
+/// <summary>The routing operation figures the command handler reads off a BillOfMaterials and hands to <see cref="WorkOrder.Create"/> (Phase 6, 2026-07-22) — same "assembled by Application, defined in Domain" split as BomComponentSnapshot.</summary>
+public sealed record RoutingOperationSnapshot(Guid RoutingOperationId, int SequenceNumber, string OperationName, string WorkCenter, decimal StandardMinutes);

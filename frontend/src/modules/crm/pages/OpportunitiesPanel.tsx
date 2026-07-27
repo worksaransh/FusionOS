@@ -16,6 +16,8 @@ const schema = z.object({
   leadId: z.string().uuid('Pick a lead'),
   name: z.string().min(1, 'Name is required').max(200),
   estimatedValue: z.string().refine((v) => Number(v) >= 0, 'Estimated value cannot be negative'),
+  probability: z.string().refine((v) => v === '' || (Number(v) >= 0 && Number(v) <= 100), 'Probability must be 0-100'),
+  expectedCloseDate: z.string(),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -29,6 +31,15 @@ const assignAccountSchema = z.object({
 });
 type AssignAccountFormValues = z.infer<typeof assignAccountSchema>;
 
+const forecastSchema = z.object({
+  probability: z.string().refine((v) => v === '' || (Number(v) >= 0 && Number(v) <= 100), 'Probability must be 0-100'),
+  expectedCloseDate: z.string(),
+});
+type ForecastFormValues = z.infer<typeof forecastSchema>;
+
+/** Non-terminal pipeline stages — ChangeOpportunityStageCommand only allows moving between these; Won/Lost stay exclusive to /win and /lose. */
+const PIPELINE_STAGES = ['Open', 'Prospecting', 'Qualification', 'Proposal', 'Negotiation'] as const;
+
 interface OpportunityDto {
   id: string;
   leadId: string;
@@ -39,6 +50,9 @@ interface OpportunityDto {
   stage: string;
   customerCode: string | null;
   accountId: string | null;
+  probability: number | null;
+  expectedCloseDate: string | null;
+  weightedValue: number;
 }
 
 /**
@@ -55,12 +69,13 @@ export function OpportunitiesPanel() {
   const queryClient = useQueryClient();
   const [winningOpportunityId, setWinningOpportunityId] = useState<string | null>(null);
   const [assigningAccountOpportunityId, setAssigningAccountOpportunityId] = useState<string | null>(null);
+  const [editingForecastOpportunityId, setEditingForecastOpportunityId] = useState<string | null>(null);
 
   const leadOptions = useLeadOptions(companyId);
 
   const { control, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { leadId: '', name: '', estimatedValue: '0' },
+    defaultValues: { leadId: '', name: '', estimatedValue: '0', probability: '', expectedCloseDate: '' },
   });
 
   const opportunitiesQuery = useQuery({
@@ -76,9 +91,11 @@ export function OpportunitiesPanel() {
         leadId: values.leadId,
         name: values.name,
         estimatedValue: Number(values.estimatedValue),
+        probability: values.probability === '' ? null : Number(values.probability),
+        expectedCloseDate: values.expectedCloseDate === '' ? null : new Date(values.expectedCloseDate).toISOString(),
       }),
     onSuccess: () => {
-      reset({ leadId: '', name: '', estimatedValue: '0' });
+      reset({ leadId: '', name: '', estimatedValue: '0', probability: '', expectedCloseDate: '' });
       queryClient.invalidateQueries({ queryKey: ['opportunities', companyId] });
     },
     onError: (error) => {
@@ -95,17 +112,24 @@ export function OpportunitiesPanel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['opportunities', companyId] }),
   });
 
+  const changeStage = useMutation({
+    mutationFn: ({ id, stage }: { id: string; stage: string }) =>
+      apiClient.post<OpportunityDto>(`/crm/opportunities/${id}/change-stage`, { companyId, stage }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['opportunities', companyId] }),
+  });
+
   if (!companyId) return null;
 
   const winningOpportunity = opportunitiesQuery.data?.data.find((o) => o.id === winningOpportunityId) ?? null;
   const assigningAccountOpportunity = opportunitiesQuery.data?.data.find((o) => o.id === assigningAccountOpportunityId) ?? null;
+  const editingForecastOpportunity = opportunitiesQuery.data?.data.find((o) => o.id === editingForecastOpportunityId) ?? null;
 
   return (
     <div className="mt-8">
       <h2 className="mb-3 text-lg font-semibold text-text">Opportunities</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createOpportunity.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form noValidate onSubmit={handleSubmit((values) => createOpportunity.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-sm">
             Lead
             <Controller
@@ -146,6 +170,28 @@ export function OpportunitiesPanel() {
             />
             {errors.estimatedValue && <span className="text-xs text-danger">{errors.estimatedValue.message}</span>}
           </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Probability % (optional)
+            <Controller
+              control={control}
+              name="probability"
+              render={({ field }) => (
+                <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="0-100" {...field} />
+              )}
+            />
+            {errors.probability && <span className="text-xs text-danger">{errors.probability.message}</span>}
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Expected close date (optional)
+            <Controller
+              control={control}
+              name="expectedCloseDate"
+              render={({ field }) => (
+                <input type="date" className="rounded-md border border-border bg-surface px-2 py-1.5" {...field} />
+              )}
+            />
+            {errors.expectedCloseDate && <span className="text-xs text-danger">{errors.expectedCloseDate.message}</span>}
+          </label>
           <div className="col-span-full">
             <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating…' : 'Create opportunity'}</Button>
           </div>
@@ -160,20 +206,44 @@ export function OpportunitiesPanel() {
           columns={[
             { header: 'Name', render: (row: OpportunityDto) => row.name },
             { header: 'Estimated value', render: (row: OpportunityDto) => row.estimatedValue.toLocaleString() },
-            { header: 'Stage', render: (row: OpportunityDto) => row.stage },
+            { header: 'Weighted value', render: (row: OpportunityDto) => row.weightedValue.toLocaleString() },
+            {
+              header: 'Stage',
+              render: (row: OpportunityDto) => {
+                const isClosed = row.stage === 'Won' || row.stage === 'Lost';
+                if (isClosed) return row.stage;
+                return (
+                  <select
+                    className="rounded-md border border-border bg-surface px-2 py-1 text-sm"
+                    value={row.stage}
+                    disabled={changeStage.isPending}
+                    onChange={(e) => changeStage.mutate({ id: row.id, stage: e.target.value })}
+                  >
+                    {PIPELINE_STAGES.map((stage) => (
+                      <option key={stage} value={stage}>{stage}</option>
+                    ))}
+                  </select>
+                );
+              },
+            },
+            { header: 'Probability', render: (row: OpportunityDto) => (row.probability ?? null) === null ? '—' : `${row.probability}%` },
+            { header: 'Expected close', render: (row: OpportunityDto) => (row.expectedCloseDate ? new Date(row.expectedCloseDate).toLocaleDateString() : '—') },
             { header: 'Customer', render: (row: OpportunityDto) => row.customerCode ?? '—' },
             { header: 'Account', render: (row: OpportunityDto) => (row.accountId ? `${row.accountId.slice(0, 8)}…` : '—') },
             {
               header: 'Actions',
               render: (row: OpportunityDto) => (
                 <div className="flex items-center gap-2">
-                  {row.stage === 'Open' && (
+                  {row.stage !== 'Won' && row.stage !== 'Lost' && (
                     <>
                       <Button type="button" variant="secondary" onClick={() => setWinningOpportunityId(row.id)}>
                         Win
                       </Button>
                       <Button type="button" variant="danger" disabled={loseOpportunity.isPending} onClick={() => loseOpportunity.mutate(row.id)}>
                         Lose
+                      </Button>
+                      <Button type="button" variant="secondary" onClick={() => setEditingForecastOpportunityId(row.id)}>
+                        Forecast
                       </Button>
                     </>
                   )}
@@ -192,7 +262,7 @@ export function OpportunitiesPanel() {
           rowKey={(row) => row.id}
         />
       </Card>
-      {loseOpportunity.isError && (
+      {(loseOpportunity.isError || changeStage.isError) && (
         <p role="alert" className="mt-2 text-sm text-danger">Could not update that opportunity.</p>
       )}
 
@@ -209,6 +279,14 @@ export function OpportunitiesPanel() {
           companyId={companyId}
           opportunity={assigningAccountOpportunity}
           onClose={() => setAssigningAccountOpportunityId(null)}
+        />
+      )}
+
+      {editingForecastOpportunity && (
+        <OpportunityForecastPanel
+          companyId={companyId}
+          opportunity={editingForecastOpportunity}
+          onClose={() => setEditingForecastOpportunityId(null)}
         />
       )}
     </div>
@@ -257,7 +335,7 @@ function WinOpportunityPanel({ companyId, opportunity, onClose }: WinOpportunity
       <p className="mb-3 text-xs text-text-muted">
         Winning creates a real Sales Customer with the code below (see OpportunityWon's consumer in Sales).
       </p>
-      <form onSubmit={handleSubmit((values) => winOpportunity.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => winOpportunity.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Customer code
           <Controller
@@ -314,7 +392,7 @@ function OpportunityAssignAccountPanel({ companyId, opportunity, onClose }: Oppo
         <h3 className="text-base font-semibold text-text">Assign account — {opportunity.name}</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => assignAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => assignAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Account (leave blank to unassign)
           <Controller
@@ -337,6 +415,77 @@ function OpportunityAssignAccountPanel({ companyId, opportunity, onClose }: Oppo
           <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save account'}</Button>
           {assignAccount.isError && (
             <span role="alert" className="text-sm text-danger">Could not assign that account.</span>
+          )}
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+interface OpportunityForecastPanelProps {
+  companyId: string;
+  opportunity: OpportunityDto;
+  onClose: () => void;
+}
+
+/** Inline edit for Probability/ExpectedCloseDate via POST .../{id}/forecast (CRM pipeline depth pass) — both fields optional/clearable. */
+function OpportunityForecastPanel({ companyId, opportunity, onClose }: OpportunityForecastPanelProps) {
+  const queryClient = useQueryClient();
+
+  const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<ForecastFormValues>({
+    resolver: zodResolver(forecastSchema),
+    defaultValues: {
+      probability: opportunity.probability === null || opportunity.probability === undefined ? '' : String(opportunity.probability),
+      expectedCloseDate: opportunity.expectedCloseDate ? opportunity.expectedCloseDate.slice(0, 10) : '',
+    },
+  });
+
+  const updateForecast = useMutation({
+    mutationFn: (values: ForecastFormValues) =>
+      apiClient.post<OpportunityDto>(`/crm/opportunities/${opportunity.id}/forecast`, {
+        companyId,
+        probability: values.probability === '' ? null : Number(values.probability),
+        expectedCloseDate: values.expectedCloseDate === '' ? null : new Date(values.expectedCloseDate).toISOString(),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['opportunities', companyId] });
+      onClose();
+    },
+  });
+
+  return (
+    <Card className="mt-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-base font-semibold text-text">Forecast — {opportunity.name}</h3>
+        <Button variant="secondary" onClick={onClose}>Close</Button>
+      </div>
+      <form noValidate onSubmit={handleSubmit((values) => updateForecast.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Probability % (leave blank to clear)
+          <Controller
+            control={control}
+            name="probability"
+            render={({ field }) => (
+              <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="0-100" {...field} />
+            )}
+          />
+          {errors.probability && <span className="text-xs text-danger">{errors.probability.message}</span>}
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Expected close date (leave blank to clear)
+          <Controller
+            control={control}
+            name="expectedCloseDate"
+            render={({ field }) => (
+              <input type="date" className="rounded-md border border-border bg-surface px-2 py-1.5" {...field} />
+            )}
+          />
+          {errors.expectedCloseDate && <span className="text-xs text-danger">{errors.expectedCloseDate.message}</span>}
+        </label>
+        <div className="col-span-2 flex items-center gap-3">
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save forecast'}</Button>
+          {updateForecast.isError && (
+            <span role="alert" className="text-sm text-danger">Could not update the forecast.</span>
           )}
         </div>
       </form>

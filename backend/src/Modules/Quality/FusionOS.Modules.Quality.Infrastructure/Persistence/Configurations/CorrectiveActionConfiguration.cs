@@ -14,6 +14,15 @@ public sealed class CorrectiveActionConfiguration : IEntityTypeConfiguration<Cor
         builder.Property(x => x.CorrectiveActionDescription).HasMaxLength(2000).IsRequired();
         builder.Property(x => x.PreventiveActionDescription).HasMaxLength(2000).IsRequired();
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        // Structured RCA (additive, 2026-07-23): RcaMethod defaults to "Other" so every
+        // pre-existing row keeps working unchanged; the 5-Whys chain is 5 plain nullable
+        // columns rather than a child entity — see CorrectiveAction's own doc comment.
+        builder.Property(x => x.RcaMethod).HasConversion<string>().HasMaxLength(20).IsRequired().HasDefaultValue(RcaMethod.Other);
+        builder.Property(x => x.Why1).HasMaxLength(500);
+        builder.Property(x => x.Why2).HasMaxLength(500);
+        builder.Property(x => x.Why3).HasMaxLength(500);
+        builder.Property(x => x.Why4).HasMaxLength(500);
+        builder.Property(x => x.Why5).HasMaxLength(500);
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md)
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);

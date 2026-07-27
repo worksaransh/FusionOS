@@ -109,7 +109,7 @@ export function TaxJurisdictionsPanel() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createTaxJurisdiction.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createTaxJurisdiction.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Code
             <Controller
@@ -239,7 +239,7 @@ function TaxJurisdictionEditPanel({ companyId, taxJurisdiction, onClose }: TaxJu
         <h3 className="text-base font-semibold text-text">Edit tax jurisdiction — {taxJurisdiction.code}</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateTaxJurisdiction.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateTaxJurisdiction.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <Controller

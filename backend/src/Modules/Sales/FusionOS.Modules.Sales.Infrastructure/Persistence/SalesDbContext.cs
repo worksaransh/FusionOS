@@ -4,8 +4,10 @@ using FusionOS.Modules.Sales.Domain.CreditNotes;
 using FusionOS.Modules.Sales.Domain.Discounts;
 using FusionOS.Modules.Sales.Domain.Dispatches;
 using FusionOS.Modules.Sales.Domain.Invoices;
+using FusionOS.Modules.Sales.Domain.PortalUsers;
 using FusionOS.Modules.Sales.Domain.PriceLists;
 using FusionOS.Modules.Sales.Domain.Quotations;
+using FusionOS.Modules.Sales.Domain.Returns;
 using FusionOS.Modules.Sales.Domain.SalesOrders;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +29,8 @@ public sealed class SalesDbContext : BaseDbContext
     public DbSet<PriceList> PriceLists => Set<PriceList>();
     public DbSet<SalesCommissionRate> SalesCommissionRates => Set<SalesCommissionRate>();
     public DbSet<DiscountRule> DiscountRules => Set<DiscountRule>();
+    public DbSet<SalesReturn> SalesReturns => Set<SalesReturn>();
+    public DbSet<CustomerPortalUser> CustomerPortalUsers => Set<CustomerPortalUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

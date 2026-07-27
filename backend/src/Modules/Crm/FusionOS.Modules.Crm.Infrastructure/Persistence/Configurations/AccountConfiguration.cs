@@ -17,5 +17,6 @@ public sealed class AccountConfiguration : IEntityTypeConfiguration<Account>
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);
         builder.HasIndex(x => new { x.CompanyId, x.IsActive });
+        builder.HasIndex(x => x.OwnerId);
     }
 }

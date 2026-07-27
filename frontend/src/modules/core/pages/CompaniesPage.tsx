@@ -128,7 +128,7 @@ export function CompaniesPage() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createCompany.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createCompany.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Name
             <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />
@@ -271,7 +271,7 @@ function CompanyEditForm({ company, onClose }: CompanyEditFormProps) {
         <h2 className="text-lg font-semibold text-text">Edit company — {company.name}</h2>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateCompany.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateCompany.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />

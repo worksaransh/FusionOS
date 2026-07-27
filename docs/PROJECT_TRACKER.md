@@ -1,6 +1,13 @@
 # FusionOS — Project Completion Tracker
 
-**Last updated:** 2026-07-20 (Wave 1 — a coordinated multi-agent depth pass: the frontend's first real RBAC gating (a `RequirePermission` route gate + permission-prefix sidebar filtering + `hasPermissionPrefix` on `authStore`; every module route now gated on its `*.read` code, Dashboard/Approvals/Notifications deliberately ungated) and a Ctrl/Cmd+K command palette (module-jump navigation, wired to the previously decorative header search button), plus depth slices in five modules — Manufacturing (BOM routing operations, work-order material issue/return, scrap/yield on completion), CRM (Account/Contact/Activity aggregates + account linkage on Lead/Opportunity), HRMS (attendance + a deliberately-minimal payroll skeleton), Quality (non-conformance reports + corrective actions — the CAPA gap), and Maintenance (schedules + technician assignment/downtime). Frontend genuinely execution-verified: `npm run lint` clean, `npm run build` 0 errors, `npm test` 37/37 (17 new tests). Backend written-but-never-compiled as always — two real compile-class errors were caught by manual review during the wave (an unqualified `IUnitOfWork` in Quality; a JSON-unbindable typed enum in CRM's CreateActivity), both fixed, which reinforces rather than reduces Phase G's standing as the single top blocker. EF Core migrations still do not exist anywhere. See Section 2's Wave 1 entry. Previous update: 2026-07-17/18, Phase M8h — Finance depth closeout audit — the eighth and final M8 sub-slice, now closing out **Phase M8 (Finance depth) in its entirety**. A full audit sweep across all of M8a–g found the codebase's IUnitOfWork-missing-using bug class to be genuinely absent this time (every one of the 27 M8 command handlers, plus a repo-wide re-sweep of all 102 handlers across every module, either imports the correct module-canonical namespace or fully-qualifies the type inline — zero misses), all 10 M8 DbSets present in `FinanceDbContext.cs`, all 10 M8 repositories registered in `FinanceModule.cs`, all 38 M8 `RequiredPermissions` string literals cross-checked byte-for-byte against `PermissionCatalog.cs` with zero typos, all 9 new controllers routed sensibly (`BudgetLine` CRUD confirmed intentionally nested under `BudgetsController`, not a missing controller), and all 9 new frontend panels confirmed imported and rendered in `AccountsPage.tsx`. One genuine bug was found and fixed: the recurring filesystem mount-staleness bug (see Section 6) had truncated `CreateCostCenterCommandHandler.cs` on the bash-side mount (missing its final class-closing brace, caught by the routine brace-balance sweep across all M8 domain/application/infrastructure/api/test folders — the only imbalance found in the entire sweep), recovered via the standard `cat > file <<'EOF'` heredoc rewrite using the `Read`-tool-confirmed content, re-verified by line count and a clean re-run of the brace check. A real `tsc -b --force` came back with 0 errors. Test-file presence confirmed for all 7 M8 sub-slices under `backend/tests/FusionOS.Modules.Finance.Tests/` (`BankStatementLine` tests are intentionally co-located inside the `BankAccounts/` test folder alongside M8d's bank-reconciliation tests, not a separate folder). Phase M8 (sub-slices a–h) is now fully closed. Phase M7 fully closed — SendGrid delivery done; Phase M9 fully closed in its entirety — WMS-depth scope, weighted-average costing, batch/lot/serial, and Multi-UOM; Phase M10 fully closed except two genuinely blocked items; all three outstanding user decisions — costing method, tax jurisdiction, notification provider — are now resolved)
+**Last updated:** 2026-07-25 (Phase 9, Enterprise Hardening — a documentation catch-up pass. No
+code was written this pass; it exists because a source-tree sweep found this file had stopped
+being updated after Wave 1 (2026-07-20) while several more build passes clearly kept going —
+Manufacturing gained MRP/routing/work-centers, Sales gained a full Customer Portal, Quality/HRMS/
+Procurement/Warehouse/Inventory/Finance/CRM all gained controllers and aggregates this file never
+narrated. See Section 2's new "Phase 9 catch-up" entry for the full breakdown and its confidence
+caveat — it's a file-presence sweep, not the line-by-line read the entries above it got.) Previous
+update: 2026-07-20 (Wave 1 — a coordinated multi-agent depth pass: the frontend's first real RBAC gating (a `RequirePermission` route gate + permission-prefix sidebar filtering + `hasPermissionPrefix` on `authStore`; every module route now gated on its `*.read` code, Dashboard/Approvals/Notifications deliberately ungated) and a Ctrl/Cmd+K command palette (module-jump navigation, wired to the previously decorative header search button), plus depth slices in five modules — Manufacturing (BOM routing operations, work-order material issue/return, scrap/yield on completion), CRM (Account/Contact/Activity aggregates + account linkage on Lead/Opportunity), HRMS (attendance + a deliberately-minimal payroll skeleton), Quality (non-conformance reports + corrective actions — the CAPA gap), and Maintenance (schedules + technician assignment/downtime). Frontend genuinely execution-verified: `npm run lint` clean, `npm run build` 0 errors, `npm test` 37/37 (17 new tests). Backend written-but-never-compiled as always — two real compile-class errors were caught by manual review during the wave (an unqualified `IUnitOfWork` in Quality; a JSON-unbindable typed enum in CRM's CreateActivity), both fixed, which reinforces rather than reduces Phase G's standing as the single top blocker. EF Core migrations still do not exist anywhere. See Section 2's Wave 1 entry. Previous update: 2026-07-17/18, Phase M8h — Finance depth closeout audit — the eighth and final M8 sub-slice, now closing out **Phase M8 (Finance depth) in its entirety**. A full audit sweep across all of M8a–g found the codebase's IUnitOfWork-missing-using bug class to be genuinely absent this time (every one of the 27 M8 command handlers, plus a repo-wide re-sweep of all 102 handlers across every module, either imports the correct module-canonical namespace or fully-qualifies the type inline — zero misses), all 10 M8 DbSets present in `FinanceDbContext.cs`, all 10 M8 repositories registered in `FinanceModule.cs`, all 38 M8 `RequiredPermissions` string literals cross-checked byte-for-byte against `PermissionCatalog.cs` with zero typos, all 9 new controllers routed sensibly (`BudgetLine` CRUD confirmed intentionally nested under `BudgetsController`, not a missing controller), and all 9 new frontend panels confirmed imported and rendered in `AccountsPage.tsx`. One genuine bug was found and fixed: the recurring filesystem mount-staleness bug (see Section 6) had truncated `CreateCostCenterCommandHandler.cs` on the bash-side mount (missing its final class-closing brace, caught by the routine brace-balance sweep across all M8 domain/application/infrastructure/api/test folders — the only imbalance found in the entire sweep), recovered via the standard `cat > file <<'EOF'` heredoc rewrite using the `Read`-tool-confirmed content, re-verified by line count and a clean re-run of the brace check. A real `tsc -b --force` came back with 0 errors. Test-file presence confirmed for all 7 M8 sub-slices under `backend/tests/FusionOS.Modules.Finance.Tests/` (`BankStatementLine` tests are intentionally co-located inside the `BankAccounts/` test folder alongside M8d's bank-reconciliation tests, not a separate folder). Phase M8 (sub-slices a–h) is now fully closed. Phase M7 fully closed — SendGrid delivery done; Phase M9 fully closed in its entirety — WMS-depth scope, weighted-average costing, batch/lot/serial, and Multi-UOM; Phase M10 fully closed except two genuinely blocked items; all three outstanding user decisions — costing method, tax jurisdiction, notification provider — are now resolved)
 **Overall completion:** ~37% (source-code-presence estimate, not a measured/verified figure — see caveat below)
 **Production readiness:** 0% verified — no EF Core migration has ever been generated or applied, and the backend has never been compiled in this project's working environment.
 
@@ -2005,6 +2012,105 @@ copy-paste prompts to run each one.
     doc-comment at the top of `frontend/src/modules/core/pages/CompaniesPage.tsx` still calls that
     page "the one real, end-to-end vertical slice in this scaffold" with "every other module's page
     a health-check placeholder" — long false on both counts; fix next time that file is touched.
+- [x] **Phase 9 catch-up (2026-07-25) — documenting build passes this tracker missed between
+  Wave 1 and now.** This entry exists because a `find`-based sweep of every module's controllers/
+  domain folders, done for the Enterprise Hardening deployment-docs task, turned up a large amount
+  of real, present-in-the-repo capability with no corresponding Section 2 entry above. **Confidence
+  level is lower than every entry above this one**: those were written by whoever built the slice,
+  reading every touched file. This one was written by listing directories and controller file names
+  and reading a handful of them — real evidence the capability exists, not a verified account of
+  exactly how it behaves. Treat it as a breadth inventory to close the doc gap, and re-verify
+  anything load-bearing before relying on it. By module:
+  - **Manufacturing** — an `MrpController` plus `GenerateMrpRequirementsQuery`/
+    `ExplodeBillOfMaterialsQuery`/`BomExplosionEngine` exist, i.e. **MRP and multi-level BOM
+    explosion are no longer 0%/absent** as Section 5 below still states — that row needs
+    re-scoring. Also present: `WorkCentersController`/`MachinesController` (capacity load
+    queries), BOM versioning (`CreateNewBomVersionCommand`, `SetPrimaryBillOfMaterialsCommand`,
+    `GetVersionHistoryQuery`), work-order operation scheduling
+    (`ScheduleWorkOrderOperationCommand`/`StartWorkOrderOperationCommand`/
+    `CompleteWorkOrderOperationCommand`), and rework work orders (`CreateReworkWorkOrderCommand`).
+  - **Sales** — a **Customer Portal** exists end-to-end: `PortalController` +
+    `CustomerPortalAuthController` (backend, using a `PortalJwtTokenService` — same JWT signing
+    key/issuer/audience as staff auth per `Program.cs`'s `CustomerPortal` policy, told apart by a
+    `token_type: customer` claim with no permission claims) and `frontend/src/portal/
+    PortalDashboardPage.tsx`. This directly contradicts Section 3's still-present claim that a
+    customer self-service portal "needs its own customer-identity/auth model... a larger,
+    separately-scoped piece of work" not yet attempted — it has apparently been attempted and at
+    least partially built. Also present: `CommissionsController`, `DiscountRulesController`,
+    `PriceListsController`, `SalesReturnsController` (beyond the Credit Notes/Quotations this
+    tracker already documents).
+  - **Quality** — far deeper than the NCR/CorrectiveAction slice Wave 1 documented:
+    `CalibrationRecordsController`, `DeviationRequestsController`, `InspectionPlansController`,
+    `QualityAuditsController`, `QualityCertificatesController`, `QualityHoldsController` all exist.
+  - **Procurement** — `ApprovalRequestApprovedConsumer`/`ApprovalRequestRejectedConsumer` and
+    `SubmitPurchaseOrderForApprovalCommand` exist, which (if wired the way the names suggest) means
+    Core's generic Approval engine **has** since been connected to `PurchaseOrder`'s own
+    lifecycle — the opposite of Phase M7's explicit decision, documented at the time in that
+    aggregate's own doc comment, not to retrofit it. Worth a dedicated read to confirm before
+    trusting either the old "not wired" claim or this new "wired" evidence.
+  - **Warehouse** — `RacksController`/`ShelvesController`/`PackagesController` exist alongside the
+    documented Bins/CycleCounts/PickLists, i.e. a real Rack→Shelf→Bin location hierarchy and a
+    Package aggregate, neither previously documented here.
+  - **Inventory** — `AttributeDefinitionsController`, `BatchesController`, `ReservationsController`,
+    `SerialUnitsController`, `TransfersController` all exist (Batches/Reservations/Transfers match
+    Section 2's "Phase 1 closeout" entry; Serial Units and Attribute Definitions do not). Also:
+    `AssignProductBarcodeCommand`/`GetProductByBarcodeQuery` plus a frontend `shared/barcode/
+    code39.ts` — **Section 3 still calls barcode/QR "hardware-adjacent scope this pass correctly
+    declined to fake,"** but Code 39 barcode assignment/lookup is, in fact, in the repo now (a
+    software barcode scheme, not RF/hardware scanning — the two may have been conflated when this
+    was scoped out; worth reconciling).
+  - **Finance** — beyond the M8a–h slices already documented: `AccountingPeriodsController`,
+    `RecurringJournalEntriesController`, and a real `GetCashFlowStatementReportQueryHandler` (with
+    its own test file) — Section 2's M8h closeout audit specifically called out "no GL-level
+    financial statements (P&L/Balance Sheet/Cash Flow)" as a genuine gap; a Cash Flow Statement
+    report now exists, so at least that one item is stale. `TaxTransaction`/
+    `GetGstReturnSummaryReportQuery`/`GetTaxPeriodSummaryReportQuery` also exist — GST-specific
+    reporting beyond the general multi-jurisdiction tax engine M8b already documents.
+    `DisposeFixedAssetCommand` and `GetDepreciationScheduleQueryHandler` extend the FixedAsset
+    aggregate past the posting-only capability M8g documented.
+  - **HRMS** — `OnboardingController`/`OffboardingController` (backed by an `EmployeeWorkflow`
+    domain type) and `LeaveBalancesController` exist; the tracker's HRMS row still describes only
+    Attendance + a minimal Payroll skeleton plus "recruitment/performance/training still absent" —
+    onboarding/offboarding workflows are a different, apparently-since-built capability.
+  - **CRM** — `TagsController`, `CampaignsController`, `FollowUpTasksController`, and a
+    `CrmDashboardController` exist beyond the Lead/Opportunity/Account/Contact/Activity surface
+    Wave 1 documented.
+  - **Core** — a `DocumentsController`/`Document` domain aggregate exists (file-management-shaped
+    capability with its own test file, `DocumentTests.cs`) with no prior Section 2 entry.
+  - **AI module** — beyond the single `Recommendation` aggregate Section 2 documents: a
+    `CopilotSession`/`CopilotMessage` pair (a persisted chat-turn model — the actual LLM-calling
+    side of this, if any, was not verified) and an `OcrJob`/`DemandHistoryEntry` pair (job-status
+    tracking and a demand time-series table respectively) — both look like the data-model half of
+    `docs/blueprint/12_AI_PLATFORM.md`'s OCR and demand-forecasting capabilities, with no evidence
+    checked here for whether any actual OCR/forecasting computation exists behind them versus just
+    the CRUD shell.
+  - **Integration Hub** — considerably more than the `IntegrationConnector`/`ConnectorConnection`
+    catalog Section 2 documents: real per-provider `IConnectorSyncAdapter` implementations for
+    Stripe, Shopify, Razorpay, Delhivery, and Shiprocket (each reads its own credential out of
+    `IConfiguration` at call time via the `{CredentialReference}_SUFFIX` convention — see
+    `docs/blueprint/14_DEPLOYMENT_GUIDE.md`'s environment-variable section for the exact keys), a
+    `WebhooksController`, and a `MigrationJob`/`MigrationStagingRecord` pair (create job → load
+    staging records → validate → reconcile) that is, functionally, a SAP/legacy-data-migration
+    tool living inside this module. **Section 3's claim that "SAP Migration... doesn't exist as a
+    folder at all"** is technically still true (there is no `Modules/SapMigration`), but
+    functionally misleading now that IntegrationHub contains a working generic migration-job
+    pipeline — worth a follow-up decision on whether that satisfies the SAP Migration line item or
+    is a different, more generic thing.
+  - **Marketplace / Business Intelligence** — spot-read for this pass and found **unchanged** from
+    Section 2's description: `PluginListing`/`PluginInstallation` and `KpiDefinition`/`KpiSnapshot`
+    respectively, nothing deeper.
+  - **Not re-verified this pass**: whether any of the above compiles, whether EF configurations/
+    migrations exist for the new entities (still no EF Core migrations anywhere in the repo — see
+    the "no migrations" search below), and whether frontend panels exist for every new backend
+    surface the way Wave 1's slices did. **Follow-up recommended**: a dedicated tracker pass that
+    reads each of the items above the way every entry before this one was read, corrects Section 5's
+    percentages, and reconciles Section 3's now-stale "not yet started" claims (customer portal,
+    barcode/QR, MRP, SAP migration) against what's actually sitting in the repo.
+  - **What did not change**: a repo-wide search for `Microsoft.EntityFrameworkCore.Migrations`
+    confirms **zero EF Core migration files exist anywhere in this codebase**, for any module, old
+    or new. Phase G's standing as the single highest-priority next step is, if anything,
+    reinforced — there is now more never-compiled, never-migrated surface area than this tracker's
+    own numbers reflect.
 
 ---
 
@@ -2068,6 +2174,12 @@ currently BLOCKED ON YOU except Phase G (needs your own machine to run a real bu
 ---
 
 ## 5. Module completion snapshot
+
+**Known stale as of 2026-07-25**: the Phase 9 catch-up entry in Section 2 found real,
+already-built capability (Manufacturing MRP, a Sales Customer Portal, Inventory barcode
+assignment, and more) that the rows below don't reflect — the percentages here predate that
+discovery and were not recomputed this pass. Treat every row below as a lower bound, not a
+current measurement, until the recommended follow-up pass (see Section 2) re-scores them.
 
 Updated from `FusionOS_Coverage_Completion_Audit.docx`'s Section 4 to reflect Phase M1/M2 — six
 rows moved up slightly because their previously-flagged "backend done, unreachable from the UI" or

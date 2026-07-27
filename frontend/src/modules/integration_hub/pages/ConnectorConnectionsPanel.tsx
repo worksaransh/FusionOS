@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,15 +25,31 @@ interface ConnectorConnectionDto {
   status: string;
   connectedAt: string;
   disconnectedAt: string | null;
+  credentialReference: string | null;
+}
+
+interface ConnectorSyncRunDto {
+  id: string;
+  connectorConnectionId: string;
+  startedAt: string;
+  completedAt: string | null;
+  status: string;
+  recordsProcessed: number;
+  errorMessage: string | null;
 }
 
 /**
  * Connector Connections — a company's connections to catalog connectors,
  * Connected → Disconnected, or flagged Error. Rendered as a sibling panel
  * under IntegrationConnectorsPage, same pattern as PluginInstallationsPanel
- * under PluginListingsPage. No credential/API-key input here — this is
- * connection bookkeeping only, see ConnectorConnection's own class doc
- * comment for why real secret storage is deliberately out of scope.
+ * under PluginListingsPage.
+ *
+ * Phase 8 (2026-07-25) adds the credential-reference and sync-run-history UI:
+ * "Configure credential" only ever sets a config-key NAME (e.g.
+ * "SHOPIFY_STORE_ACME_API_KEY") — never a real API key/token/secret value, so this
+ * is a plain text input, not a password field, and nothing here ever touches a real
+ * credential. "Trigger sync" and the sync-run history table are the visible surface
+ * of ConnectorSyncRun / TriggerConnectorSyncCommand / IConnectorSyncAdapter.
  */
 export function ConnectorConnectionsPanel() {
   const { companyId } = useActiveCompany();
@@ -81,6 +98,35 @@ export function ConnectorConnectionsPanel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['connector-connections', companyId] }),
   });
 
+  const configureCredential = useMutation({
+    mutationFn: ({ id, credentialReference }: { id: string; credentialReference: string }) =>
+      apiClient.post<ConnectorConnectionDto>(`/integration-hub/connections/${id}/credential`, { companyId, credentialReference }),
+    onSuccess: () => {
+      setEditingCredentialId(null);
+      queryClient.invalidateQueries({ queryKey: ['connector-connections', companyId] });
+    },
+  });
+
+  const triggerSync = useMutation({
+    mutationFn: (id: string) => apiClient.post<ConnectorSyncRunDto>(`/integration-hub/connections/${id}/sync`, { companyId }),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['connector-sync-runs', companyId, id] });
+    },
+  });
+
+  const [editingCredentialId, setEditingCredentialId] = useState<string | null>(null);
+  const [credentialDraft, setCredentialDraft] = useState('');
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+
+  const syncRunsQuery = useQuery({
+    queryKey: ['connector-sync-runs', companyId, expandedHistoryId],
+    queryFn: () =>
+      apiClient.get<PagedResult<ConnectorSyncRunDto>>(
+        `/integration-hub/connections/${expandedHistoryId}/sync-runs?companyId=${companyId}&page=1&pageSize=25`,
+      ),
+    enabled: Boolean(companyId) && Boolean(expandedHistoryId),
+  });
+
   if (!companyId) return null;
 
   return (
@@ -88,7 +134,7 @@ export function ConnectorConnectionsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Connections</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => connectConnector.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => connectConnector.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Connector
             <Controller
@@ -134,18 +180,76 @@ export function ConnectorConnectionsPanel() {
             { header: 'Connected', render: (row: ConnectorConnectionDto) => new Date(row.connectedAt).toLocaleDateString() },
             { header: 'Status', render: (row: ConnectorConnectionDto) => row.status },
             {
-              header: 'Actions',
+              header: 'Credential reference',
               render: (row: ConnectorConnectionDto) =>
-                row.status !== 'Disconnected' ? (
+                editingCredentialId === row.id ? (
                   <div className="flex items-center gap-2">
-                    <Button type="button" variant="secondary" disabled={markErrorConnection.isPending} onClick={() => markErrorConnection.mutate(row.id)}>
-                      Flag error
+                    <input
+                      className="w-48 rounded-md border border-border bg-surface px-2 py-1 text-sm"
+                      placeholder="SHOPIFY_STORE_ACME_API_KEY"
+                      value={credentialDraft}
+                      onChange={(e) => setCredentialDraft(e.target.value)}
+                      autoFocus
+                    />
+                    <Button
+                      type="button"
+                      disabled={configureCredential.isPending || !credentialDraft.trim()}
+                      onClick={() => configureCredential.mutate({ id: row.id, credentialReference: credentialDraft.trim() })}
+                    >
+                      Save
                     </Button>
-                    <Button type="button" variant="danger" disabled={disconnectConnection.isPending} onClick={() => disconnectConnection.mutate(row.id)}>
-                      Disconnect
+                    <Button type="button" variant="secondary" onClick={() => setEditingCredentialId(null)}>
+                      Cancel
                     </Button>
                   </div>
-                ) : null,
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-text-muted">{row.credentialReference ?? 'Not configured'}</span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={row.status === 'Disconnected'}
+                      onClick={() => {
+                        setEditingCredentialId(row.id);
+                        setCredentialDraft(row.credentialReference ?? '');
+                      }}
+                    >
+                      Configure
+                    </Button>
+                  </div>
+                ),
+            },
+            {
+              header: 'Actions',
+              render: (row: ConnectorConnectionDto) => (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={row.status === 'Disconnected' || triggerSync.isPending}
+                    onClick={() => triggerSync.mutate(row.id)}
+                  >
+                    Trigger sync
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setExpandedHistoryId(expandedHistoryId === row.id ? null : row.id)}
+                  >
+                    {expandedHistoryId === row.id ? 'Hide sync history' : 'Sync history'}
+                  </Button>
+                  {row.status !== 'Disconnected' && (
+                    <>
+                      <Button type="button" variant="secondary" disabled={markErrorConnection.isPending} onClick={() => markErrorConnection.mutate(row.id)}>
+                        Flag error
+                      </Button>
+                      <Button type="button" variant="danger" disabled={disconnectConnection.isPending} onClick={() => disconnectConnection.mutate(row.id)}>
+                        Disconnect
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ),
             },
           ]}
           rows={connectionsQuery.data?.data}
@@ -156,8 +260,29 @@ export function ConnectorConnectionsPanel() {
           rowKey={(row) => row.id}
         />
       </Card>
-      {(disconnectConnection.isError || markErrorConnection.isError) && (
+      {(disconnectConnection.isError || markErrorConnection.isError || configureCredential.isError || triggerSync.isError) && (
         <p role="alert" className="mt-2 text-sm text-danger">Could not update that connection.</p>
+      )}
+
+      {expandedHistoryId && (
+        <Card className="mt-4">
+          <h3 className="mb-3 text-sm font-semibold text-text">Sync run history</h3>
+          <DataTable
+            columns={[
+              { header: 'Started', render: (row: ConnectorSyncRunDto) => new Date(row.startedAt).toLocaleString() },
+              { header: 'Completed', render: (row: ConnectorSyncRunDto) => (row.completedAt ? new Date(row.completedAt).toLocaleString() : '—') },
+              { header: 'Status', render: (row: ConnectorSyncRunDto) => row.status },
+              { header: 'Records processed', render: (row: ConnectorSyncRunDto) => row.recordsProcessed },
+              { header: 'Error', render: (row: ConnectorSyncRunDto) => row.errorMessage ?? '—' },
+            ]}
+            rows={syncRunsQuery.data?.data}
+            isLoading={syncRunsQuery.isLoading}
+            isError={syncRunsQuery.isError}
+            errorMessage="Could not load sync run history."
+            emptyMessage="No sync runs yet — trigger one above."
+            rowKey={(row) => row.id}
+          />
+        </Card>
       )}
     </div>
   );

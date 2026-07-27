@@ -9,7 +9,11 @@ public sealed record OpportunityDto(
     decimal EstimatedValue,
     string Stage,
     string? CustomerCode,
-    Guid? AccountId);
+    Guid? AccountId,
+    decimal? Probability,
+    DateTimeOffset? ExpectedCloseDate,
+    decimal WeightedValue,
+    Guid? OwnerId);
 
 /// <summary>Single place that turns an Opportunity aggregate into its DTO, shared by every handler that returns one.</summary>
 public static class OpportunityMapper
@@ -23,5 +27,9 @@ public static class OpportunityMapper
         opportunity.EstimatedValue,
         opportunity.Stage.ToString(),
         opportunity.CustomerCode,
-        opportunity.AccountId);
+        opportunity.AccountId,
+        opportunity.Probability,
+        opportunity.ExpectedCloseDate,
+        opportunity.WeightedValue,
+        opportunity.OwnerId);
 }

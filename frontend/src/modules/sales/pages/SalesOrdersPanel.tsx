@@ -129,7 +129,7 @@ export function SalesOrdersPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Sales Orders</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createOrder.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => createOrder.mutate(values))} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm">
             Customer
             <Controller

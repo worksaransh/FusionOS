@@ -1,6 +1,8 @@
 using FusionOS.Modules.Hrms.Application.Employees.Commands.CreateEmployee;
 using FusionOS.Modules.Hrms.Application.Employees.Commands.DeactivateEmployee;
+using FusionOS.Modules.Hrms.Application.Employees.Commands.UpdateEmployee;
 using FusionOS.Modules.Hrms.Application.Employees.Queries.GetEmployeeById;
+using FusionOS.Modules.Hrms.Application.Employees.Queries.GetEmployeeOrgChart;
 using FusionOS.Modules.Hrms.Application.Employees.Queries.ListEmployees;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -25,9 +27,31 @@ public sealed class EmployeesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create([FromBody] CreateEmployeeRequest request, CancellationToken cancellationToken)
     {
-        var command = new CreateEmployeeCommand(request.CompanyId, request.Code, request.FullName, request.Email, request.DepartmentName, request.HireDate);
+        var command = new CreateEmployeeCommand(request.CompanyId, request.Code, request.FullName, request.Email, request.DepartmentName, request.HireDate, request.DepartmentId, request.ManagerId);
         var result = await _sender.Send(command, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = result.Id, companyId = request.CompanyId }, result);
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateEmployeeRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateEmployeeCommand(request.CompanyId, id, request.FullName, request.Email, request.DepartmentId, request.ManagerId);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("{id:guid}/org-chart")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetOrgChart(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetEmployeeOrgChartQuery(companyId, id), cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
@@ -59,6 +83,8 @@ public sealed class EmployeesController : ControllerBase
     }
 }
 
-public sealed record CreateEmployeeRequest(Guid CompanyId, string Code, string FullName, string Email, string? DepartmentName, DateTimeOffset HireDate);
+public sealed record CreateEmployeeRequest(Guid CompanyId, string Code, string FullName, string Email, string? DepartmentName, DateTimeOffset HireDate, Guid? DepartmentId = null, Guid? ManagerId = null);
+
+public sealed record UpdateEmployeeRequest(Guid CompanyId, string FullName, string Email, Guid? DepartmentId, Guid? ManagerId);
 
 public sealed record DeactivateEmployeeRequest(Guid CompanyId);

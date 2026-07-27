@@ -1,3 +1,4 @@
+using FusionOS.Modules.Crm.Application.Accounts.Commands.AssignAccountOwner;
 using FusionOS.Modules.Crm.Application.Accounts.Commands.CreateAccount;
 using FusionOS.Modules.Crm.Application.Accounts.Commands.DeactivateAccount;
 using FusionOS.Modules.Crm.Application.Accounts.Commands.UpdateAccount;
@@ -70,8 +71,21 @@ public sealed class AccountsController : ControllerBase
         var result = await _sender.Send(new DeactivateAccountCommand(companyId, id), cancellationToken);
         return Ok(result);
     }
+
+    [HttpPost("{id:guid}/assign-owner")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AssignOwner(Guid id, [FromBody] AssignAccountOwnerRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new AssignAccountOwnerCommand(request.CompanyId, id, request.OwnerId), cancellationToken);
+        return Ok(result);
+    }
 }
 
 public sealed record CreateAccountRequest(Guid CompanyId, string Name, string? Industry, string? Website);
 
 public sealed record UpdateAccountRequest(Guid CompanyId, string Name, string? Industry, string? Website);
+
+public sealed record AssignAccountOwnerRequest(Guid CompanyId, Guid? OwnerId);

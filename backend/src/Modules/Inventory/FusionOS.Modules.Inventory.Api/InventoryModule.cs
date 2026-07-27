@@ -2,11 +2,14 @@ using FusionOS.BuildingBlocks.Application;
 using FusionOS.BuildingBlocks.Application.Modularity;
 using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
+using FusionOS.Modules.Inventory.Application.Attributes.Contracts;
+using FusionOS.Modules.Inventory.Application.Batches.Contracts;
 using FusionOS.Modules.Inventory.Application.IntegrationEvents.Consumers;
 using FusionOS.Modules.Inventory.Application.Ledger.Contracts;
 using FusionOS.Modules.Inventory.Application.Products.Commands.CreateProduct;
 using FusionOS.Modules.Inventory.Application.Products.Contracts;
 using FusionOS.Modules.Inventory.Application.Reservations.Contracts;
+using FusionOS.Modules.Inventory.Application.SerialUnits.Contracts;
 using FusionOS.Modules.Inventory.Application.Transfers.Contracts;
 using FusionOS.Modules.Inventory.Infrastructure.Persistence;
 using FusionOS.Modules.Inventory.Infrastructure.Repositories;
@@ -34,6 +37,17 @@ public sealed class InventoryModule : IModule
         services.AddScoped<IInventoryLedgerRepository, InventoryLedgerRepository>();
         services.AddScoped<IReservationRepository, ReservationRepository>();
         services.AddScoped<ITransferRepository, TransferRepository>();
+
+        // Batch/Serial tracking + generic product Attributes (Phase 3 Inventory
+        // depth, 2026-07-21) — additive alongside the existing opaque
+        // BatchNumber/SerialNumber ledger fields and ProductVariant's free-text
+        // Attributes string, neither of which is touched by these.
+        services.AddScoped<IBatchRepository, BatchRepository>();
+        services.AddScoped<ISerialUnitRepository, SerialUnitRepository>();
+        services.AddScoped<IAttributeDefinitionRepository, AttributeDefinitionRepository>();
+        services.AddScoped<IAttributeValueRepository, AttributeValueRepository>();
+        services.AddScoped<IProductVariantAttributeValueRepository, ProductVariantAttributeValueRepository>();
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProcessedIntegrationEventStore, EfProcessedIntegrationEventStore<InventoryDbContext>>();
 
@@ -53,6 +67,10 @@ public sealed class InventoryModule : IModule
         // debit stock here — Procurement has no project reference to Inventory,
         // so this is the only way it can reach the ledger.
         services.AddScoped<IIntegrationEventConsumer, VendorReturnCompletedConsumer>();
+        // Maintenance's recorded spare part usages debit stock too (spare parts
+        // tracking follow-up, 2026-07-23): consume the product from the warehouse
+        // it was drawn from.
+        services.AddScoped<IIntegrationEventConsumer, SparePartsConsumedForMaintenanceConsumer>();
 
         services.AddControllers().AddApplicationPart(typeof(InventoryModule).Assembly);
 

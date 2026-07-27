@@ -1,4 +1,4 @@
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,8 @@ import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import { useNonConformanceReportOptions, useUserOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
+const RCA_METHODS = ['Other', 'FiveWhys', 'Fishbone', 'Pareto'] as const;
+
 const schema = z.object({
   nonConformanceReportId: z.string().uuid('Pick the non-conformance report this plan addresses'),
   rootCauseDescription: z.string().min(1, 'Root cause description is required').max(2000),
@@ -18,8 +20,23 @@ const schema = z.object({
   preventiveActionDescription: z.string().min(1, 'Preventive action description is required').max(2000),
   assignedToUserId: z.string().uuid('Assign this plan to a user'),
   dueDate: z.string().min(1, 'Due date is required'),
+  // Structured RCA (additive, 2026-07-23): rcaMethod defaults to 'Other' — every existing
+  // CAPA-creation flow keeps working with just the free-text root cause above. The five
+  // "why" fields are only sent (and only shown) when rcaMethod is FiveWhys.
+  rcaMethod: z.enum(RCA_METHODS),
+  why1: z.string().max(500).or(z.literal('')),
+  why2: z.string().max(500).or(z.literal('')),
+  why3: z.string().max(500).or(z.literal('')),
+  why4: z.string().max(500).or(z.literal('')),
+  why5: z.string().max(500).or(z.literal('')),
 });
 type FormValues = z.infer<typeof schema>;
+
+const EMPTY_FORM_VALUES: FormValues = {
+  nonConformanceReportId: '', rootCauseDescription: '', correctiveActionDescription: '',
+  preventiveActionDescription: '', assignedToUserId: '', dueDate: '',
+  rcaMethod: 'Other', why1: '', why2: '', why3: '', why4: '', why5: '',
+};
 
 interface CorrectiveActionDto {
   id: string;
@@ -32,6 +49,12 @@ interface CorrectiveActionDto {
   status: string;
   closedAt: string | null;
   verifiedAt: string | null;
+  rcaMethod: string;
+  why1: string | null;
+  why2: string | null;
+  why3: string | null;
+  why4: string | null;
+  why5: string | null;
 }
 
 /**
@@ -56,11 +79,9 @@ export function CorrectiveActionsPanel() {
 
   const { control, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      nonConformanceReportId: '', rootCauseDescription: '', correctiveActionDescription: '',
-      preventiveActionDescription: '', assignedToUserId: '', dueDate: '',
-    },
+    defaultValues: EMPTY_FORM_VALUES,
   });
+  const rcaMethod = useWatch({ control, name: 'rcaMethod' });
 
   const createCorrectiveAction = useMutation({
     mutationFn: (values: FormValues) =>
@@ -72,12 +93,15 @@ export function CorrectiveActionsPanel() {
         preventiveActionDescription: values.preventiveActionDescription,
         assignedToUserId: values.assignedToUserId,
         dueDate: new Date(values.dueDate).toISOString(),
+        rcaMethod: values.rcaMethod,
+        why1: values.rcaMethod === 'FiveWhys' ? (values.why1 || null) : null,
+        why2: values.rcaMethod === 'FiveWhys' ? (values.why2 || null) : null,
+        why3: values.rcaMethod === 'FiveWhys' ? (values.why3 || null) : null,
+        why4: values.rcaMethod === 'FiveWhys' ? (values.why4 || null) : null,
+        why5: values.rcaMethod === 'FiveWhys' ? (values.why5 || null) : null,
       }),
     onSuccess: () => {
-      reset({
-        nonConformanceReportId: '', rootCauseDescription: '', correctiveActionDescription: '',
-        preventiveActionDescription: '', assignedToUserId: '', dueDate: '',
-      });
+      reset(EMPTY_FORM_VALUES);
       queryClient.invalidateQueries({ queryKey: ['corrective-actions', companyId] });
     },
     onError: (error) => {
@@ -113,7 +137,7 @@ export function CorrectiveActionsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Corrective Actions (CAPA)</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createCorrectiveAction.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createCorrectiveAction.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             Non-conformance report
             <Controller
@@ -142,6 +166,37 @@ export function CorrectiveActionsPanel() {
             />
             {errors.rootCauseDescription && <span className="text-xs text-danger">{errors.rootCauseDescription.message}</span>}
           </label>
+          <label className="flex flex-col gap-1 text-sm">
+            RCA method
+            <Controller
+              control={control}
+              name="rcaMethod"
+              render={({ field }) => (
+                <select className="rounded-md border border-border bg-surface px-2 py-1.5" {...field}>
+                  {RCA_METHODS.map((method) => (
+                    <option key={method} value={method}>{method}</option>
+                  ))}
+                </select>
+              )}
+            />
+          </label>
+          {rcaMethod === 'FiveWhys' && (
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              {(['why1', 'why2', 'why3', 'why4', 'why5'] as const).map((name, index) => (
+                <label key={name} className="flex flex-col gap-1 text-sm">
+                  Why {index + 1}
+                  <Controller
+                    control={control}
+                    name={name}
+                    render={({ field }) => (
+                      <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...field} />
+                    )}
+                  />
+                  {errors[name] && <span className="text-xs text-danger">{errors[name]?.message}</span>}
+                </label>
+              ))}
+            </div>
+          )}
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             Corrective action
             <Controller

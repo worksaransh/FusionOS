@@ -47,6 +47,12 @@ public sealed class CreateCreditNoteCommandHandler : IRequestHandler<CreateCredi
         // slip past the cap by each line passing individually; the cap itself sums
         // every invoice line carrying the product, in case the invoice lists a
         // product more than once.
+        // Batch-resolve every distinct product's already-credited quantity in one
+        // query (Phase 10 audit fix, 2026-07-27) instead of one round trip per
+        // GroupBy iteration - see ICreditNoteRepository.GetCreditedQuantitiesAsync.
+        var distinctProductIds = request.Lines.Select(l => l.ProductId).Distinct().ToList();
+        var alreadyCreditedByProduct = await _repository.GetCreditedQuantitiesAsync(request.CompanyId, request.InvoiceId, distinctProductIds, cancellationToken);
+
         var failures = new List<FluentValidation.Results.ValidationFailure>();
         foreach (var productLines in request.Lines.GroupBy(l => l.ProductId))
         {
@@ -59,7 +65,7 @@ public sealed class CreateCreditNoteCommandHandler : IRequestHandler<CreateCredi
 
             var invoicedQuantity = invoice.Lines.Where(l => l.ProductId == productLines.Key).Sum(l => l.Quantity);
             var requestedQuantity = productLines.Sum(l => l.Quantity);
-            var alreadyCredited = await _repository.GetCreditedQuantityAsync(request.CompanyId, request.InvoiceId, productLines.Key, cancellationToken);
+            var alreadyCredited = alreadyCreditedByProduct.GetValueOrDefault(productLines.Key);
             if (alreadyCredited + requestedQuantity > invoicedQuantity)
             {
                 failures.Add(new FluentValidation.Results.ValidationFailure(
@@ -72,7 +78,7 @@ public sealed class CreateCreditNoteCommandHandler : IRequestHandler<CreateCredi
         if (failures.Count > 0)
             throw new ValidationException(failures);
 
-        var creditNote = Domain.CreditNotes.CreditNote.Create(request.CompanyId, request.InvoiceId, request.CustomerId, request.Reason, request.Lines);
+        var creditNote = Domain.CreditNotes.CreditNote.Create(request.CompanyId, request.InvoiceId, request.CustomerId, request.Reason, request.Lines, request.SalesReturnId);
 
         await _repository.AddAsync(creditNote, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -88,5 +94,6 @@ public sealed class CreateCreditNoteCommandHandler : IRequestHandler<CreateCredi
         creditNote.Status.ToString(),
         creditNote.CreditNoteDate,
         creditNote.TotalAmount,
-        creditNote.Lines.Select(l => new CreditNoteLineDto(l.Id, l.ProductId, l.Quantity, l.UnitPrice, l.LineTotal)).ToList());
+        creditNote.Lines.Select(l => new CreditNoteLineDto(l.Id, l.ProductId, l.Quantity, l.UnitPrice, l.LineTotal)).ToList(),
+        creditNote.SalesReturnId);
 }

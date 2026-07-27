@@ -105,7 +105,7 @@ export function JournalEntriesPanel() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createEntry.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => createEntry.mutate(values))} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm">
             Reference (optional)
             <Controller

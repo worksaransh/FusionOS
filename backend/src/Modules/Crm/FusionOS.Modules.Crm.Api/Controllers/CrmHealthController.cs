@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FusionOS.Modules.Crm.Api.Controllers;
 
-/// <summary>The only endpoint this not-yet-implemented module exposes: proof it is registered and reachable.</summary>
+/// <summary>Reports genuine module status — Crm has real Leads/Accounts/Contacts/Opportunities depth, not just a registration probe.</summary>
 [ApiController]
 [Route("api/v1/crm/health")]
 public sealed class CrmHealthController : ControllerBase
@@ -11,7 +11,8 @@ public sealed class CrmHealthController : ControllerBase
     public IActionResult Get() => Ok(new
     {
         module = "Crm",
-        status = "scaffolded",
+        status = "active",
         roadmapPhase = "Phase 4 — CRM & HRMS",
+        slices = new[] { "leads", "accounts", "contacts", "opportunities" },
     });
 }

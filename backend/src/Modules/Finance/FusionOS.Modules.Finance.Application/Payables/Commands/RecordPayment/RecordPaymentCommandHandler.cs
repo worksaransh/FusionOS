@@ -36,11 +36,11 @@ public sealed class RecordPaymentCommandHandler : IRequestHandler<RecordPaymentC
         }
 
         var entry = Domain.Payables.ApLedgerEntry.RecordPayment(
-            request.CompanyId, request.SupplierId, request.PurchaseOrderId, request.Amount, request.Reference, request.PaymentDate);
+            request.CompanyId, request.SupplierId, request.PurchaseOrderId, request.Amount, request.Reference, request.PaymentDate, request.BankAccountId);
 
         await _repository.AddAsync(entry, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new ApLedgerEntryDto(entry.Id, entry.SupplierId, entry.PurchaseOrderId, entry.Amount, entry.Description, entry.TransactionDate);
+        return new ApLedgerEntryDto(entry.Id, entry.SupplierId, entry.PurchaseOrderId, entry.Amount, entry.Description, entry.TransactionDate, entry.BankAccountId);
     }
 }

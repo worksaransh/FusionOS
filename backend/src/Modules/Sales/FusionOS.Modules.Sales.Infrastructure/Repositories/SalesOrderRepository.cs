@@ -30,4 +30,16 @@ public sealed class SalesOrderRepository : ISalesOrderRepository
 
     public Task<int> CountAsync(Guid companyId, CancellationToken cancellationToken = default) =>
         _context.SalesOrders.CountAsync(x => x.CompanyId == companyId, cancellationToken);
+
+    public async Task<IReadOnlyList<SalesOrder>> ListByCustomerAsync(Guid customerId, int page, int pageSize, CancellationToken cancellationToken = default) =>
+        await _context.SalesOrders
+            .Include(x => x.Lines)
+            .Where(x => x.CustomerId == customerId)
+            .OrderByDescending(x => x.OrderDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+    public Task<int> CountByCustomerAsync(Guid customerId, CancellationToken cancellationToken = default) =>
+        _context.SalesOrders.CountAsync(x => x.CustomerId == customerId, cancellationToken);
 }

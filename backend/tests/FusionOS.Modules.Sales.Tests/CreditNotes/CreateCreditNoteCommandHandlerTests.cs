@@ -28,7 +28,8 @@ public class CreateCreditNoteCommandHandlerTests
         var repository = Substitute.For<ICreditNoteRepository>();
         var invoiceRepository = Substitute.For<IInvoiceRepository>();
         invoiceRepository.GetByIdAsync(companyId, invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
-        repository.GetCreditedQuantityAsync(companyId, invoice.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetCreditedQuantitiesAsync(companyId, invoice.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateCreditNoteCommandHandler(repository, invoiceRepository, unitOfWork);
         var command = new CreateCreditNoteCommand(companyId, invoice.Id, customerId, "Damaged goods", new[] { new CreditNoteLineInput(productId, 10m, 25m) });
@@ -49,7 +50,8 @@ public class CreateCreditNoteCommandHandlerTests
         var repository = Substitute.For<ICreditNoteRepository>();
         var invoiceRepository = Substitute.For<IInvoiceRepository>();
         invoiceRepository.GetByIdAsync(companyId, invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
-        repository.GetCreditedQuantityAsync(companyId, invoice.Id, productId, Arg.Any<CancellationToken>()).Returns(6m);
+        repository.GetCreditedQuantitiesAsync(companyId, invoice.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 6m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateCreditNoteCommandHandler(repository, invoiceRepository, unitOfWork);
         // 6 already credited + 5 requested = 11 > 10 invoiced.
@@ -71,7 +73,8 @@ public class CreateCreditNoteCommandHandlerTests
         var repository = Substitute.For<ICreditNoteRepository>();
         var invoiceRepository = Substitute.For<IInvoiceRepository>();
         invoiceRepository.GetByIdAsync(companyId, invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
-        repository.GetCreditedQuantityAsync(companyId, invoice.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetCreditedQuantitiesAsync(companyId, invoice.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateCreditNoteCommandHandler(repository, invoiceRepository, unitOfWork);
         // Each line alone (6) is within the invoiced 10, but together they credit 12.
@@ -97,7 +100,8 @@ public class CreateCreditNoteCommandHandlerTests
         var repository = Substitute.For<ICreditNoteRepository>();
         var invoiceRepository = Substitute.For<IInvoiceRepository>();
         invoiceRepository.GetByIdAsync(companyId, invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
-        repository.GetCreditedQuantityAsync(companyId, invoice.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetCreditedQuantitiesAsync(companyId, invoice.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateCreditNoteCommandHandler(repository, invoiceRepository, unitOfWork);
         // 5 + 5 = exactly the invoiced 10.
@@ -128,7 +132,8 @@ public class CreateCreditNoteCommandHandlerTests
         var repository = Substitute.For<ICreditNoteRepository>();
         var invoiceRepository = Substitute.For<IInvoiceRepository>();
         invoiceRepository.GetByIdAsync(companyId, invoice.Id, Arg.Any<CancellationToken>()).Returns(invoice);
-        repository.GetCreditedQuantityAsync(companyId, invoice.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetCreditedQuantitiesAsync(companyId, invoice.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateCreditNoteCommandHandler(repository, invoiceRepository, unitOfWork);
         // 8 exceeds either single line but is within the summed 10 - must pass.

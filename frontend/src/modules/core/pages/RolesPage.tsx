@@ -161,7 +161,7 @@ export function RolesPage() {
           },
         ]}
         form={
-          <form onSubmit={handleSubmit((values) => createRole.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <form noValidate onSubmit={handleSubmit((values) => createRole.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               Name
               <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="Manager" {...register('name')} />

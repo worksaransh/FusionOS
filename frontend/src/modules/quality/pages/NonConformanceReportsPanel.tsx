@@ -91,7 +91,7 @@ export function NonConformanceReportsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Non-Conformance Reports</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createReport.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createReport.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Inspection (optional — leave blank for a standalone NCR)
             <Controller

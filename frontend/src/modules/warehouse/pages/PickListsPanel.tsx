@@ -19,6 +19,7 @@ import {
   useZoneOptions,
 } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
+import { PackagesPanel } from './PackagesPanel';
 
 const lineSchema = z.object({
   productId: z.string().uuid('Pick a product'),
@@ -116,7 +117,7 @@ export function PickListsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Pick Lists (Picking &amp; Packing)</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createPickList.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => createPickList.mutate(values))} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               Warehouse
@@ -401,6 +402,8 @@ function PickListManagePanel({ companyId, warehouseId, pickList, onClose }: Pick
         </Button>
         {pack.isError && <span role="alert" className="text-sm text-danger">Could not pack — every line must be fully picked first.</span>}
       </div>
+
+      <PackagesPanel companyId={companyId} warehouseId={warehouseId} pickList={pickList} />
     </Card>
   );
 }

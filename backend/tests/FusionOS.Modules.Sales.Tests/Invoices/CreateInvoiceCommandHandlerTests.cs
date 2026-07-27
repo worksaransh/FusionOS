@@ -26,7 +26,8 @@ public class CreateInvoiceCommandHandlerTests
         var repository = Substitute.For<IInvoiceRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetInvoicedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetInvoicedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateInvoiceCommandHandler(repository, salesOrderRepository, unitOfWork);
         var command = new CreateInvoiceCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[] { new InvoiceLineInput(productId, 10m, 25m) });
@@ -46,7 +47,8 @@ public class CreateInvoiceCommandHandlerTests
         var repository = Substitute.For<IInvoiceRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetInvoicedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(6m);
+        repository.GetInvoicedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 6m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateInvoiceCommandHandler(repository, salesOrderRepository, unitOfWork);
         // 6 already invoiced + 5 requested = 11 > 10 ordered.
@@ -103,7 +105,8 @@ public class CreateInvoiceCommandHandlerTests
         var repository = Substitute.For<IInvoiceRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetInvoicedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(6m);
+        repository.GetInvoicedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 6m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateInvoiceCommandHandler(repository, salesOrderRepository, unitOfWork);
         var command = new CreateInvoiceCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[] { new InvoiceLineInput(productId, 4m, 25m) });
@@ -126,7 +129,8 @@ public class CreateInvoiceCommandHandlerTests
         var repository = Substitute.For<IInvoiceRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetInvoicedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetInvoicedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateInvoiceCommandHandler(repository, salesOrderRepository, unitOfWork);
         var command = new CreateInvoiceCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[]
@@ -150,7 +154,8 @@ public class CreateInvoiceCommandHandlerTests
         var repository = Substitute.For<IInvoiceRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetInvoicedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetInvoicedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateInvoiceCommandHandler(repository, salesOrderRepository, unitOfWork);
         var command = new CreateInvoiceCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[]
@@ -181,7 +186,8 @@ public class CreateInvoiceCommandHandlerTests
         var repository = Substitute.For<IInvoiceRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetInvoicedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetInvoicedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateInvoiceCommandHandler(repository, salesOrderRepository, unitOfWork);
         var command = new CreateInvoiceCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[] { new InvoiceLineInput(productId, 10m, 25m) });

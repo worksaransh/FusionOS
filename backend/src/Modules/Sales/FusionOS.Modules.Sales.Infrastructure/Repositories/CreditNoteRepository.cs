@@ -46,4 +46,21 @@ public sealed class CreditNoteRepository : ICreditNoteRepository
 
         return lines.SumAsync(l => l.Quantity, cancellationToken);
     }
+
+    // Batch counterpart of GetCreditedQuantityAsync above (Phase 10 audit fix,
+    // 2026-07-27): groups by ProductId in a single SQL join+GROUP BY+SUM instead
+    // of one round trip per distinct product in the caller's GroupBy loop.
+    public async Task<IReadOnlyDictionary<Guid, decimal>> GetCreditedQuantitiesAsync(Guid companyId, Guid invoiceId, IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default)
+    {
+        var grouped = await (
+            from creditNote in _context.CreditNotes
+            where creditNote.CompanyId == companyId && creditNote.InvoiceId == invoiceId
+            from line in creditNote.Lines
+            where productIds.Contains(line.ProductId)
+            group line by line.ProductId into g
+            select new { ProductId = g.Key, Quantity = g.Sum(l => l.Quantity) })
+            .ToListAsync(cancellationToken);
+
+        return grouped.ToDictionary(g => g.ProductId, g => g.Quantity);
+    }
 }

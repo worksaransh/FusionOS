@@ -52,4 +52,9 @@ public sealed class ArLedgerRepository : IArLedgerRepository
 
         return grouped.Select(g => (g.CustomerId, g.InvoiceId, g.Balance, g.ChargeDate)).ToList();
     }
+
+    public Task<decimal> SumAmountInRangeAsync(Guid companyId, DateTimeOffset dateFrom, DateTimeOffset dateTo, CancellationToken cancellationToken = default) =>
+        _context.ArLedgerEntries
+            .Where(x => x.CompanyId == companyId && x.TransactionDate >= dateFrom && x.TransactionDate <= dateTo)
+            .SumAsync(x => x.Amount, cancellationToken);
 }

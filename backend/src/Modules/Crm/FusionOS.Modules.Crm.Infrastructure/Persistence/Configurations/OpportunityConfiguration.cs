@@ -16,11 +16,15 @@ public sealed class OpportunityConfiguration : IEntityTypeConfiguration<Opportun
         builder.Property(x => x.CustomerCode).HasMaxLength(50);
         builder.Property(x => x.EstimatedValue).HasColumnType("numeric(19,4)").IsRequired();
         builder.Property(x => x.Stage).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(x => x.Probability).HasColumnType("numeric(5,2)");
+        builder.Property(x => x.ExpectedCloseDate);
+        builder.Ignore(x => x.WeightedValue);
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md)
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);
         builder.HasIndex(x => new { x.CompanyId, x.Stage });
         builder.HasIndex(x => x.LeadId);
         builder.HasIndex(x => x.AccountId);
+        builder.HasIndex(x => x.OwnerId);
     }
 }

@@ -10,5 +10,9 @@ public static class BillOfMaterialsMapper
         bom.ProductId,
         bom.IsActive,
         bom.Lines.Select(l => new BomLineDto(l.Id, l.ComponentProductId, l.Quantity)).ToList(),
-        bom.Operations.Select(o => new RoutingOperationDto(o.Id, o.SequenceNumber, o.OperationName, o.WorkCenter, o.StandardMinutes)).ToList());
+        bom.Operations.Select(o => new RoutingOperationDto(o.Id, o.SequenceNumber, o.OperationName, o.WorkCenter, o.StandardMinutes)).ToList(),
+        bom.Version,
+        bom.IsCurrentVersion,
+        bom.PreviousVersionId,
+        bom.IsPrimary);
 }

@@ -100,7 +100,7 @@ export function CreditNotesPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Credit notes</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createCreditNote.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => createCreditNote.mutate(values))} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               Invoice

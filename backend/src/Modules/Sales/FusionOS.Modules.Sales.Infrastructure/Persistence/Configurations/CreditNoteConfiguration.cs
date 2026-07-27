@@ -18,6 +18,7 @@ public sealed class CreditNoteConfiguration : IEntityTypeConfiguration<CreditNot
         builder.Ignore(x => x.DomainEvents);
         builder.HasIndex(x => new { x.CompanyId, x.InvoiceId });
         builder.HasIndex(x => new { x.CompanyId, x.CustomerId });
+        builder.HasIndex(x => new { x.CompanyId, x.SalesReturnId });
 
         builder.HasMany(x => x.Lines)
             .WithOne()

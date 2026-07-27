@@ -9,5 +9,6 @@ public sealed class DisposeFixedAssetValidator : AbstractValidator<DisposeFixedA
         RuleFor(x => x.CompanyId).NotEmpty();
         RuleFor(x => x.FixedAssetId).NotEmpty();
         RuleFor(x => x.DisposedDate).NotEmpty();
+        RuleFor(x => x.DisposalProceeds).GreaterThanOrEqualTo(0m);
     }
 }

@@ -4,6 +4,7 @@ using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.Modules.Hrms.Application.Attendance.Contracts;
 using FusionOS.Modules.Hrms.Application.Employees.Commands.CreateEmployee;
 using FusionOS.Modules.Hrms.Application.Employees.Contracts;
+using FusionOS.Modules.Hrms.Application.LeaveBalances.Contracts;
 using FusionOS.Modules.Hrms.Application.LeaveRequests.Contracts;
 using FusionOS.Modules.Hrms.Application.Payroll.Contracts;
 using FusionOS.Modules.Hrms.Infrastructure.Persistence;
@@ -38,6 +39,8 @@ public sealed class HrmsModule : IModule
         services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
         services.AddScoped<IAttendanceRecordRepository, AttendanceRecordRepository>();
         services.AddScoped<IPayrollRecordRepository, PayrollRecordRepository>();
+        services.AddScoped<ILeaveBalanceRepository, LeaveBalanceRepository>();
+        services.AddScoped<IEmployeeWorkflowRepository, EmployeeWorkflowRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddModuleApplication(typeof(CreateEmployeeCommand).Assembly);

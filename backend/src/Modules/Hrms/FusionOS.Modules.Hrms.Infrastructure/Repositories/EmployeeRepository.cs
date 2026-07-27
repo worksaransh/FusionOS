@@ -30,6 +30,12 @@ public sealed class EmployeeRepository : IEmployeeRepository
     public Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default) =>
         Filtered(companyId, search).CountAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Employee>> ListDirectReportsAsync(Guid companyId, Guid managerId, CancellationToken cancellationToken = default) =>
+        await _context.Employees
+            .Where(e => e.CompanyId == companyId && e.ManagerId == managerId)
+            .OrderBy(e => e.Code)
+            .ToListAsync(cancellationToken);
+
     private IQueryable<Employee> Filtered(Guid companyId, string? search)
     {
         var query = _context.Employees.Where(e => e.CompanyId == companyId);

@@ -25,9 +25,24 @@ public sealed class CreditNote : TenantAggregateRoot
     public IReadOnlyList<CreditNoteLine> Lines => _lines.AsReadOnly();
     public decimal TotalAmount => _lines.Sum(l => l.LineTotal);
 
+    /// <summary>
+    /// Optional, same-module reference to the SalesReturn (RMA) that prompted this
+    /// credit note, added additively (2026-07-22) as a trailing optional Create()
+    /// parameter so every existing call site keeps compiling unchanged. Deliberately
+    /// never set automatically by CompleteSalesReturnCommand — issuing a credit note
+    /// off the back of a completed return is a separate, manual action a user takes
+    /// afterward, keeping the two aggregates decoupled (the same "no automatic
+    /// cross-aggregate cascade" convention as CreditNote not being auto-created from
+    /// Invoice.Issue). Not existence-validated against Sales' own SalesReturn
+    /// aggregate here — CreateCreditNoteCommandHandler is free to validate it if a
+    /// future slice wants that, but this constructor itself stays agnostic, same as
+    /// how it never validates InvoiceId beyond emptiness.
+    /// </summary>
+    public Guid? SalesReturnId { get; private set; }
+
     private CreditNote() { }
 
-    public static CreditNote Create(Guid companyId, Guid invoiceId, Guid customerId, string reason, IReadOnlyCollection<CreditNoteLineInput> lines)
+    public static CreditNote Create(Guid companyId, Guid invoiceId, Guid customerId, string reason, IReadOnlyCollection<CreditNoteLineInput> lines, Guid? salesReturnId = null)
     {
         if (invoiceId == Guid.Empty)
             throw new ArgumentException("Invoice id is required.", nameof(invoiceId));
@@ -37,6 +52,8 @@ public sealed class CreditNote : TenantAggregateRoot
             throw new ArgumentException("A reason is required.", nameof(reason));
         if (lines is null || lines.Count == 0)
             throw new ArgumentException("A credit note must have at least one line.", nameof(lines));
+        if (salesReturnId == Guid.Empty)
+            throw new ArgumentException("Sales return id, when supplied, cannot be an empty guid.", nameof(salesReturnId));
 
         var creditNote = new CreditNote
         {
@@ -46,6 +63,7 @@ public sealed class CreditNote : TenantAggregateRoot
             Reason = reason,
             Status = CreditNoteStatus.Draft,
             CreditNoteDate = DateTimeOffset.UtcNow,
+            SalesReturnId = salesReturnId,
         };
 
         foreach (var line in lines)

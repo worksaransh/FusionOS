@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using FusionOS.BuildingBlocks.Application.Abstractions;
 using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.SharedKernel.Context;
 using MediatR;
@@ -28,6 +29,13 @@ public sealed class TenantIsolationBehavior<TRequest, TResponse> : IPipelineBeha
 
     public Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
+        // See IBypassesTenantIsolation's doc comment: a command reachable by an
+        // anonymous caller (e.g. RegisterUserCommand, bootstrapping a brand-new
+        // company) has no company_id claim to check against and enforces its
+        // own equivalent rule internally instead.
+        if (request is IBypassesTenantIsolation)
+            return next();
+
         var property = CompanyIdProperties.GetOrAdd(typeof(TRequest), FindCompanyIdProperty);
 
         if (property is not null)

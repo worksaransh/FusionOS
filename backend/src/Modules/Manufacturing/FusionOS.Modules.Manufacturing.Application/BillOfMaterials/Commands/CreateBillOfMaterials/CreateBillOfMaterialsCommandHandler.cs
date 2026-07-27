@@ -26,7 +26,15 @@ public sealed class CreateBillOfMaterialsCommandHandler : IRequestHandler<Create
             });
         }
 
-        var bom = Domain.BillOfMaterials.BillOfMaterials.Create(request.CompanyId, request.Code, request.Name, request.ProductId, request.Lines);
+        // A product's first-ever BOM becomes its primary automatically; a later BOM for a
+        // product that already has an active one is created as a non-primary alternative,
+        // so IsPrimary never ends up true on two rows for the same product (Alternative
+        // BOM, Phase 6, 2026-07-22 — fixes a gap where every new BOM defaulted to primary
+        // regardless of what already existed).
+        var existingActiveBoms = await _repository.ListActiveByProductIdAsync(request.CompanyId, request.ProductId, cancellationToken);
+        var isPrimary = (existingActiveBoms?.Count ?? 0) == 0;
+
+        var bom = Domain.BillOfMaterials.BillOfMaterials.Create(request.CompanyId, request.Code, request.Name, request.ProductId, request.Lines, isPrimary);
 
         await _repository.AddAsync(bom, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

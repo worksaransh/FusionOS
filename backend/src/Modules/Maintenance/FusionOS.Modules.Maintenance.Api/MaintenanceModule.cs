@@ -3,8 +3,10 @@ using FusionOS.BuildingBlocks.Application.Modularity;
 using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.Modules.Maintenance.Application.Assets.Commands.CreateAsset;
 using FusionOS.Modules.Maintenance.Application.Assets.Contracts;
+using FusionOS.Modules.Maintenance.Application.ChecklistTemplates.Contracts;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Contracts;
 using FusionOS.Modules.Maintenance.Application.MaintenanceSchedules.Contracts;
+using FusionOS.Modules.Maintenance.Application.MeterReadings.Contracts;
 using FusionOS.Modules.Maintenance.Infrastructure.Persistence;
 using FusionOS.Modules.Maintenance.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Routing;
@@ -37,6 +39,8 @@ public sealed class MaintenanceModule : IModule
         services.AddScoped<IAssetRepository, AssetRepository>();
         services.AddScoped<IMaintenanceRequestRepository, MaintenanceRequestRepository>();
         services.AddScoped<IMaintenanceScheduleRepository, MaintenanceScheduleRepository>();
+        services.AddScoped<IMeterReadingRepository, MeterReadingRepository>();
+        services.AddScoped<IChecklistTemplateRepository, ChecklistTemplateRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddModuleApplication(typeof(CreateAssetCommand).Assembly);

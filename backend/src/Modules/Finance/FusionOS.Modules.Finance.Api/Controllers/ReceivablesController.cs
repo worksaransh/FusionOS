@@ -44,10 +44,11 @@ public sealed class ReceivablesController : ControllerBase
     public async Task<IActionResult> RecordPayment([FromBody] RecordPaymentRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
-            new RecordPaymentCommand(request.CompanyId, request.CustomerId, request.InvoiceId, request.Amount, request.PaymentDate, request.Reference),
+            new RecordPaymentCommand(request.CompanyId, request.CustomerId, request.InvoiceId, request.Amount, request.PaymentDate, request.Reference, request.BankAccountId),
             cancellationToken);
         return Ok(result);
     }
 }
 
-public sealed record RecordPaymentRequest(Guid CompanyId, Guid CustomerId, Guid InvoiceId, decimal Amount, DateTimeOffset? PaymentDate, string? Reference);
+/// <summary>BankAccountId is optional (bank-tied-payments follow-up) — see RecordPaymentCommand's own doc comment.</summary>
+public sealed record RecordPaymentRequest(Guid CompanyId, Guid CustomerId, Guid InvoiceId, decimal Amount, DateTimeOffset? PaymentDate, string? Reference, Guid? BankAccountId = null);

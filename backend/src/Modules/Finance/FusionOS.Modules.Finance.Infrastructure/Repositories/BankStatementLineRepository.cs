@@ -45,6 +45,14 @@ public sealed class BankStatementLineRepository : IBankStatementLineRepository
             .Distinct()
             .ToListAsync(cancellationToken);
 
+    public Task<bool> ExistsDuplicateAsync(Guid companyId, Guid bankAccountId, DateTimeOffset transactionDate, decimal amount, string description, CancellationToken cancellationToken = default) =>
+        _context.BankStatementLines.AnyAsync(x =>
+            x.CompanyId == companyId &&
+            x.BankAccountId == bankAccountId &&
+            x.TransactionDate == transactionDate &&
+            x.Amount == amount &&
+            x.Description == description, cancellationToken);
+
     private IQueryable<BankStatementLine> Filtered(Guid companyId, Guid bankAccountId, bool? isReconciled)
     {
         var query = _context.BankStatementLines.Where(x => x.CompanyId == companyId && x.BankAccountId == bankAccountId);

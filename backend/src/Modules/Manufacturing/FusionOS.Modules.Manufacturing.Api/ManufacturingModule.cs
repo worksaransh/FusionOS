@@ -3,6 +3,8 @@ using FusionOS.BuildingBlocks.Application.Modularity;
 using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.Modules.Manufacturing.Application.BillOfMaterials.Commands.CreateBillOfMaterials;
 using FusionOS.Modules.Manufacturing.Application.BillOfMaterials.Contracts;
+using FusionOS.Modules.Manufacturing.Application.Machines.Contracts;
+using FusionOS.Modules.Manufacturing.Application.WorkCenters.Contracts;
 using FusionOS.Modules.Manufacturing.Application.WorkOrders.Contracts;
 using FusionOS.Modules.Manufacturing.Infrastructure.Persistence;
 using FusionOS.Modules.Manufacturing.Infrastructure.Repositories;
@@ -33,6 +35,8 @@ public sealed class ManufacturingModule : IModule
 
         services.AddScoped<IBillOfMaterialsRepository, BillOfMaterialsRepository>();
         services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
+        services.AddScoped<IWorkCenterRepository, WorkCenterRepository>();
+        services.AddScoped<IMachineRepository, MachineRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddModuleApplication(typeof(CreateBillOfMaterialsCommand).Assembly);

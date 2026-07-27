@@ -1,7 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { ShoppingBag, ShoppingCart, AlertTriangle, DollarSign, CreditCard, Plus, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../../shared/api/client';
 import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
+import { StatsCard } from '../../../shared/ui/StatsCard';
+import { Button } from '../../../shared/ui/Button';
+import { StatusBadge } from '../../../shared/ui/StatusBadge';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import type { PagedResult } from '../../../shared/api/types';
 
@@ -73,36 +78,11 @@ interface SalesOrderSummaryDto {
   id: string;
 }
 
-// Below this many on-hand units a product shows up in the low-stock widget.
-// Hardcoded rather than per-product for this first cut of the Dashboard — a
-// real reorder-point-per-product setting is a bigger Inventory feature, not
-// something to fake here just to make this widget look more sophisticated.
 const LOW_STOCK_THRESHOLD = 10;
 
-function KpiCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <Card>
-      <p className="text-xs uppercase tracking-wide text-text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-text">{value}</p>
-      {hint && <p className="mt-1 text-xs text-text-muted">{hint}</p>}
-    </Card>
-  );
-}
-
-/**
- * Landing dashboard (Phase M6, 2026-07-15) — KPI widgets built entirely on
- * top of the three canned reports (AR aging, stock valuation, PO status
- * summary) plus the existing Sales Orders list endpoint, rather than
- * inventing any new backend aggregation just for this page. "Pending PO
- * approvals" reuses the PO status summary's Draft bucket instead of a
- * separate query — the report already answers that question. The Supplier
- * Scorecard table (Phase 10 item 2, added 2026-07-16) reuses the same
- * pattern: a canned report computed entirely from existing PurchaseOrder
- * data, with no on-time-delivery metric since no expected-delivery-date
- * field exists on PurchaseOrder to compute one honestly from.
- */
 export function DashboardPage() {
   const { companyId } = useActiveCompany();
+  const navigate = useNavigate();
 
   const salesOrdersQuery = useQuery({
     queryKey: ['dashboard-sales-orders-count', companyId],
@@ -148,161 +128,216 @@ export function DashboardPage() {
   const lowStockLines = (stockValuationQuery.data?.lines ?? []).filter((l) => l.onHandQuantity < LOW_STOCK_THRESHOLD);
 
   return (
-    <div>
-      <h1 className="mb-1 text-xl font-semibold text-text">Dashboard</h1>
-      <p className="mb-6 text-sm text-text-muted">A cross-module snapshot for the active company.</p>
+    <div className="space-y-8">
+      {/* Header Banner & Quick Action Buttons */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-text">Executive Operating Dashboard</h1>
+          <p className="text-sm text-text-muted">Cross-module operational oversight for Active Company.</p>
+        </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Open Sales Orders"
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={() => navigate('/inventory')} className="text-xs">
+            <Plus size={14} className="mr-1" /> New Product
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => navigate('/sales')} className="text-xs">
+            <ShoppingCart size={14} className="mr-1" /> Sales Order
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => navigate('/procurement')} className="text-xs">
+            <ShoppingBag size={14} className="mr-1" /> Purchase Order
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatsCard
+          title="Open Sales Orders"
           value={salesOrdersQuery.isLoading ? '…' : String(salesOrdersQuery.data?.totalCount ?? 0)}
+          description="Active customer fulfillment pipeline"
+          icon={<ShoppingCart size={20} />}
         />
-        <KpiCard
-          label="Pending PO Approvals"
+        <StatsCard
+          title="Pending PO Approvals"
           value={poStatusQuery.isLoading ? '…' : String(pendingApprovals)}
-          hint="Purchase orders still in Draft"
+          description="Draft purchase orders awaiting sign-off"
+          icon={<ShoppingBag size={20} />}
         />
-        <KpiCard
-          label="Low-Stock Products"
+        <StatsCard
+          title="Low-Stock Items"
           value={stockValuationQuery.isLoading ? '…' : String(lowStockLines.length)}
-          hint={`Below ${LOW_STOCK_THRESHOLD} units on hand`}
+          description={`Items below threshold (${LOW_STOCK_THRESHOLD} units)`}
+          icon={<AlertTriangle size={20} />}
         />
-        <KpiCard
-          label="AR Outstanding"
-          value={arAgingQuery.isLoading ? '…' : (arAgingQuery.data?.grandTotal ?? 0).toLocaleString()}
-          hint={`${arAgingQuery.data?.lines.length ?? 0} open invoice balances`}
+        <StatsCard
+          title="AR Outstanding"
+          value={arAgingQuery.isLoading ? '…' : `$${(arAgingQuery.data?.grandTotal ?? 0).toLocaleString()}`}
+          description={`${arAgingQuery.data?.lines.length ?? 0} open invoice balances`}
+          icon={<DollarSign size={20} />}
         />
-        <KpiCard
-          label="AP Outstanding"
-          value={apAgingQuery.isLoading ? '…' : (apAgingQuery.data?.grandTotal ?? 0).toLocaleString()}
-          hint={`${apAgingQuery.data?.lines.length ?? 0} open supplier balances`}
+        <StatsCard
+          title="AP Outstanding"
+          value={apAgingQuery.isLoading ? '…' : `$${(apAgingQuery.data?.grandTotal ?? 0).toLocaleString()}`}
+          description={`${apAgingQuery.data?.lines.length ?? 0} open supplier payables`}
+          icon={<CreditCard size={20} />}
         />
       </div>
 
+      {/* Main Analytical Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-3 text-lg font-semibold text-text">AR Aging</h2>
-          <Card className="mb-4">
-            <div className="grid grid-cols-4 gap-2 text-center text-sm">
-              <div>
-                <p className="text-text-muted">0-30</p>
-                <p className="font-semibold text-text">{(arAgingQuery.data?.bucket0To30Total ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">31-60</p>
-                <p className="font-semibold text-text">{(arAgingQuery.data?.bucket31To60Total ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">61-90</p>
-                <p className="font-semibold text-text">{(arAgingQuery.data?.bucket61To90Total ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">90+</p>
-                <p className="font-semibold text-text">{(arAgingQuery.data?.bucket90PlusTotal ?? 0).toLocaleString()}</p>
-              </div>
+        {/* Left Column: Receivables & Payables */}
+        <div className="space-y-6">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-text">Accounts Receivable (AR) Aging</h2>
+              <Button type="button" variant="secondary" onClick={() => navigate('/finance')} className="text-xs">
+                View GL <ArrowRight size={12} className="ml-1" />
+              </Button>
             </div>
-          </Card>
-          <Card>
-            <DataTable
-              columns={[
-                { header: 'Invoice', render: (l: ArAgingLineDto) => l.invoiceId },
-                { header: 'Days', render: (l: ArAgingLineDto) => String(l.daysOutstanding) },
-                { header: 'Bucket', render: (l: ArAgingLineDto) => l.bucket },
-                { header: 'Balance', render: (l: ArAgingLineDto) => l.balance.toLocaleString() },
-              ]}
-              rows={arAgingQuery.data?.lines}
-              isLoading={arAgingQuery.isLoading}
-              emptyMessage="No outstanding invoice balances."
-              rowKey={(l) => l.invoiceId}
-            />
-          </Card>
+            <Card className="mb-4">
+              <div className="grid grid-cols-4 gap-2 text-center text-xs sm:text-sm">
+                <div className="border-r border-border pr-2">
+                  <p className="text-text-muted">0-30 Days</p>
+                  <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                    ${(arAgingQuery.data?.bucket0To30Total ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="border-r border-border pr-2">
+                  <p className="text-text-muted">31-60 Days</p>
+                  <p className="font-bold text-amber-600 dark:text-amber-400">
+                    ${(arAgingQuery.data?.bucket31To60Total ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="border-r border-border pr-2">
+                  <p className="text-text-muted">61-90 Days</p>
+                  <p className="font-bold text-rose-500">
+                    ${(arAgingQuery.data?.bucket61To90Total ?? 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-text-muted">90+ Days</p>
+                  <p className="font-bold text-rose-700 dark:text-rose-400">
+                    ${(arAgingQuery.data?.bucket90PlusTotal ?? 0).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </Card>
+            <Card>
+              <DataTable
+                columns={[
+                  { header: 'Invoice ID', accessorKey: 'invoiceId', render: (l: ArAgingLineDto) => <span className="font-mono">{l.invoiceId}</span> },
+                  { header: 'Days', accessorKey: 'daysOutstanding', render: (l: ArAgingLineDto) => String(l.daysOutstanding) },
+                  { header: 'Bucket', render: (l: ArAgingLineDto) => <StatusBadge status={l.bucket} /> },
+                  { header: 'Balance', accessorKey: 'balance', render: (l: ArAgingLineDto) => `$${l.balance.toLocaleString()}` },
+                ]}
+                rows={arAgingQuery.data?.lines}
+                isLoading={arAgingQuery.isLoading}
+                emptyMessage="No outstanding invoice balances."
+                rowKey={(l) => l.invoiceId}
+              />
+            </Card>
+          </div>
 
-          <h2 className="mb-3 mt-6 text-lg font-semibold text-text">AP Aging</h2>
-          <Card className="mb-4">
-            <div className="grid grid-cols-4 gap-2 text-center text-sm">
-              <div>
-                <p className="text-text-muted">0-30</p>
-                <p className="font-semibold text-text">{(apAgingQuery.data?.bucket0To30Total ?? 0).toLocaleString()}</p>
+          <div>
+            <h2 className="mb-3 text-lg font-semibold text-text">Accounts Payable (AP) Aging</h2>
+            <Card className="mb-4">
+              <div className="grid grid-cols-4 gap-2 text-center text-xs sm:text-sm">
+                <div className="border-r border-border pr-2">
+                  <p className="text-text-muted">0-30 Days</p>
+                  <p className="font-bold text-text">${(apAgingQuery.data?.bucket0To30Total ?? 0).toLocaleString()}</p>
+                </div>
+                <div className="border-r border-border pr-2">
+                  <p className="text-text-muted">31-60 Days</p>
+                  <p className="font-bold text-text">${(apAgingQuery.data?.bucket31To60Total ?? 0).toLocaleString()}</p>
+                </div>
+                <div className="border-r border-border pr-2">
+                  <p className="text-text-muted">61-90 Days</p>
+                  <p className="font-bold text-text">${(apAgingQuery.data?.bucket61To90Total ?? 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-text-muted">90+ Days</p>
+                  <p className="font-bold text-text">${(apAgingQuery.data?.bucket90PlusTotal ?? 0).toLocaleString()}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-text-muted">31-60</p>
-                <p className="font-semibold text-text">{(apAgingQuery.data?.bucket31To60Total ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">61-90</p>
-                <p className="font-semibold text-text">{(apAgingQuery.data?.bucket61To90Total ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">90+</p>
-                <p className="font-semibold text-text">{(apAgingQuery.data?.bucket90PlusTotal ?? 0).toLocaleString()}</p>
-              </div>
-            </div>
-          </Card>
-          <Card>
-            <DataTable
-              columns={[
-                { header: 'Supplier ID', render: (l: ApAgingLineDto) => l.supplierId },
-                { header: 'Days', render: (l: ApAgingLineDto) => String(l.daysOutstanding) },
-                { header: 'Bucket', render: (l: ApAgingLineDto) => l.bucket },
-                { header: 'Balance', render: (l: ApAgingLineDto) => l.balance.toLocaleString() },
-              ]}
-              rows={apAgingQuery.data?.lines}
-              isLoading={apAgingQuery.isLoading}
-              emptyMessage="No outstanding supplier balances."
-              rowKey={(l) => l.supplierId}
-            />
-          </Card>
+            </Card>
+            <Card>
+              <DataTable
+                columns={[
+                  { header: 'Supplier ID', accessorKey: 'supplierId', render: (l: ApAgingLineDto) => <span className="font-mono">{l.supplierId}</span> },
+                  { header: 'Days', accessorKey: 'daysOutstanding', render: (l: ApAgingLineDto) => String(l.daysOutstanding) },
+                  { header: 'Bucket', render: (l: ApAgingLineDto) => <StatusBadge status={l.bucket} /> },
+                  { header: 'Balance', accessorKey: 'balance', render: (l: ApAgingLineDto) => `$${l.balance.toLocaleString()}` },
+                ]}
+                rows={apAgingQuery.data?.lines}
+                isLoading={apAgingQuery.isLoading}
+                emptyMessage="No outstanding supplier balances."
+                rowKey={(l) => l.supplierId}
+              />
+            </Card>
+          </div>
         </div>
 
-        <div>
-          <h2 className="mb-3 text-lg font-semibold text-text">Low Stock</h2>
-          <Card>
-            <DataTable
-              columns={[
-                { header: 'SKU', render: (l: StockValuationLineDto) => l.sku },
-                { header: 'Name', render: (l: StockValuationLineDto) => l.name },
-                { header: 'On Hand', render: (l: StockValuationLineDto) => l.onHandQuantity.toLocaleString() },
-                { header: 'Ext. Value', render: (l: StockValuationLineDto) => l.extendedValue.toLocaleString() },
-              ]}
-              rows={lowStockLines}
-              isLoading={stockValuationQuery.isLoading}
-              emptyMessage="No products below the low-stock threshold."
-              rowKey={(l) => l.productId}
-            />
-          </Card>
+        {/* Right Column: Inventory & Procurement */}
+        <div className="space-y-6">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-text">Low-Stock Stock Valuation Alert</h2>
+              <Button type="button" variant="secondary" onClick={() => navigate('/inventory')} className="text-xs">
+                Inventory Catalog <ArrowRight size={12} className="ml-1" />
+              </Button>
+            </div>
+            <Card>
+              <DataTable
+                columns={[
+                  { header: 'SKU', accessorKey: 'sku', render: (l: StockValuationLineDto) => <span className="font-mono font-medium">{l.sku}</span> },
+                  { header: 'Name', accessorKey: 'name', render: (l: StockValuationLineDto) => l.name },
+                  { header: 'On Hand', accessorKey: 'onHandQuantity', render: (l: StockValuationLineDto) => <span className="font-bold text-rose-500">{l.onHandQuantity.toLocaleString()}</span> },
+                  { header: 'Ext. Value', accessorKey: 'extendedValue', render: (l: StockValuationLineDto) => `$${l.extendedValue.toLocaleString()}` },
+                ]}
+                rows={lowStockLines}
+                isLoading={stockValuationQuery.isLoading}
+                emptyMessage="All product stock levels are healthy."
+                rowKey={(l) => l.productId}
+              />
+            </Card>
+          </div>
 
-          <h2 className="mb-3 mt-6 text-lg font-semibold text-text">Purchase Order Status</h2>
-          <Card>
-            <DataTable
-              columns={[
-                { header: 'Status', render: (l: PoStatusSummaryLineDto) => l.status },
-                { header: 'Count', render: (l: PoStatusSummaryLineDto) => String(l.count) },
-              ]}
-              rows={poStatusQuery.data?.lines}
-              isLoading={poStatusQuery.isLoading}
-              emptyMessage="No purchase orders yet."
-              rowKey={(l) => l.status}
-            />
-          </Card>
+          <div>
+            <h2 className="mb-3 text-lg font-semibold text-text">Purchase Order Status Overview</h2>
+            <Card>
+              <DataTable
+                columns={[
+                  { header: 'Status', accessorKey: 'status', render: (l: PoStatusSummaryLineDto) => <StatusBadge status={l.status} /> },
+                  { header: 'Count', accessorKey: 'count', render: (l: PoStatusSummaryLineDto) => <span className="font-semibold">{l.count}</span> },
+                ]}
+                rows={poStatusQuery.data?.lines}
+                isLoading={poStatusQuery.isLoading}
+                emptyMessage="No purchase orders yet."
+                rowKey={(l) => l.status}
+              />
+            </Card>
+          </div>
 
-          <h2 className="mb-3 mt-6 text-lg font-semibold text-text">Supplier Scorecard</h2>
-          <Card>
-            <DataTable
-              columns={[
-                { header: 'Supplier ID', render: (l: SupplierScorecardLineDto) => l.supplierId },
-                { header: 'Orders', render: (l: SupplierScorecardLineDto) => String(l.orderCount) },
-                { header: 'Total value', render: (l: SupplierScorecardLineDto) => l.totalOrderValue.toLocaleString() },
-                { header: 'Avg. order value', render: (l: SupplierScorecardLineDto) => l.averageOrderValue.toLocaleString() },
-                { header: 'Fully received %', render: (l: SupplierScorecardLineDto) => `${l.fullyReceivedRate.toFixed(1)}%` },
-              ]}
-              rows={supplierScorecardQuery.data}
-              isLoading={supplierScorecardQuery.isLoading}
-              emptyMessage="No purchase orders yet."
-              rowKey={(l) => l.supplierId}
-            />
-          </Card>
+          <div>
+            <h2 className="mb-3 text-lg font-semibold text-text">Supplier Performance Scorecard</h2>
+            <Card>
+              <DataTable
+                columns={[
+                  { header: 'Supplier ID', accessorKey: 'supplierId', render: (l: SupplierScorecardLineDto) => <span className="font-mono">{l.supplierId}</span> },
+                  { header: 'Orders', accessorKey: 'orderCount', render: (l: SupplierScorecardLineDto) => String(l.orderCount) },
+                  { header: 'Total Value', accessorKey: 'totalOrderValue', render: (l: SupplierScorecardLineDto) => `$${l.totalOrderValue.toLocaleString()}` },
+                  { header: 'Received %', accessorKey: 'fullyReceivedRate', render: (l: SupplierScorecardLineDto) => <span className="font-medium text-emerald-600 dark:text-emerald-400">{l.fullyReceivedRate.toFixed(1)}%</span> },
+                ]}
+                rows={supplierScorecardQuery.data}
+                isLoading={supplierScorecardQuery.isLoading}
+                emptyMessage="No supplier metrics available."
+                rowKey={(l) => l.supplierId}
+              />
+            </Card>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+

@@ -5,6 +5,23 @@ import { RequireAuth } from './RequireAuth';
 import { RequirePermission } from './RequirePermission';
 import { LoginPage } from '../modules/core/pages/LoginPage';
 import { RegisterPage } from '../modules/core/pages/RegisterPage';
+import { PortalLoginPage } from '../portal/PortalLoginPage';
+import { PortalLayout } from '../portal/PortalLayout';
+import { PortalRequireAuth } from '../portal/PortalRequireAuth';
+import { PortalDashboardPage } from '../portal/PortalDashboardPage';
+import { PublicLayout } from '../public/layout/PublicLayout';
+
+const LandingHomePage = lazy(() => import('../public/pages/LandingHomePage').then((m) => ({ default: m.LandingHomePage })));
+const PlatformPage = lazy(() => import('../public/pages/PlatformPage').then((m) => ({ default: m.PlatformPage })));
+const SolutionsPage = lazy(() => import('../public/pages/SolutionsPage').then((m) => ({ default: m.SolutionsPage })));
+const ModulesPage = lazy(() => import('../public/pages/ModulesPage').then((m) => ({ default: m.ModulesPage })));
+const AiPage = lazy(() => import('../public/pages/AiPage').then((m) => ({ default: m.AiPage })));
+const PricingPage = lazy(() => import('../public/pages/PricingPage').then((m) => ({ default: m.PricingPage })));
+const IntegrationsPage = lazy(() => import('../public/pages/IntegrationsPage').then((m) => ({ default: m.IntegrationsPage })));
+const SecurityPage = lazy(() => import('../public/pages/SecurityPage').then((m) => ({ default: m.SecurityPage })));
+const ResourcesPage = lazy(() => import('../public/pages/ResourcesPage').then((m) => ({ default: m.ResourcesPage })));
+const CareersPage = lazy(() => import('../public/pages/CareersPage').then((m) => ({ default: m.CareersPage })));
+const ContactPage = lazy(() => import('../public/pages/ContactPage').then((m) => ({ default: m.ContactPage })));
 
 const DashboardPage = lazy(() => import('../modules/core/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const CompaniesPage = lazy(() => import('../modules/core/pages/CompaniesPage').then((m) => ({ default: m.CompaniesPage })));
@@ -29,6 +46,7 @@ const KpiDefinitionsPage = lazy(() => import('../modules/bi/pages/KpiDefinitions
 const RecommendationsPage = lazy(() => import('../modules/ai/pages/RecommendationsPage').then((m) => ({ default: m.RecommendationsPage })));
 const PluginListingsPage = lazy(() => import('../modules/marketplace/pages/PluginListingsPage').then((m) => ({ default: m.PluginListingsPage })));
 const IntegrationConnectorsPage = lazy(() => import('../modules/integration_hub/pages/IntegrationConnectorsPage').then((m) => ({ default: m.IntegrationConnectorsPage })));
+const UserProfilePage = lazy(() => import('../modules/core/pages/UserProfilePage').then((m) => ({ default: m.UserProfilePage })));
 
 function RouteFallback() {
   return <p className="p-6 text-sm text-text-muted">Loading…</p>;
@@ -62,6 +80,13 @@ function RouteFallback() {
  * landing page — rather than /core, now that there's a real landing page to
  * send people to instead of the Companies list.
  *
+ * /portal/login and /portal (Customer Portal, 2026-07-22) are a genuinely
+ * separate route tree for customers, not staff: they sit outside
+ * RequireAuth/AppShell entirely (a different session store, portalAuthStore,
+ * gates them via PortalRequireAuth) and render inside PortalLayout — a
+ * minimal standalone shell with no sidebar/module navigation — instead of the
+ * staff AppShell, so a customer can never see internal staff screens.
+ *
  * Every real module page (everything except /dashboard, /core/approvals and
  * /core/notifications, which every authenticated user can reach regardless
  * of role — see AppShell's docstring) is wrapped in RequirePermission with
@@ -75,8 +100,29 @@ function RouteFallback() {
 export function AppRoutes() {
   return (
     <Routes>
+      {/* Public Enterprise Marketing Suite */}
+      <Route element={<PublicLayout />}>
+        <Route index element={<Suspense fallback={<RouteFallback />}><LandingHomePage /></Suspense>} />
+        <Route path="/platform" element={<Suspense fallback={<RouteFallback />}><PlatformPage /></Suspense>} />
+        <Route path="/solutions" element={<Suspense fallback={<RouteFallback />}><SolutionsPage /></Suspense>} />
+        <Route path="/modules" element={<Suspense fallback={<RouteFallback />}><ModulesPage /></Suspense>} />
+        <Route path="/ai" element={<Suspense fallback={<RouteFallback />}><AiPage /></Suspense>} />
+        <Route path="/pricing" element={<Suspense fallback={<RouteFallback />}><PricingPage /></Suspense>} />
+        <Route path="/integrations" element={<Suspense fallback={<RouteFallback />}><IntegrationsPage /></Suspense>} />
+        <Route path="/security" element={<Suspense fallback={<RouteFallback />}><SecurityPage /></Suspense>} />
+        <Route path="/resources" element={<Suspense fallback={<RouteFallback />}><ResourcesPage /></Suspense>} />
+        <Route path="/careers" element={<Suspense fallback={<RouteFallback />}><CareersPage /></Suspense>} />
+        <Route path="/contact" element={<Suspense fallback={<RouteFallback />}><ContactPage /></Suspense>} />
+      </Route>
+
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/portal/login" element={<PortalLoginPage />} />
+      <Route element={<PortalRequireAuth />}>
+        <Route element={<PortalLayout />}>
+          <Route path="/portal" element={<PortalDashboardPage />} />
+        </Route>
+      </Route>
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route
@@ -129,6 +175,14 @@ export function AppRoutes() {
                   <SettingsPage />
                 </Suspense>
               </RequirePermission>
+            }
+          />
+          <Route
+            path="/core/profile"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <UserProfilePage />
+              </Suspense>
             }
           />
           <Route

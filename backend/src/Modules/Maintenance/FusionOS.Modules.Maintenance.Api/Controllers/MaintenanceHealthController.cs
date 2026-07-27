@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FusionOS.Modules.Maintenance.Api.Controllers;
 
-/// <summary>The only endpoint this not-yet-implemented module exposes: proof it is registered and reachable.</summary>
+/// <summary>Reports genuine module status — Maintenance has real MaintenanceRequest/SparePartUsage/MeterReading depth, not just a registration probe.</summary>
 [ApiController]
 [Route("api/v1/maintenance/health")]
 public sealed class MaintenanceHealthController : ControllerBase
@@ -11,7 +11,8 @@ public sealed class MaintenanceHealthController : ControllerBase
     public IActionResult Get() => Ok(new
     {
         module = "Maintenance",
-        status = "scaffolded",
+        status = "active",
         roadmapPhase = "Phase 5 — Quality & Maintenance",
+        slices = new[] { "maintenance-requests", "spare-part-usage", "meter-readings" },
     });
 }

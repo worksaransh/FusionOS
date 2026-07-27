@@ -44,4 +44,18 @@ public interface IApLedgerRepository
     /// entirely from Finance's own data" approximation AR's aging report uses.
     /// </summary>
     Task<IReadOnlyList<(Guid SupplierId, decimal Balance, DateTimeOffset OldestChargeDate)>> GetOutstandingSupplierBalancesAsync(Guid companyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Backs GetCashFlowStatementReportQuery's Operating-activities
+    /// working-capital adjustment (2026-07-22) — mirrors
+    /// IArLedgerRepository.SumAmountInRangeAsync exactly, scoped to Supplier's
+    /// AP ledger instead of Customer's AR ledger. Sums every entry's Amount
+    /// (bill charges positive, payments negative — see ApLedgerEntry's own
+    /// doc comment) whose TransactionDate falls within [dateFrom, dateTo]
+    /// inclusive: the net movement in the AP balance during that period. A
+    /// positive result means AP grew during the period (an expense/bill was
+    /// recognized but not yet paid in cash); the caller applies the sign for
+    /// the cash-flow adjustment itself, same convention as the AR side.
+    /// </summary>
+    Task<decimal> SumAmountInRangeAsync(Guid companyId, DateTimeOffset dateFrom, DateTimeOffset dateTo, CancellationToken cancellationToken = default);
 }

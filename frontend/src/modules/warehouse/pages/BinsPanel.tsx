@@ -9,7 +9,7 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
-import { useWarehouseOptions, useZoneOptions } from '../../../shared/api/entityOptions';
+import { useWarehouseOptions, useZoneOptions, useRackOptions, useShelfOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
 const schema = z.object({
@@ -17,12 +17,23 @@ const schema = z.object({
   zoneId: z.string().uuid('Pick a zone'),
   name: z.string().min(1, 'Name is required').max(150),
   code: z.string().min(1, 'Code is required').max(20),
+  // Rack is a UI-only narrowing field (Shelf's list endpoint nests under a
+  // Rack, not directly under a Zone) — never sent to CreateBinCommand, only
+  // used to filter the Shelf picker below. Shelf itself is optional too:
+  // Bin.ShelfId is an additive refinement on top of the required ZoneId
+  // (see Bin.cs / AssignBinShelfCommand.cs), assigned via a follow-up
+  // POST {id}/shelf call once the bin exists, same reasoning as
+  // WarehousesPage's create-then-optionally-refine pattern.
+  rackId: z.string().optional(),
+  shelfId: z.string().optional(),
 });
 type FormValues = z.infer<typeof schema>;
 
 // Update command deliberately excludes Code and ZoneId — only Name is
 // editable (see UpdateBinCommand.cs / BinsController.Update), same
-// immutability rule as Zone's own edit form.
+// immutability rule as Zone's own edit form. Shelf assignment is handled by
+// a separate mutation (AssignBinShelfCommand via POST {id}/shelf) below,
+// not folded into this form/command.
 const editSchema = z.object({
   name: z.string().min(1, 'Name is required').max(150),
 });
@@ -35,6 +46,7 @@ interface BinDto {
   code: string;
   isActive: boolean;
   createdAt: string;
+  shelfId: string | null;
 }
 
 /** Bins — nests under Zone (docs/IMPLEMENTATION_PLAN.md Phase 9 "bins" item, Phase M9 2026-07-15). Pick a Warehouse, then a Zone, from searchable dropdowns. */
@@ -49,19 +61,35 @@ export function BinsPanel() {
 
   const { control, handleSubmit, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { warehouseId: '', zoneId: '', name: '', code: '' },
+    defaultValues: { warehouseId: '', zoneId: '', name: '', code: '', rackId: '', shelfId: '' },
   });
   const watchedWarehouseId = watch('warehouseId');
   const watchedZoneId = watch('zoneId');
+  const watchedRackId = watch('rackId');
   const effectiveWarehouseId = lookupWarehouseId || watchedWarehouseId;
   const effectiveZoneId = lookupZoneId || watchedZoneId;
   const zoneOptions = useZoneOptions(companyId, effectiveWarehouseId || undefined);
+  const rackOptions = useRackOptions(companyId, effectiveWarehouseId || undefined, effectiveZoneId || undefined);
+  const shelfOptions = useShelfOptions(companyId, effectiveWarehouseId || undefined, effectiveZoneId || undefined, watchedRackId || undefined);
 
   const createBin = useMutation({
-    mutationFn: (values: FormValues) =>
-      apiClient.post(`/warehouse/warehouses/${values.warehouseId}/zones/${values.zoneId}/bins`, { companyId, name: values.name, code: values.code }),
+    mutationFn: async (values: FormValues) => {
+      const created = await apiClient.post<BinDto>(
+        `/warehouse/warehouses/${values.warehouseId}/zones/${values.zoneId}/bins`,
+        { companyId, name: values.name, code: values.code },
+      );
+      // Shelf is optional and additive (Bin.ShelfId) — assigned via a
+      // separate follow-up call once the bin exists, not part of CreateBinCommand.
+      if (values.shelfId) {
+        await apiClient.post(`/warehouse/warehouses/${values.warehouseId}/zones/${values.zoneId}/bins/${created.id}/shelf`, {
+          companyId,
+          shelfId: values.shelfId,
+        });
+      }
+      return created;
+    },
     onSuccess: (_data, variables) => {
-      reset({ warehouseId: variables.warehouseId, zoneId: variables.zoneId, name: '', code: '' });
+      reset({ warehouseId: variables.warehouseId, zoneId: variables.zoneId, name: '', code: '', rackId: '', shelfId: '' });
       setLookupWarehouseId(variables.warehouseId);
       setLookupZoneId(variables.zoneId);
       queryClient.invalidateQueries({ queryKey: ['bins', companyId, variables.warehouseId, variables.zoneId] });
@@ -100,7 +128,7 @@ export function BinsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Bins</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createBin.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createBin.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Warehouse
             <Controller
@@ -142,6 +170,40 @@ export function BinsPanel() {
               )}
             />
             {errors.zoneId && <span className="text-xs text-danger">{errors.zoneId.message}</span>}
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Rack (optional)
+            <Controller
+              control={control}
+              name="rackId"
+              render={({ field }) => (
+                <EntityCombobox
+                  value={field.value ?? ''}
+                  onChange={(id) => field.onChange(id)}
+                  options={rackOptions.options}
+                  isLoading={rackOptions.isLoading}
+                  placeholder={effectiveZoneId ? 'Search racks…' : 'Pick a zone first'}
+                  disabled={!effectiveZoneId}
+                />
+              )}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Shelf (optional)
+            <Controller
+              control={control}
+              name="shelfId"
+              render={({ field }) => (
+                <EntityCombobox
+                  value={field.value ?? ''}
+                  onChange={(id) => field.onChange(id)}
+                  options={shelfOptions.options}
+                  isLoading={shelfOptions.isLoading}
+                  placeholder={watchedRackId ? 'Search shelves…' : 'Pick a rack first'}
+                  disabled={!watchedRackId}
+                />
+              )}
+            />
           </label>
           <label className="flex flex-col gap-1 text-sm">
             Bin name
@@ -260,7 +322,7 @@ function BinEditPanel({ companyId, warehouseId, zoneId, bin, onClose }: BinEditP
         <h2 className="text-lg font-semibold text-text">Edit bin — {bin.code}</h2>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateBin.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateBin.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />
@@ -273,6 +335,85 @@ function BinEditPanel({ companyId, warehouseId, zoneId, bin, onClose }: BinEditP
           )}
         </div>
       </form>
+
+      <ShelfAssignmentSection companyId={companyId} warehouseId={warehouseId} zoneId={zoneId} bin={bin} />
     </Card>
+  );
+}
+
+interface ShelfAssignmentSectionProps {
+  companyId: string;
+  warehouseId: string;
+  zoneId: string;
+  bin: BinDto;
+}
+
+/**
+ * Assigns (or clears) this bin's optional Shelf refinement via
+ * AssignBinShelfCommand (POST {id}/shelf) — separate from Name/UpdateBin
+ * above since it's a distinct command, not a field on UpdateBinCommand.
+ * Only offers racks/shelves that belong to this bin's own zone (Rack nests
+ * under Zone, Shelf nests under Rack), matching the backend's
+ * zone-consistency rejection in AssignBinShelfCommandHandler.
+ */
+function ShelfAssignmentSection({ companyId, warehouseId, zoneId, bin }: ShelfAssignmentSectionProps) {
+  const queryClient = useQueryClient();
+  const [rackId, setRackId] = useState('');
+  const [shelfId, setShelfId] = useState('');
+
+  const rackOptions = useRackOptions(companyId, warehouseId, zoneId);
+  const shelfOptions = useShelfOptions(companyId, warehouseId, zoneId, rackId || undefined);
+
+  const assignShelf = useMutation({
+    mutationFn: (nextShelfId: string | null) =>
+      apiClient.post<BinDto>(`/warehouse/warehouses/${warehouseId}/zones/${zoneId}/bins/${bin.id}/shelf`, {
+        companyId,
+        shelfId: nextShelfId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bins', companyId, warehouseId, zoneId] });
+    },
+  });
+
+  return (
+    <div className="col-span-2 mt-6 border-t border-border pt-4">
+      <h3 className="mb-2 text-sm font-semibold text-text">Shelf location (optional)</h3>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Rack
+          <EntityCombobox
+            value={rackId}
+            onChange={setRackId}
+            options={rackOptions.options}
+            isLoading={rackOptions.isLoading}
+            placeholder="Search racks…"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Shelf
+          <EntityCombobox
+            value={shelfId}
+            onChange={setShelfId}
+            options={shelfOptions.options}
+            isLoading={shelfOptions.isLoading}
+            placeholder={rackId ? 'Search shelves…' : 'Pick a rack first'}
+            disabled={!rackId}
+          />
+        </label>
+        <div className="col-span-2 flex items-center gap-3">
+          <Button type="button" disabled={!shelfId || assignShelf.isPending} onClick={() => assignShelf.mutate(shelfId)}>
+            {assignShelf.isPending ? 'Assigning…' : 'Assign shelf'}
+          </Button>
+          {bin.shelfId && (
+            <Button type="button" variant="secondary" disabled={assignShelf.isPending} onClick={() => assignShelf.mutate(null)}>
+              Clear shelf
+            </Button>
+          )}
+          {assignShelf.isError && (
+            <span role="alert" className="text-sm text-danger">Could not assign that shelf — check it belongs to this bin's zone.</span>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

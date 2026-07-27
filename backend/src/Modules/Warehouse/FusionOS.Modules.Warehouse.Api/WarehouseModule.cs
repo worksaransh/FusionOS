@@ -4,7 +4,10 @@ using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.Modules.Warehouse.Application.Bins.Contracts;
 using FusionOS.Modules.Warehouse.Application.CycleCounts.Contracts;
 using FusionOS.Modules.Warehouse.Application.GoodsReceipts.Contracts;
+using FusionOS.Modules.Warehouse.Application.Packages.Contracts;
 using FusionOS.Modules.Warehouse.Application.PickLists.Contracts;
+using FusionOS.Modules.Warehouse.Application.Racks.Contracts;
+using FusionOS.Modules.Warehouse.Application.Shelves.Contracts;
 using FusionOS.Modules.Warehouse.Application.Warehouses.Commands.CreateWarehouse;
 using FusionOS.Modules.Warehouse.Application.Warehouses.Contracts;
 using FusionOS.Modules.Warehouse.Application.Zones.Contracts;
@@ -34,6 +37,16 @@ public sealed class WarehouseModule : IModule
         services.AddScoped<IBinRepository, BinRepository>();
         services.AddScoped<ICycleCountRepository, CycleCountRepository>();
         services.AddScoped<IPickListRepository, PickListRepository>();
+
+        // Rack/Shelf (Phase 3 Warehouse depth, 2026-07-21) — optional intermediate
+        // location levels between Zone and Bin; Bin.ZoneId stays required/unchanged.
+        services.AddScoped<IRackRepository, RackRepository>();
+        services.AddScoped<IShelfRepository, ShelfRepository>();
+
+        // Packaging (Phase 3 Warehouse depth, 2026-07-21) — records what went into
+        // which physical package/carton from an already-Packed PickList.
+        services.AddScoped<IPackageRepository, PackageRepository>();
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddModuleApplication(typeof(CreateWarehouseCommand).Assembly);

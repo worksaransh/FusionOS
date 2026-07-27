@@ -89,4 +89,39 @@ public class RecordPaymentCommandHandlerTests
 
         result.Amount.Should().Be(-100m);
     }
+
+    [Fact]
+    public async Task Handle_WhenBankAccountIdIsProvided_CarriesItOntoTheLedgerEntry()
+    {
+        var companyId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var bankAccountId = Guid.NewGuid();
+        var repository = Substitute.For<IArLedgerRepository>();
+        repository.SumAmountByInvoiceAsync(companyId, invoiceId, Arg.Any<CancellationToken>()).Returns(250m);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var handler = new RecordPaymentCommandHandler(repository, unitOfWork);
+        var command = new RecordPaymentCommand(companyId, customerId, invoiceId, 100m, PaymentDate: null, Reference: "UTR1", BankAccountId: bankAccountId);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.BankAccountId.Should().Be(bankAccountId);
+    }
+
+    [Fact]
+    public async Task Handle_WhenBankAccountIdIsNotProvided_LeavesItNull()
+    {
+        var companyId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var invoiceId = Guid.NewGuid();
+        var repository = Substitute.For<IArLedgerRepository>();
+        repository.SumAmountByInvoiceAsync(companyId, invoiceId, Arg.Any<CancellationToken>()).Returns(250m);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var handler = new RecordPaymentCommandHandler(repository, unitOfWork);
+        var command = new RecordPaymentCommand(companyId, customerId, invoiceId, 100m, PaymentDate: null, Reference: "UTR1");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.BankAccountId.Should().BeNull();
+    }
 }

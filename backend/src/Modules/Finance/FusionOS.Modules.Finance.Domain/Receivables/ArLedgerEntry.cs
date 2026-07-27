@@ -32,6 +32,17 @@ public sealed class ArLedgerEntry : TenantAggregateRoot
     public string Description { get; private set; } = default!;
     public DateTimeOffset TransactionDate { get; private set; }
 
+    /// <summary>
+    /// Optional opaque reference to Finance's own BankAccount aggregate —
+    /// added as a trailing optional field (bank-tied-payments follow-up),
+    /// mirroring ApLedgerEntry.BankAccountId exactly, so existing
+    /// callers/tests of RecordPayment keep compiling unchanged. Null means
+    /// "we don't know/didn't record which bank account this payment moved
+    /// through." Not validated against BankAccount's own existence here —
+    /// same "opaque reference" precedent as CustomerId/InvoiceId.
+    /// </summary>
+    public Guid? BankAccountId { get; private set; }
+
     private ArLedgerEntry() { }
 
     public static ArLedgerEntry RecordInvoiceCharge(Guid companyId, Guid customerId, Guid invoiceId, decimal amount)
@@ -63,9 +74,11 @@ public sealed class ArLedgerEntry : TenantAggregateRoot
     /// doesn't exceed that invoice's current outstanding balance before
     /// calling this factory — this factory only enforces shape, not that
     /// cross-entry business rule (mirrors RecordInvoiceCharge, which also
-    /// only validates its own inputs).
+    /// only validates its own inputs). bankAccountId is optional — see
+    /// <see cref="BankAccountId"/>'s own doc comment — and is a new trailing
+    /// parameter so every existing call site keeps compiling unchanged.
     /// </summary>
-    public static ArLedgerEntry RecordPayment(Guid companyId, Guid customerId, Guid invoiceId, decimal amount, string? reference, DateTimeOffset? transactionDate = null)
+    public static ArLedgerEntry RecordPayment(Guid companyId, Guid customerId, Guid invoiceId, decimal amount, string? reference, DateTimeOffset? transactionDate = null, Guid? bankAccountId = null)
     {
         if (customerId == Guid.Empty)
             throw new ArgumentException("Customer id is required.", nameof(customerId));
@@ -86,6 +99,7 @@ public sealed class ArLedgerEntry : TenantAggregateRoot
             Amount = -amount,
             Description = description,
             TransactionDate = transactionDate ?? DateTimeOffset.UtcNow,
+            BankAccountId = bankAccountId,
         };
     }
 

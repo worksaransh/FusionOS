@@ -30,4 +30,21 @@ public sealed class QuotationRepository : IQuotationRepository
 
     public Task<int> CountAsync(Guid companyId, CancellationToken cancellationToken = default) =>
         _context.Quotations.CountAsync(x => x.CompanyId == companyId, cancellationToken);
+
+    public Task<Quotation?> GetByIdForCustomerAsync(Guid customerId, Guid id, CancellationToken cancellationToken = default) =>
+        _context.Quotations
+            .Include(x => x.Lines)
+            .FirstOrDefaultAsync(x => x.CustomerId == customerId && x.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<Quotation>> ListByCustomerAsync(Guid customerId, int page, int pageSize, CancellationToken cancellationToken = default) =>
+        await _context.Quotations
+            .Include(x => x.Lines)
+            .Where(x => x.CustomerId == customerId)
+            .OrderByDescending(x => x.QuotationDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+    public Task<int> CountByCustomerAsync(Guid customerId, CancellationToken cancellationToken = default) =>
+        _context.Quotations.CountAsync(x => x.CustomerId == customerId, cancellationToken);
 }

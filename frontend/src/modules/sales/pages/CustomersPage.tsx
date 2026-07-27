@@ -13,6 +13,7 @@ import { SalesOrdersPanel } from './SalesOrdersPanel';
 import { InvoicesPanel } from './InvoicesPanel';
 import { DispatchesPanel } from './DispatchesPanel';
 import { CreditNotesPanel } from './CreditNotesPanel';
+import { SalesReturnsPanel } from './SalesReturnsPanel';
 import { QuotationsPanel } from './QuotationsPanel';
 import { PriceListsPanel, type PriceListDto } from './PriceListsPanel';
 import { CommissionsPanel } from './CommissionsPanel';
@@ -133,7 +134,7 @@ export function CustomersPage() {
         },
       ]}
       form={
-        <form onSubmit={handleSubmit((values) => createCustomer.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createCustomer.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Name
             <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />
@@ -177,6 +178,7 @@ export function CustomersPage() {
       <InvoicesPanel />
       <DispatchesPanel />
       <CreditNotesPanel />
+      <SalesReturnsPanel />
       <PriceListsPanel />
       <DiscountRulesPanel />
       <CommissionsPanel />
@@ -252,7 +254,7 @@ function CustomerEditPanel({ companyId, customer, onClose }: CustomerEditPanelPr
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
 
-      <form
+      <form noValidate
         onSubmit={handleSubmit((values) => updateCustomer.mutate(values))}
         className="grid grid-cols-1 gap-4 sm:grid-cols-2"
       >

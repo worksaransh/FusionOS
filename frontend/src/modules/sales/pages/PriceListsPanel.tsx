@@ -80,7 +80,7 @@ export function PriceListsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Price Lists</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createPriceList.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => createPriceList.mutate(values))} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm">
             Name
             <input className="w-96 rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />

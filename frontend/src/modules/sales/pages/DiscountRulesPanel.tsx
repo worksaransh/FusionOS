@@ -86,7 +86,7 @@ export function DiscountRulesPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Discount Rules</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createRule.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form noValidate onSubmit={handleSubmit((values) => createRule.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-sm">
             Product
             <Controller

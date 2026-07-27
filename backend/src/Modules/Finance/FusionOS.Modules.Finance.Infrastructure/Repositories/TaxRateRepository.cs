@@ -33,4 +33,15 @@ public sealed class TaxRateRepository : ITaxRateRepository
 
     public Task<int> CountAsync(Guid companyId, Guid taxJurisdictionId, CancellationToken cancellationToken = default) =>
         _context.TaxRates.CountAsync(r => r.CompanyId == companyId && r.TaxJurisdictionId == taxJurisdictionId, cancellationToken);
+
+    public async Task<IReadOnlyList<TaxRate>> ListAllActiveAsync(Guid companyId, CancellationToken cancellationToken = default) =>
+        await _context.TaxRates
+            .Where(r => r.CompanyId == companyId && r.IsActive)
+            .OrderBy(r => r.Code)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<TaxRate>> GetByIdsAsync(Guid companyId, IReadOnlyCollection<Guid> taxRateIds, CancellationToken cancellationToken = default) =>
+        await _context.TaxRates
+            .Where(r => r.CompanyId == companyId && taxRateIds.Contains(r.Id))
+            .ToListAsync(cancellationToken);
 }

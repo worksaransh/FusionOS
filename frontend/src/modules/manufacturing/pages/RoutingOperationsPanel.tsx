@@ -145,7 +145,7 @@ export function RoutingOperationsPanel() {
         <>
           <Card className="mb-6">
             <h3 className="mb-3 text-sm font-semibold text-text">Add operation</h3>
-            <form onSubmit={handleSubmit((values) => addOperation.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <form noValidate onSubmit={handleSubmit((values) => addOperation.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <label className="flex flex-col gap-1 text-sm">
                 Operation name
                 <Controller

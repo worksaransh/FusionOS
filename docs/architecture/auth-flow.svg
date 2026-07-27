@@ -1,0 +1,82 @@
+<svg viewBox="0 0 1100 620" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1100" height="620" fill="#ffffff"/>
+  <text x="550" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#10151b">FusionOS — Auth &amp; Request Flow</text>
+  <text x="550" y="52" text-anchor="middle" font-size="12.5" fill="#5b6472">JWT bearer auth · tenant isolation · MediatR pipeline behaviors</text>
+
+  <!-- Lifelines -->
+  <g font-size="12.5" font-weight="600" fill="#10151b">
+    <rect x="40" y="76" width="140" height="34" rx="6" fill="#eef3ff" stroke="#2454ff"/>
+    <text x="110" y="98" text-anchor="middle">Browser SPA</text>
+
+    <rect x="270" y="76" width="160" height="34" rx="6" fill="#fff8e5" stroke="#b45309"/>
+    <text x="350" y="98" text-anchor="middle">Api.Host</text>
+
+    <rect x="520" y="76" width="180" height="34" rx="6" fill="#eef3ff" stroke="#2454ff"/>
+    <text x="610" y="98" text-anchor="middle">MediatR Pipeline</text>
+
+    <rect x="790" y="76" width="150" height="34" rx="6" fill="#eefdf5" stroke="#12805c"/>
+    <text x="865" y="98" text-anchor="middle">PostgreSQL</text>
+  </g>
+
+  <!-- lifelines vertical -->
+  <g stroke="#c7cdd6" stroke-width="1.5" stroke-dasharray="3 3">
+    <line x1="110" y1="110" x2="110" y2="590"/>
+    <line x1="350" y1="110" x2="350" y2="590"/>
+    <line x1="610" y1="110" x2="610" y2="590"/>
+    <line x1="865" y1="110" x2="865" y2="590"/>
+  </g>
+
+  <defs>
+    <marker id="a2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#10151b"/>
+    </marker>
+  </defs>
+
+  <!-- Step 1: register -->
+  <line x1="110" y1="150" x2="350" y2="150" stroke="#10151b" stroke-width="1.6" marker-end="url(#a2)"/>
+  <text x="120" y="142" font-size="11.5" fill="#10151b">1. POST /api/v1/auth/register {companyId, email, password}</text>
+
+  <line x1="350" y1="176" x2="610" y2="176" stroke="#10151b" stroke-width="1.6" marker-end="url(#a2)"/>
+  <text x="360" y="168" font-size="11.5" fill="#10151b">RegisterUserCommand</text>
+
+  <line x1="610" y1="202" x2="865" y2="202" stroke="#10151b" stroke-width="1.6" marker-end="url(#a2)"/>
+  <text x="620" y="194" font-size="11.5" fill="#10151b">INSERT user (hashed password, tenant/company id)</text>
+
+  <line x1="865" y1="222" x2="610" y2="222" stroke="#5b6472" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <text x="620" y="216" font-size="10.5" fill="#5b6472">OK</text>
+
+  <line x1="610" y1="242" x2="350" y2="242" stroke="#5b6472" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <line x1="350" y1="262" x2="110" y2="262" stroke="#5b6472" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <text x="120" y="256" font-size="11.5" fill="#5b6472">201 Created</text>
+
+  <!-- Step 2: login -->
+  <line x1="110" y1="308" x2="350" y2="308" stroke="#10151b" stroke-width="1.6" marker-end="url(#a2)"/>
+  <text x="120" y="300" font-size="11.5" fill="#10151b">2. POST /api/v1/auth/login {email, password}</text>
+
+  <line x1="350" y1="334" x2="610" y2="334" stroke="#10151b" stroke-width="1.6" marker-end="url(#a2)"/>
+  <text x="360" y="326" font-size="11.5" fill="#10151b">LoginCommand → verify hash</text>
+
+  <line x1="610" y1="354" x2="350" y2="354" stroke="#5b6472" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <line x1="350" y1="374" x2="110" y2="374" stroke="#5b6472" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <text x="120" y="368" font-size="11.5" fill="#5b6472">200 OK { accessToken (JWT), refreshToken }</text>
+
+  <!-- Step 3: authenticated request -->
+  <line x1="110" y1="420" x2="350" y2="420" stroke="#10151b" stroke-width="1.6" marker-end="url(#a2)"/>
+  <text x="120" y="412" font-size="11.5" fill="#10151b">3. GET /api/v1/inventory/products  Authorization: Bearer &lt;JWT&gt;</text>
+
+  <line x1="350" y1="444" x2="610" y2="444" stroke="#10151b" stroke-width="1.6" marker-end="url(#a2)"/>
+  <text x="360" y="438" font-size="10.5" fill="#5b6472">JWT validated by ASP.NET auth middleware first</text>
+
+  <text x="620" y="466" font-size="10.5" fill="#5b6472">Pipeline: Logging → Validation → Authorization</text>
+  <text x="620" y="480" font-size="10.5" fill="#5b6472">→ TenantIsolationBehavior (scopes query to companyId claim) → Audit</text>
+
+  <line x1="610" y1="498" x2="865" y2="498" stroke="#10151b" stroke-width="1.6" marker-end="url(#a2)"/>
+  <text x="620" y="492" font-size="11.5" fill="#10151b">SELECT ... WHERE company_id = @tenantId</text>
+
+  <line x1="865" y1="518" x2="610" y2="518" stroke="#5b6472" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <line x1="610" y1="538" x2="350" y2="538" stroke="#5b6472" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <line x1="350" y1="558" x2="110" y2="558" stroke="#5b6472" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+  <text x="120" y="552" font-size="11.5" fill="#5b6472">200 OK [ ...products scoped to tenant... ]</text>
+
+  <text x="550" y="608" text-anchor="middle" font-size="10.5" fill="#9aa2b1">Known gap: company bootstrap (creating the very first company) currently requires an existing authenticated user — tracked in docs/blueprint follow-ups.</text>
+</svg>

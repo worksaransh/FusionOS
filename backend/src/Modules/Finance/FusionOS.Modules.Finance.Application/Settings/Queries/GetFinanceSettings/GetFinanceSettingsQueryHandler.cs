@@ -33,5 +33,9 @@ public sealed class GetFinanceSettingsQueryHandler : IRequestHandler<GetFinanceS
         settings.DefaultArAccountId,
         settings.DefaultSalesRevenueAccountId,
         settings.DefaultApAccountId,
-        settings.DefaultPurchaseExpenseAccountId);
+        settings.DefaultPurchaseExpenseAccountId,
+        settings.DefaultDisposalProceedsAccountId,
+        settings.DefaultGainLossOnDisposalAccountId,
+        settings.DefaultSalaryExpenseAccountId,
+        settings.DefaultSalaryPayableAccountId);
 }

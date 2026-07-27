@@ -13,6 +13,7 @@ public sealed class TaxRateConfiguration : IEntityTypeConfiguration<TaxRate>
         builder.Property(x => x.Code).HasMaxLength(20).IsRequired();
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Percentage).HasColumnType("numeric(5,2)").IsRequired();
+        builder.Property(x => x.GstComponent).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md — SQL Server IsRowVersion() idiom fixed)
         builder.Ignore(x => x.RowVersion);
         builder.HasIndex(x => new { x.CompanyId, x.TaxJurisdictionId, x.Code }).IsUnique();

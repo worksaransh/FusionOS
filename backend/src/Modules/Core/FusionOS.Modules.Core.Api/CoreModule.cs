@@ -2,6 +2,7 @@ using FusionOS.BuildingBlocks.Application;
 using FusionOS.BuildingBlocks.Application.Abstractions;
 using FusionOS.BuildingBlocks.Application.Modularity;
 using FusionOS.BuildingBlocks.EventBus;
+using FusionOS.BuildingBlocks.Infrastructure.Persistence;
 using FusionOS.Modules.Core.Application.AuditLog.Contracts;
 using FusionOS.Modules.Core.Application.Auth.Contracts;
 using FusionOS.Modules.Core.Application.Branches.Contracts;
@@ -12,6 +13,7 @@ using FusionOS.Modules.Core.Application.Departments.Contracts;
 using FusionOS.Modules.Core.Application.Documents.Contracts;
 using FusionOS.Modules.Core.Application.FeatureFlags.Contracts;
 using FusionOS.Modules.Core.Application.FeatureFlags.Services;
+using FusionOS.Modules.Core.Application.IntegrationEvents.Consumers;
 using FusionOS.Modules.Core.Application.Notifications.Contracts;
 using FusionOS.Modules.Core.Application.Notifications.Services;
 using FusionOS.Modules.Core.Application.Settings.Contracts;
@@ -23,6 +25,7 @@ using FusionOS.Modules.Core.Infrastructure.Persistence;
 using FusionOS.Modules.Core.Infrastructure.Repositories;
 using FusionOS.Modules.Core.Infrastructure.Security;
 using FusionOS.SharedKernel.Auditing;
+using FusionOS.SharedKernel.Events;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -104,6 +107,14 @@ public sealed class CoreModule : IModule
         services.AddScoped<IJwtTokenService, JwtTokenService>();
 
         services.AddModuleApplication(typeof(CreateCompanyCommand).Assembly);
+
+        // PO approval workflow engine integration (Phase 4, 2026-07-22) — the
+        // first cross-module consumer registered in Core itself, reacting to
+        // Procurement's PurchaseOrderSubmittedForApproval by creating a real
+        // ApprovalRequest. Needs its own IProcessedIntegrationEventStore -
+        // Core never registered one before, since it had no consumers of its own.
+        services.AddScoped<IProcessedIntegrationEventStore, EfProcessedIntegrationEventStore<CoreDbContext>>();
+        services.AddScoped<IIntegrationEventConsumer, PurchaseOrderSubmittedForApprovalConsumer>();
 
         services.AddControllers().AddApplicationPart(typeof(CoreModule).Assembly);
 

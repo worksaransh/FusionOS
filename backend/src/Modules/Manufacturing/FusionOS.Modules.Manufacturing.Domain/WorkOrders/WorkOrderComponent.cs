@@ -18,20 +18,26 @@ public sealed class WorkOrderComponent
     /// <summary>How much of this component has actually been issued (picked/consumed) to the shop floor so far — distinct from QuantityRequired, the planned snapshot. Never exceeds QuantityRequired.</summary>
     public decimal QuantityIssued { get; private set; }
 
+    /// <summary>Per-unit cost snapshotted from the BOM line at work order creation (WIP support, Phase 6, 2026-07-22) — (QuantityIssued × UnitCost) is this component's WIP value while the order is Released.</summary>
+    public decimal UnitCost { get; private set; }
+
     private WorkOrderComponent() { }
 
-    internal static WorkOrderComponent Create(Guid componentProductId, decimal quantityRequired)
+    internal static WorkOrderComponent Create(Guid componentProductId, decimal quantityRequired, decimal unitCost = 0m)
     {
         if (componentProductId == Guid.Empty)
             throw new ArgumentException("Component product id is required.", nameof(componentProductId));
         if (quantityRequired <= 0)
             throw new ArgumentException("Required quantity must be greater than zero.", nameof(quantityRequired));
+        if (unitCost < 0)
+            throw new ArgumentException("Unit cost cannot be negative.", nameof(unitCost));
 
         return new WorkOrderComponent
         {
             Id = Guid.NewGuid(),
             ComponentProductId = componentProductId,
             QuantityRequired = quantityRequired,
+            UnitCost = unitCost,
         };
     }
 

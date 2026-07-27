@@ -14,6 +14,9 @@ public sealed class ConnectorConnectionRepository : IConnectorConnectionReposito
     public Task<ConnectorConnection?> GetByIdAsync(Guid companyId, Guid connectorConnectionId, CancellationToken cancellationToken = default) =>
         _context.ConnectorConnections.FirstOrDefaultAsync(c => c.CompanyId == companyId && c.Id == connectorConnectionId, cancellationToken);
 
+    public Task<ConnectorConnection?> GetByIdAsync(Guid connectorConnectionId, CancellationToken cancellationToken = default) =>
+        _context.ConnectorConnections.FirstOrDefaultAsync(c => c.Id == connectorConnectionId, cancellationToken);
+
     public async Task AddAsync(ConnectorConnection connection, CancellationToken cancellationToken = default) =>
         await _context.ConnectorConnections.AddAsync(connection, cancellationToken);
 

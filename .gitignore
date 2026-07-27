@@ -1,13 +1,66 @@
-# Root-level ignores that apply across the whole repo — backend/.gitignore
-# and frontend/.gitignore already cover their own build output (bin/obj,
-# node_modules/dist). This covers everything else: local Postgres backups
-# (scripts/backup-postgres.sh output — data, not source), OS/editor cruft,
-# and local-only env overrides at the repo root.
+# FusionOS Root GitIgnore
+
+# Node / Frontend Build Outputs
+**/node_modules/
+**/dist/
+**/build/
+**/coverage/
+**/playwright-report/
+**/test-results/
+**/blob-report/
+**/.vite/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# .NET / C# Build & IDE Artifacts
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.userosscache
+**/*.sln.docstates
+**/*.suo
+**/App_Data/
+**/packages/
+**/*.nupkg
+
+# Database & Backups
 backups/
+*.sql.gz
+*.dump
+
+# Environment Variables & Secrets
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.pfx
+*.key
+
+# Operating System & Editor Files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
 *.swp
+*~
+*.bak
+
+# Temporary & Log Files
+**/logs/
+*.log
+*.tmp
+temp/

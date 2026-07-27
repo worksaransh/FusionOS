@@ -14,6 +14,13 @@ namespace FusionOS.Modules.Procurement.Domain.PurchaseOrders.Events;
 /// cost, not the PO's originally ordered UnitPrice, since a supplier's
 /// invoice should reflect what was actually received.
 /// </summary>
+/// <summary>
+/// TaxRateId/TaxAmount added for GST filing support (2026-07-22) — TaxAmount is
+/// this receipt's prorated share of the PurchaseOrderLine's total tax (LineAmount's
+/// share of the line's total), not the whole line's tax, since a receipt can be
+/// partial. Both are null/0 when the line carries no TaxRateId, same convention
+/// as PurchaseOrderLine itself.
+/// </summary>
 public sealed record PurchaseOrderGoodsReceiptCosted(
     Guid PurchaseOrderId,
     Guid CompanyId,
@@ -21,7 +28,9 @@ public sealed record PurchaseOrderGoodsReceiptCosted(
     Guid ProductId,
     decimal QuantityReceived,
     decimal UnitCost,
-    decimal LineAmount) : IDomainEvent
+    decimal LineAmount,
+    Guid? TaxRateId = null,
+    decimal TaxAmount = 0m) : IDomainEvent
 {
     public DateTimeOffset OccurredOn { get; } = DateTimeOffset.UtcNow;
 }

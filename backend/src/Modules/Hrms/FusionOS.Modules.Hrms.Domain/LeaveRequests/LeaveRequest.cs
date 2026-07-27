@@ -21,6 +21,14 @@ public sealed class LeaveRequest : TenantAggregateRoot
     public string? Reason { get; private set; }
     public LeaveRequestStatus Status { get; private set; }
 
+    /// <summary>
+    /// Inclusive day count this request covers (a same-day request is 1 day, not 0) — the
+    /// figure ApproveLeaveRequestCommandHandler deducts from the matching LeaveBalance, if
+    /// one exists. Computed from StartDate/EndDate rather than stored separately since it's
+    /// always fully determined by them.
+    /// </summary>
+    public int DurationInDays => (EndDate.Date - StartDate.Date).Days + 1;
+
     private LeaveRequest() { }
 
     public static LeaveRequest Create(Guid companyId, Guid employeeId, LeaveType type, DateTimeOffset startDate, DateTimeOffset endDate, string? reason)

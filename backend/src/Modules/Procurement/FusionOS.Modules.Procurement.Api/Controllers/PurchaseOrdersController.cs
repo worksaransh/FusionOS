@@ -1,7 +1,10 @@
 using System.Text;
 using FusionOS.BuildingBlocks.Application.Csv;
 using FusionOS.Modules.Procurement.Application.PurchaseOrders.Commands.ApprovePurchaseOrder;
+using FusionOS.Modules.Procurement.Application.PurchaseOrders.Commands.CancelPurchaseOrder;
 using FusionOS.Modules.Procurement.Application.PurchaseOrders.Commands.CreatePurchaseOrder;
+using FusionOS.Modules.Procurement.Application.PurchaseOrders.Commands.RejectPurchaseOrder;
+using FusionOS.Modules.Procurement.Application.PurchaseOrders.Commands.SubmitPurchaseOrderForApproval;
 using FusionOS.Modules.Procurement.Application.PurchaseOrders.Queries.ListPurchaseOrders;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -34,6 +37,56 @@ public sealed class PurchaseOrdersController : ControllerBase
     public async Task<IActionResult> Approve(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ApprovePurchaseOrderCommand(companyId, id), cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Submits a Draft purchase order into Core's generic Approval workflow
+    /// engine (2026-07-22) — an additive alternative to POST {id}/approve
+    /// above, which still works exactly as before for whatever calls it
+    /// directly. Approvers are resolved on Core's side once
+    /// PurchaseOrderSubmittedForApprovalConsumer reacts to the resulting
+    /// integration event; there's nothing further to pass here.
+    /// </summary>
+    [HttpPost("{id:guid}/submit-for-approval")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SubmitForApproval(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new SubmitPurchaseOrderForApprovalCommand(companyId, id), cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Cancels a purchase order directly (Phase 10 remediation, 2026-07-27) —
+    /// the long-known gap where Cancel had no route/command/domain method at
+    /// all. Deliberately separate from Reject below: this models the business
+    /// voiding the order before it's complete, not an approver turning it down.
+    /// </summary>
+    [HttpPost("{id:guid}/cancel")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Cancel(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new CancelPurchaseOrderCommand(companyId, id), cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Rejects a purchase order directly (Phase 10 remediation, 2026-07-27) —
+    /// an additive manual counterpart to the existing internal
+    /// ApprovalRequestRejectedConsumer path, exposing Reject() outside of
+    /// Core's Approval workflow engine too.
+    /// </summary>
+    [HttpPost("{id:guid}/reject")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Reject(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new RejectPurchaseOrderCommand(companyId, id), cancellationToken);
         return Ok(result);
     }
 

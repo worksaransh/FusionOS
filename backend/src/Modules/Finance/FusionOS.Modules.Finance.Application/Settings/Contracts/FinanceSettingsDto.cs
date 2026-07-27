@@ -5,4 +5,8 @@ public sealed record FinanceSettingsDto(
     Guid? DefaultArAccountId,
     Guid? DefaultSalesRevenueAccountId,
     Guid? DefaultApAccountId,
-    Guid? DefaultPurchaseExpenseAccountId);
+    Guid? DefaultPurchaseExpenseAccountId,
+    Guid? DefaultDisposalProceedsAccountId,
+    Guid? DefaultGainLossOnDisposalAccountId,
+    Guid? DefaultSalaryExpenseAccountId,
+    Guid? DefaultSalaryPayableAccountId);

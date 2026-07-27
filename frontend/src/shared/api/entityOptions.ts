@@ -161,6 +161,42 @@ export function useBinOptions(companyId: string | undefined, warehouseId: string
   );
 }
 
+interface RackLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+const RACK_OPTIONS_PAGE_SIZE = 200;
+
+/** Racks are an optional level nested under Zone, one level deeper than Zone nests under Warehouse — same no-search-yet, one-page pattern as useZoneOptions/useBinOptions. */
+export function useRackOptions(companyId: string | undefined, warehouseId: string | undefined, zoneId: string | undefined) {
+  return useEntityOptionsWithoutSearch<RackLite>(
+    ['rack-options', companyId, warehouseId, zoneId],
+    `/warehouse/warehouses/${warehouseId}/zones/${zoneId}/racks?companyId=${companyId}&page=1&pageSize=${RACK_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId && warehouseId && zoneId),
+    (r) => ({ id: r.id, label: `${r.code} — ${r.name}` }),
+  );
+}
+
+interface ShelfLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+const SHELF_OPTIONS_PAGE_SIZE = 200;
+
+/** Shelves are an optional level nested under Rack, one level deeper than Rack nests under Zone — same no-search-yet, one-page pattern as useRackOptions/useBinOptions. */
+export function useShelfOptions(companyId: string | undefined, warehouseId: string | undefined, zoneId: string | undefined, rackId: string | undefined) {
+  return useEntityOptionsWithoutSearch<ShelfLite>(
+    ['shelf-options', companyId, warehouseId, zoneId, rackId],
+    `/warehouse/warehouses/${warehouseId}/zones/${zoneId}/racks/${rackId}/shelves?companyId=${companyId}&page=1&pageSize=${SHELF_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId && warehouseId && zoneId && rackId),
+    (s) => ({ id: s.id, label: `${s.code} — ${s.name}` }),
+  );
+}
+
 interface AccountLite {
   id: string;
   code: string;
@@ -261,6 +297,50 @@ export function useBillOfMaterialsOptions(companyId: string | undefined) {
     companyId,
     (b) => ({ id: b.id, label: `${b.code} — ${b.name}` }),
   );
+}
+
+interface WorkCenterLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs MachinesPanel's/WorkCentersPanel's work-center picker (Capacity Planning frontend, 2026-07-23) — work-centers' list endpoint has no `search` param yet, same one-page/client-filtered pattern as useSalesOrderOptions. */
+export function useWorkCenterOptions(companyId: string | undefined) {
+  return useEntityOptionsWithoutSearch<WorkCenterLite>(
+    ['work-center-options', companyId],
+    `/manufacturing/work-centers?companyId=${companyId}&page=1&pageSize=200`,
+    Boolean(companyId),
+    (w) => ({ id: w.id, label: `${w.code} — ${w.name}` }),
+  );
+}
+
+interface MachineLite {
+  id: string;
+  code: string;
+  name: string;
+  workCenterId: string;
+}
+
+/**
+ * Backs WorkOrdersPanel's machine picker for scheduling an operation, and MachinesPanel's
+ * own list (Machine Scheduling frontend, 2026-07-23) — machines nest under WorkCenter and
+ * ListMachinesByWorkCenterQuery returns a plain array, not a PagedResult (a work center's
+ * machine roster is small), same bespoke-array shape as useUserOptions.
+ */
+export function useMachineOptions(companyId: string | undefined, workCenterId: string | undefined) {
+  const enabled = Boolean(companyId && workCenterId);
+
+  const query = useQuery({
+    queryKey: ['machine-options', companyId, workCenterId],
+    queryFn: () => apiClient.get<MachineLite[]>(`/manufacturing/machines?companyId=${companyId}&workCenterId=${workCenterId}`),
+    enabled,
+  });
+
+  return {
+    options: (query.data ?? []).map((m) => ({ id: m.id, label: `${m.code} — ${m.name}` })),
+    isLoading: query.isLoading,
+  };
 }
 
 interface IntegrationConnectorLite {
@@ -596,6 +676,22 @@ export function useBranchOptions(companyId: string | undefined) {
   );
 }
 
+interface DepartmentLite {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Backs EmployeesPage's department picker (HRMS org-chart/Department depth pass, 2026-07-23) — departments' list endpoint (Core) supports `search`, same server-side pattern as useAccountOptions/useBranchOptions. Cross-module: HRMS only ever stores the opaque DepartmentId, never a project reference to Core. */
+export function useDepartmentOptions(companyId: string | undefined) {
+  return useEntityOptions<DepartmentLite>(
+    'department-options',
+    '/core/departments',
+    companyId,
+    (d) => ({ id: d.id, label: `${d.code} — ${d.name}` }),
+  );
+}
+
 interface NonConformanceReportLite {
   id: string;
   description: string;
@@ -612,5 +708,27 @@ export function useNonConformanceReportOptions(companyId: string | undefined) {
     `/quality/non-conformance-reports?companyId=${companyId}&page=1&pageSize=${NON_CONFORMANCE_REPORT_OPTIONS_PAGE_SIZE}`,
     Boolean(companyId),
     (r) => ({ id: r.id, label: `${r.severity} — ${r.description}` }),
+  );
+}
+
+interface PickListLite {
+  id: string;
+  salesOrderId: string;
+  status: string;
+}
+
+const PICK_LIST_OPTIONS_PAGE_SIZE = 200;
+
+/**
+ * Backs DispatchesPanel's optional pick-list picker (Dispatch-PickList link, 2026-07-21) —
+ * pick-lists nest under Warehouse (ListPickListsQuery has no `search` param either), same
+ * warehouse-scoped, one-page/client-filtered pattern as useZoneOptions/useBinOptions.
+ */
+export function usePickListOptions(companyId: string | undefined, warehouseId: string | undefined) {
+  return useEntityOptionsWithoutSearch<PickListLite>(
+    ['pick-list-options', companyId, warehouseId],
+    `/warehouse/warehouses/${warehouseId}/pick-lists?companyId=${companyId}&page=1&pageSize=${PICK_LIST_OPTIONS_PAGE_SIZE}`,
+    Boolean(companyId && warehouseId),
+    (p) => ({ id: p.id, label: `${p.status} · Order ${p.salesOrderId.slice(0, 8)}…` }),
   );
 }

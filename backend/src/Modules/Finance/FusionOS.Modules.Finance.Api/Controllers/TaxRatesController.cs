@@ -1,5 +1,6 @@
 using FusionOS.Modules.Finance.Application.TaxRates.Commands.CreateTaxRate;
 using FusionOS.Modules.Finance.Application.TaxRates.Commands.DeactivateTaxRate;
+using FusionOS.Modules.Finance.Application.TaxRates.Commands.ReclassifyTaxRateGstComponent;
 using FusionOS.Modules.Finance.Application.TaxRates.Commands.UpdateTaxRate;
 using FusionOS.Modules.Finance.Application.TaxRates.Queries.CalculateLineTax;
 using FusionOS.Modules.Finance.Application.TaxRates.Queries.GetTaxRateById;
@@ -30,7 +31,7 @@ public sealed class TaxRatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create([FromBody] CreateTaxRateRequest request, CancellationToken cancellationToken)
     {
-        var command = new CreateTaxRateCommand(request.CompanyId, request.TaxJurisdictionId, request.Code, request.Name, request.Percentage);
+        var command = new CreateTaxRateCommand(request.CompanyId, request.TaxJurisdictionId, request.Code, request.Name, request.Percentage, request.GstComponent ?? "NotApplicable");
         var result = await _sender.Send(command, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = result.Id, companyId = request.CompanyId }, result);
     }
@@ -89,9 +90,24 @@ public sealed class TaxRatesController : ControllerBase
         var result = await _sender.Send(new DeactivateTaxRateCommand(request.CompanyId, id), cancellationToken);
         return Ok(result);
     }
+
+    // GST filing support (2026-07-22) — corrects an existing rate's CGST/SGST/IGST classification
+    // without touching Name/Percentage, same "narrow, purpose-built command" split as Deactivate.
+    [HttpPost("{id:guid}/reclassify-gst-component")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReclassifyGstComponent(Guid id, [FromBody] ReclassifyTaxRateGstComponentRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new ReclassifyTaxRateGstComponentCommand(request.CompanyId, id, request.GstComponent), cancellationToken);
+        return Ok(result);
+    }
 }
 
-public sealed record CreateTaxRateRequest(Guid CompanyId, Guid TaxJurisdictionId, string Code, string Name, decimal Percentage);
+public sealed record CreateTaxRateRequest(Guid CompanyId, Guid TaxJurisdictionId, string Code, string Name, decimal Percentage, string? GstComponent = null);
+
+public sealed record ReclassifyTaxRateGstComponentRequest(Guid CompanyId, string GstComponent);
 
 public sealed record UpdateTaxRateRequest(Guid CompanyId, string Name, decimal Percentage);
 

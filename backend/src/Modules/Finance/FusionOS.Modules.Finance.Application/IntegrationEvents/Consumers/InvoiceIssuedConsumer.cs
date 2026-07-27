@@ -3,8 +3,10 @@ using FusionOS.Modules.Finance.Application.Accounts.Contracts;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using FusionOS.Modules.Finance.Application.Receivables.Contracts;
 using FusionOS.Modules.Finance.Application.Settings.Contracts;
+using FusionOS.Modules.Finance.Application.TaxTransactions.Contracts;
 using FusionOS.Modules.Finance.Domain.JournalEntries;
 using FusionOS.Modules.Finance.Domain.Receivables;
+using FusionOS.Modules.Finance.Domain.TaxTransactions;
 using FusionOS.SharedKernel.Events;
 
 namespace FusionOS.Modules.Finance.Application.IntegrationEvents.Consumers;
@@ -29,12 +31,19 @@ namespace FusionOS.Modules.Finance.Application.IntegrationEvents.Consumers;
 /// channel to surface a "please configure Finance settings" validation error
 /// the way a command handler does, so silently skipping is the only sound
 /// option, not a shortcut.
+///
+/// <b>GST filing support (2026-07-22):</b> also records one output TaxTransaction
+/// per TaxLines entry — the data GetGstReturnSummaryReportQuery groups by
+/// GstComponent. Guarded by ExistsForSourceAsync per tax rate (not just the
+/// event-level ProcessedIntegrationEventStore check) since a single invoice can
+/// carry multiple taxed lines/rates and this consumer records one row per rate.
 /// </summary>
 public sealed class InvoiceIssuedConsumer : IIntegrationEventConsumer
 {
     private readonly IArLedgerRepository _ledgerRepository;
     private readonly IJournalEntryRepository _journalEntryRepository;
     private readonly IFinanceSettingsRepository _settingsRepository;
+    private readonly ITaxTransactionRepository _taxTransactionRepository;
     private readonly IProcessedIntegrationEventStore _processedEvents;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -42,12 +51,14 @@ public sealed class InvoiceIssuedConsumer : IIntegrationEventConsumer
         IArLedgerRepository ledgerRepository,
         IJournalEntryRepository journalEntryRepository,
         IFinanceSettingsRepository settingsRepository,
+        ITaxTransactionRepository taxTransactionRepository,
         IProcessedIntegrationEventStore processedEvents,
         IUnitOfWork unitOfWork)
     {
         _ledgerRepository = ledgerRepository;
         _journalEntryRepository = journalEntryRepository;
         _settingsRepository = settingsRepository;
+        _taxTransactionRepository = taxTransactionRepository;
         _processedEvents = processedEvents;
         _unitOfWork = unitOfWork;
     }
@@ -81,13 +92,26 @@ public sealed class InvoiceIssuedConsumer : IIntegrationEventConsumer
             await _journalEntryRepository.AddAsync(journalEntry, cancellationToken);
         }
 
+        foreach (var taxLine in payload.TaxLines ?? Array.Empty<PayloadTaxLine>())
+        {
+            if (await _taxTransactionRepository.ExistsForSourceAsync(payload.CompanyId, nameof(Payload), payload.InvoiceId, taxLine.TaxRateId, cancellationToken))
+                continue;
+
+            var taxTransaction = TaxTransaction.Record(
+                payload.CompanyId, TaxTransactionDirection.Output, taxLine.TaxRateId, taxLine.TaxAmount,
+                DateTimeOffset.UtcNow, nameof(Payload), payload.InvoiceId);
+            await _taxTransactionRepository.AddAsync(taxTransaction, cancellationToken);
+        }
+
         _processedEvents.MarkProcessed(eventId, EventType);
 
         // One SaveChangesAsync — the ledger entry, the optional journal entry,
-        // and the idempotency marker share the same scoped DbContext instance,
-        // so this commits all of them atomically.
+        // the tax transactions, and the idempotency marker share the same scoped
+        // DbContext instance, so this commits all of them atomically.
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
-    private sealed record Payload(Guid InvoiceId, Guid CompanyId, Guid SalesOrderId, Guid CustomerId, decimal TotalAmount);
+    private sealed record PayloadTaxLine(Guid TaxRateId, decimal TaxAmount);
+
+    private sealed record Payload(Guid InvoiceId, Guid CompanyId, Guid SalesOrderId, Guid CustomerId, decimal TotalAmount, IReadOnlyList<PayloadTaxLine>? TaxLines = null);
 }

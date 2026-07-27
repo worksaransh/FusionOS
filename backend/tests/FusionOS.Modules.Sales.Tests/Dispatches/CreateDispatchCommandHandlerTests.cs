@@ -25,7 +25,8 @@ public class CreateDispatchCommandHandlerTests
         var repository = Substitute.For<IDispatchRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetDispatchedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetDispatchedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateDispatchCommandHandler(repository, salesOrderRepository, unitOfWork);
         var command = new CreateDispatchCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[] { new DispatchLineInput(productId, 10m) });
@@ -45,7 +46,8 @@ public class CreateDispatchCommandHandlerTests
         var repository = Substitute.For<IDispatchRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetDispatchedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(6m);
+        repository.GetDispatchedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 6m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateDispatchCommandHandler(repository, salesOrderRepository, unitOfWork);
         // 6 already dispatched + 5 requested = 11 > 10 ordered.
@@ -103,7 +105,8 @@ public class CreateDispatchCommandHandlerTests
         var repository = Substitute.For<IDispatchRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetDispatchedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(6m);
+        repository.GetDispatchedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 6m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateDispatchCommandHandler(repository, salesOrderRepository, unitOfWork);
         var command = new CreateDispatchCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[] { new DispatchLineInput(productId, 4m) });
@@ -126,7 +129,8 @@ public class CreateDispatchCommandHandlerTests
         var repository = Substitute.For<IDispatchRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetDispatchedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetDispatchedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateDispatchCommandHandler(repository, salesOrderRepository, unitOfWork);
         var command = new CreateDispatchCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[]
@@ -150,7 +154,8 @@ public class CreateDispatchCommandHandlerTests
         var repository = Substitute.For<IDispatchRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetDispatchedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetDispatchedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateDispatchCommandHandler(repository, salesOrderRepository, unitOfWork);
         var command = new CreateDispatchCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[]
@@ -181,7 +186,8 @@ public class CreateDispatchCommandHandlerTests
         var repository = Substitute.For<IDispatchRepository>();
         var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
         salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
-        repository.GetDispatchedQuantityAsync(companyId, salesOrder.Id, productId, Arg.Any<CancellationToken>()).Returns(0m);
+        repository.GetDispatchedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var handler = new CreateDispatchCommandHandler(repository, salesOrderRepository, unitOfWork);
         var command = new CreateDispatchCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[] { new DispatchLineInput(productId, 10m) });
@@ -190,5 +196,48 @@ public class CreateDispatchCommandHandlerTests
 
         result.Lines.Should().ContainSingle(l => l.ProductId == productId && l.QuantityDispatched == 10m);
         await repository.Received(1).AddAsync(Arg.Any<Dispatch>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenNoPickListIdSupplied_PersistsDispatchWithNullPickListId()
+    {
+        // Dispatch-PickList link (2026-07-21 follow-up): omitting PickListId must keep working
+        // exactly as before - the field is optional and opaque, never validated against Warehouse.
+        var companyId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var salesOrder = SalesOrder.Create(companyId, Guid.NewGuid(), new[] { new SalesOrderLineInput(productId, 10m, 25m) });
+        var repository = Substitute.For<IDispatchRepository>();
+        var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
+        salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
+        repository.GetDispatchedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var handler = new CreateDispatchCommandHandler(repository, salesOrderRepository, unitOfWork);
+        var command = new CreateDispatchCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[] { new DispatchLineInput(productId, 10m) });
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.PickListId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_WhenPickListIdSupplied_PersistsDispatchWithThatPickListId()
+    {
+        var companyId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var pickListId = Guid.NewGuid();
+        var salesOrder = SalesOrder.Create(companyId, Guid.NewGuid(), new[] { new SalesOrderLineInput(productId, 10m, 25m) });
+        var repository = Substitute.For<IDispatchRepository>();
+        var salesOrderRepository = Substitute.For<ISalesOrderRepository>();
+        salesOrderRepository.GetByIdAsync(companyId, salesOrder.Id, Arg.Any<CancellationToken>()).Returns(salesOrder);
+        repository.GetDispatchedQuantitiesAsync(companyId, salesOrder.Id, Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, decimal> { [productId] = 0m });
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var handler = new CreateDispatchCommandHandler(repository, salesOrderRepository, unitOfWork);
+        var command = new CreateDispatchCommand(companyId, salesOrder.Id, Guid.NewGuid(), new[] { new DispatchLineInput(productId, 10m) }, pickListId);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.PickListId.Should().Be(pickListId);
     }
 }

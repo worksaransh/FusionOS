@@ -53,6 +53,91 @@ public class PurchaseOrderTests
     }
 
     [Fact]
+    public void SubmitForApproval_FromDraft_TransitionsToPendingApprovalAndRaisesEvent()
+    {
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), OneLine);
+        order.ClearDomainEvents();
+        var requestedBy = Guid.NewGuid();
+
+        order.SubmitForApproval(requestedBy);
+
+        order.Status.Should().Be(PurchaseOrderStatus.PendingApproval);
+        var raised = order.DomainEvents.Should().ContainSingle(e => e is Events.PurchaseOrderSubmittedForApproval)
+            .Which.Should().BeOfType<Events.PurchaseOrderSubmittedForApproval>().Subject;
+        raised.PurchaseOrderId.Should().Be(order.Id);
+        raised.RequestedByUserId.Should().Be(requestedBy);
+        raised.Amount.Should().Be(order.TotalAmount);
+    }
+
+    [Fact]
+    public void SubmitForApproval_WhenNotDraft_Throws()
+    {
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), OneLine);
+        order.Approve();
+
+        var act = () => order.SubmitForApproval(Guid.NewGuid());
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void SubmitForApproval_WithEmptyRequestedBy_Throws()
+    {
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), OneLine);
+
+        var act = () => order.SubmitForApproval(Guid.Empty);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Approve_FromPendingApproval_TransitionsToApproved()
+    {
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), OneLine);
+        order.SubmitForApproval(Guid.NewGuid());
+        order.ClearDomainEvents();
+
+        order.Approve();
+
+        order.Status.Should().Be(PurchaseOrderStatus.Approved);
+        order.DomainEvents.Should().ContainSingle(e => e is Events.PurchaseOrderApproved);
+    }
+
+    [Fact]
+    public void Reject_FromPendingApproval_TransitionsToRejectedAndRaisesEvent()
+    {
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), OneLine);
+        order.SubmitForApproval(Guid.NewGuid());
+        order.ClearDomainEvents();
+
+        order.Reject();
+
+        order.Status.Should().Be(PurchaseOrderStatus.Rejected);
+        order.DomainEvents.Should().ContainSingle(e => e is Events.PurchaseOrderRejected);
+    }
+
+    [Fact]
+    public void Reject_FromDraft_TransitionsToRejected()
+    {
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), OneLine);
+
+        order.Reject();
+
+        order.Status.Should().Be(PurchaseOrderStatus.Rejected);
+    }
+
+    [Fact]
+    public void Reject_WhenAlreadyApproved_Throws()
+    {
+        var order = PurchaseOrder.Create(Guid.NewGuid(), Guid.NewGuid(), OneLine);
+        order.Approve();
+
+        var act = () => order.Reject();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
     public void RecordGoodsReceipt_PartialQuantity_TransitionsToPartiallyReceived()
     {
         var productId = Guid.NewGuid();

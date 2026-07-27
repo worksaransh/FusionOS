@@ -3,6 +3,7 @@ import { Controller, FormProvider, useFieldArray, useForm, useFormContext, useWa
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../../../shared/api/client';
 import { ActivityTimelinePanel } from '../../../shared/ui/ActivityTimelinePanel';
@@ -114,6 +115,32 @@ export function PurchaseOrdersPanel() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-orders', companyId] }),
   });
 
+  // Submit into Core's generic multi-step Approval workflow engine
+  // (2026-07-22) — an additive alternative next to the direct "Approve"
+  // action above, which keeps working exactly as before for whatever still
+  // calls it directly. Once submitted, the order moves to PendingApproval and
+  // is decided from Core's own Approvals page (linked below) rather than a
+  // duplicate approvals UI here.
+  const submitForApproval = useMutation({
+    mutationFn: (id: string) => apiClient.post(`/procurement/purchase-orders/${id}/submit-for-approval?companyId=${companyId}`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-orders', companyId] }),
+  });
+
+  // Cancel/Reject (Phase 10 remediation, 2026-07-27) — Cancel voids an order
+  // the business no longer wants before it's complete; Reject is the direct,
+  // manual counterpart to the approval-engine's own rejection path. Both are
+  // destructive/terminal, so confirm before firing, same weight as other
+  // terminal actions in this codebase.
+  const cancelOrder = useMutation({
+    mutationFn: (id: string) => apiClient.post(`/procurement/purchase-orders/${id}/cancel?companyId=${companyId}`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-orders', companyId] }),
+  });
+
+  const rejectOrder = useMutation({
+    mutationFn: (id: string) => apiClient.post(`/procurement/purchase-orders/${id}/reject?companyId=${companyId}`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-orders', companyId] }),
+  });
+
   if (!companyId) return null;
 
   return (
@@ -122,7 +149,7 @@ export function PurchaseOrdersPanel() {
 
       <Card className="mb-6">
         <FormProvider {...formMethods}>
-          <form onSubmit={handleSubmit((values) => createOrder.mutate(values))} className="flex flex-col gap-4">
+          <form noValidate onSubmit={handleSubmit((values) => createOrder.mutate(values))} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1 text-sm">
               Supplier
               <Controller
@@ -179,12 +206,55 @@ export function PurchaseOrdersPanel() {
               { header: 'Total', render: (order: PurchaseOrderDto) => order.totalAmount.toLocaleString() },
               {
                 header: '',
-                render: (order: PurchaseOrderDto) =>
-                  order.status === 'Draft' ? (
-                    <Button variant="secondary" onClick={() => approveOrder.mutate(order.id)} disabled={approveOrder.isPending}>
-                      Approve
-                    </Button>
-                  ) : null,
+                render: (order: PurchaseOrderDto) => {
+                  const cancellable = order.status === 'Draft' || order.status === 'PendingApproval' || order.status === 'Approved';
+                  const rejectable = order.status === 'Draft' || order.status === 'PendingApproval';
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      {order.status === 'Draft' && (
+                        <>
+                          <Button variant="secondary" onClick={() => approveOrder.mutate(order.id)} disabled={approveOrder.isPending}>
+                            Approve
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => submitForApproval.mutate(order.id)}
+                            disabled={submitForApproval.isPending}
+                          >
+                            Submit for approval
+                          </Button>
+                        </>
+                      )}
+                      {order.status === 'PendingApproval' && (
+                        <Link to="/core/approvals" className="text-sm text-primary underline">
+                          View in Approvals
+                        </Link>
+                      )}
+                      {rejectable && (
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            if (window.confirm('Reject this purchase order? This cannot be undone.')) rejectOrder.mutate(order.id);
+                          }}
+                          disabled={rejectOrder.isPending}
+                        >
+                          Reject
+                        </Button>
+                      )}
+                      {cancellable && (
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            if (window.confirm('Cancel this purchase order? This cannot be undone.')) cancelOrder.mutate(order.id);
+                          }}
+                          disabled={cancelOrder.isPending}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  );
+                },
               },
               {
                 header: '',

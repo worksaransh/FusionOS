@@ -5,11 +5,13 @@ namespace FusionOS.Modules.Warehouse.Domain.GoodsReceipts.Events;
 /// <summary>
 /// Matches the "GoodsReceived.v1" event named in 03_SYSTEM_ARCHITECTURE.md §4.2's
 /// event catalog — produced by Warehouse, one per received line (same granularity
-/// as Inventory's StockAdjusted). Documented consumers once the outbox relay's
-/// Kafka publish reaches a running consumer: Inventory (post a Stock Ledger entry
-/// for the receipt), Procurement (advance the Purchase Order's received status),
-/// Finance (AP match). No consumer exists yet in this codebase — see the
-/// "Not built yet" note on GoodsReceipt itself.
+/// as Inventory's StockAdjusted). Now has three real consumers: Inventory's
+/// GoodsReceiptLineReceivedConsumer (posts a Stock Ledger entry for the receipt),
+/// Procurement's GoodsReceiptLineReceivedConsumer (advances the Purchase Order's
+/// received status), and Quality's GoodsReceiptLineReceivedConsumer (auto-opens
+/// an inbound Inspection). Finance reacts one step further downstream instead —
+/// its InvoiceIssuedConsumer/PurchaseOrderGoodsReceiptCostedConsumer key off
+/// Sales'/Procurement's own costed events, not this one directly.
 /// </summary>
 public sealed record GoodsReceiptLineReceived(
     Guid GoodsReceiptId,

@@ -93,7 +93,7 @@ export function ZonesPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Zones</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createZone.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createZone.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Warehouse
             <Controller
@@ -230,7 +230,7 @@ function ZoneEditPanel({ companyId, warehouseId, zone, onClose }: ZoneEditPanelP
         <h2 className="text-lg font-semibold text-text">Edit zone — {zone.code}</h2>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateZone.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateZone.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />

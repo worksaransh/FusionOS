@@ -19,6 +19,14 @@ public sealed class Account : TenantAggregateRoot
     public string? Website { get; private set; }
     public bool IsActive { get; private set; } = true;
 
+    /// <summary>
+    /// Optional opaque reference into Core's own User — the account owner
+    /// ("territory via ownership"). Never existence-validated here, same
+    /// "opaque cross-module reference" convention as MaintenanceRequest.
+    /// AssignedTechnicianUserId — set via <see cref="AssignOwner"/>.
+    /// </summary>
+    public Guid? OwnerId { get; private set; }
+
     private Account() { }
 
     public static Account Create(Guid companyId, string name, string? industry, string? website)
@@ -50,4 +58,7 @@ public sealed class Account : TenantAggregateRoot
 
     /// <summary>Soft-deactivate only — never a hard delete (same convention as Customer.Deactivate).</summary>
     public void Deactivate() => IsActive = false;
+
+    /// <summary>Sets or clears (pass null) which Core user owns this account.</summary>
+    public void AssignOwner(Guid? ownerId) => OwnerId = ownerId;
 }

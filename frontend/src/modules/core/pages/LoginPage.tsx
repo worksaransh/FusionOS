@@ -52,7 +52,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-surface-muted">
       <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <div className="text-lg font-semibold">FusionOS</div>
+          <h1 className="text-lg font-semibold">FusionOS</h1>
           <p className="mt-1 text-sm text-text-muted">Sign in to continue</p>
         </div>
 
@@ -62,7 +62,7 @@ export function LoginPage() {
           </p>
         )}
 
-        <form onSubmit={handleSubmit((values) => login.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => login.mutate(values))} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm">
             Email
             <input

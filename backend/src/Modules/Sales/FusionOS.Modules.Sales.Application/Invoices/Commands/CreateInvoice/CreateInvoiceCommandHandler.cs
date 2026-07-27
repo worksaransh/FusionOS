@@ -46,6 +46,12 @@ public sealed class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceC
         // product split across several request lines cannot slip past the cap by
         // each line passing individually; the cap itself sums every order line
         // carrying the product, in case the order lists a product more than once.
+        // Batch-resolve every distinct product's already-invoiced quantity in one
+        // query (Phase 10 audit fix, 2026-07-27) instead of one round trip per
+        // GroupBy iteration - see IInvoiceRepository.GetInvoicedQuantitiesAsync.
+        var distinctProductIds = request.Lines.Select(l => l.ProductId).Distinct().ToList();
+        var alreadyInvoicedByProduct = await _repository.GetInvoicedQuantitiesAsync(request.CompanyId, request.SalesOrderId, distinctProductIds, cancellationToken);
+
         var failures = new List<FluentValidation.Results.ValidationFailure>();
         foreach (var productLines in request.Lines.GroupBy(l => l.ProductId))
         {
@@ -58,7 +64,7 @@ public sealed class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceC
 
             var orderedQuantity = salesOrder.Lines.Where(l => l.ProductId == productLines.Key).Sum(l => l.Quantity);
             var requestedQuantity = productLines.Sum(l => l.Quantity);
-            var alreadyInvoiced = await _repository.GetInvoicedQuantityAsync(request.CompanyId, request.SalesOrderId, productLines.Key, cancellationToken);
+            var alreadyInvoiced = alreadyInvoicedByProduct.GetValueOrDefault(productLines.Key);
             if (alreadyInvoiced + requestedQuantity > orderedQuantity)
             {
                 failures.Add(new FluentValidation.Results.ValidationFailure(

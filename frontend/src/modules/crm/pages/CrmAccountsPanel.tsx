@@ -102,7 +102,7 @@ export function CrmAccountsPanel() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form noValidate onSubmit={handleSubmit((values) => createAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-sm">
             Name
             <Controller
@@ -245,7 +245,7 @@ function AccountEditPanel({ companyId, account, onClose }: AccountEditPanelProps
         <h3 className="text-base font-semibold text-text">Edit account — {account.name}</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <form noValidate onSubmit={handleSubmit((values) => updateAccount.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <Controller

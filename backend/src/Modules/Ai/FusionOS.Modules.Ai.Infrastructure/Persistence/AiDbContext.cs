@@ -1,4 +1,7 @@
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
+using FusionOS.Modules.Ai.Domain.Copilot;
+using FusionOS.Modules.Ai.Domain.DemandHistory;
+using FusionOS.Modules.Ai.Domain.OcrJobs;
 using FusionOS.Modules.Ai.Domain.Recommendations;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +21,15 @@ public sealed class AiDbContext : BaseDbContext
         : base(options, currentUser) { }
 
     public DbSet<Recommendation> Recommendations => Set<Recommendation>();
+
+    /// <summary>Phase 8 — AI &amp; Integrations. See OcrJob's own class doc comment for what this pipeline is and is not.</summary>
+    public DbSet<OcrJob> OcrJobs => Set<OcrJob>();
+
+    /// <summary>Phase 8 — AI &amp; Integrations. See DemandHistoryEntry's own class doc comment: the real, event-fed demand journal GetDemandForecastQuery's linear regression/moving average computes over.</summary>
+    public DbSet<DemandHistoryEntry> DemandHistoryEntries => Set<DemandHistoryEntry>();
+
+    /// <summary>Phase 8 — AI Copilot. See CopilotSession's own class doc comment for what this persists and doesn't.</summary>
+    public DbSet<CopilotSession> CopilotSessions => Set<CopilotSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

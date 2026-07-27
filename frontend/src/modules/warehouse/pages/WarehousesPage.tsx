@@ -9,7 +9,10 @@ import { Card } from '../../../shared/ui/Card';
 import { CrudListPage } from '../../../shared/ui/CrudListPage';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import type { PagedResult } from '../../../shared/api/types';
+import { Tabs } from '../../../shared/ui/Tabs';
 import { ZonesPanel } from './ZonesPanel';
+import { RacksPanel } from './RacksPanel';
+import { ShelvesPanel } from './ShelvesPanel';
 import { BinsPanel } from './BinsPanel';
 import { GoodsReceiptsPanel } from './GoodsReceiptsPanel';
 import { CycleCountsPanel } from './CycleCountsPanel';
@@ -45,6 +48,7 @@ export function WarehousesPage() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
   const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
+  const [activeWarehouseTab, setActiveWarehouseTab] = useState('locations');
 
   const warehousesQuery = useQuery({
     queryKey: ['warehouses', companyId],
@@ -119,7 +123,7 @@ export function WarehousesPage() {
         },
       ]}
       form={
-        <form onSubmit={handleSubmit((values) => createWarehouse.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createWarehouse.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Name
             <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />
@@ -152,11 +156,47 @@ export function WarehousesPage() {
         />
       )}
 
-      <ZonesPanel />
-      <BinsPanel />
-      <GoodsReceiptsPanel />
-      <CycleCountsPanel />
-      <PickListsPanel />
+      <div className="mt-8 border-t border-border pt-6">
+        <h2 className="mb-4 text-lg font-bold text-text">Warehouse Operations & Storage Layout</h2>
+        <Tabs
+          tabs={[
+            { id: 'locations', label: 'Zones, Racks & Bins' },
+            { id: 'inbound', label: 'Goods Receipts' },
+            { id: 'outbound', label: 'Pick Lists' },
+            { id: 'audits', label: 'Cycle Counts' },
+          ]}
+          activeTab={activeWarehouseTab}
+          onChange={setActiveWarehouseTab}
+          className="mb-6"
+        />
+
+        {activeWarehouseTab === 'locations' && (
+          <div className="space-y-6">
+            <ZonesPanel />
+            <RacksPanel />
+            <ShelvesPanel />
+            <BinsPanel />
+          </div>
+        )}
+
+        {activeWarehouseTab === 'inbound' && (
+          <div>
+            <GoodsReceiptsPanel />
+          </div>
+        )}
+
+        {activeWarehouseTab === 'outbound' && (
+          <div>
+            <PickListsPanel />
+          </div>
+        )}
+
+        {activeWarehouseTab === 'audits' && (
+          <div>
+            <CycleCountsPanel />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -199,7 +239,7 @@ function WarehouseEditPanel({ companyId, warehouse, onClose }: WarehouseEditPane
         <h2 className="text-lg font-semibold text-text">Edit warehouse — {warehouse.code}</h2>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateWarehouse.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateWarehouse.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />

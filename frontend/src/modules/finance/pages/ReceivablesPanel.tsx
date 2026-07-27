@@ -8,7 +8,7 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
-import { useCustomerOptions, useInvoiceOptions } from '../../../shared/api/entityOptions';
+import { useCustomerOptions, useInvoiceOptions, useBankAccountOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
 const schema = z.object({
@@ -16,6 +16,7 @@ const schema = z.object({
   invoiceId: z.string().uuid('Pick an invoice'),
   amount: z.string().refine((v) => Number(v) > 0, 'Amount must be greater than zero'),
   reference: z.string().optional(),
+  bankAccountId: z.string().refine((v) => v === '' || /^[0-9a-fA-F-]{36}$/.test(v), 'Must be blank or a valid Bank Account'),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -31,6 +32,7 @@ interface ArLedgerEntryDto {
   amount: number;
   description: string;
   transactionDate: string;
+  bankAccountId: string | null;
 }
 
 /**
@@ -48,10 +50,11 @@ export function ReceivablesPanel() {
 
   const customerOptions = useCustomerOptions(companyId);
   const invoiceOptions = useInvoiceOptions(companyId);
+  const bankAccountOptions = useBankAccountOptions(companyId);
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { customerId: '', invoiceId: '', amount: '', reference: '' },
+    defaultValues: { customerId: '', invoiceId: '', amount: '', reference: '', bankAccountId: '' },
   });
   const selectedCustomerId = useWatch({ control, name: 'customerId' });
 
@@ -76,9 +79,10 @@ export function ReceivablesPanel() {
         amount: Number(values.amount),
         paymentDate: null,
         reference: values.reference || null,
+        bankAccountId: values.bankAccountId || null,
       }),
     onSuccess: (_data, values) => {
-      reset({ customerId: values.customerId, invoiceId: '', amount: '', reference: '' });
+      reset({ customerId: values.customerId, invoiceId: '', amount: '', reference: '', bankAccountId: '' });
       queryClient.invalidateQueries({ queryKey: ['customer-balance', companyId, values.customerId] });
       queryClient.invalidateQueries({ queryKey: ['ar-ledger', companyId, values.customerId] });
     },
@@ -94,7 +98,7 @@ export function ReceivablesPanel() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => recordPayment.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => recordPayment.mutate(values))} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               Customer
@@ -151,6 +155,24 @@ export function ReceivablesPanel() {
                   <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="UTR / cheque no." {...field} />
                 )}
               />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Bank account (optional)
+              <Controller
+                control={control}
+                name="bankAccountId"
+                render={({ field }) => (
+                  <EntityCombobox
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={bankAccountOptions.options}
+                    isLoading={bankAccountOptions.isLoading}
+                    onSearchChange={bankAccountOptions.onSearchChange}
+                    placeholder="Search bank accounts…"
+                  />
+                )}
+              />
+              {errors.bankAccountId && <span className="text-xs text-danger">{errors.bankAccountId.message}</span>}
             </label>
           </div>
 

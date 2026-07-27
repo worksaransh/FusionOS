@@ -13,6 +13,7 @@ import { PriceHistoryPanel } from './PriceHistoryPanel';
 import { PurchaseOrdersPanel } from './PurchaseOrdersPanel';
 import { RfqsPanel } from './RfqsPanel';
 import { SupplierContractsPanel } from './SupplierContractsPanel';
+import { SupplierRatingsPanel } from './SupplierRatingsPanel';
 import { VendorReturnsPanel } from './VendorReturnsPanel';
 
 const schema = z.object({
@@ -124,7 +125,7 @@ export function SuppliersPage() {
         },
       ]}
       form={
-        <form onSubmit={handleSubmit((values) => createSupplier.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createSupplier.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Name
             <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />
@@ -165,6 +166,7 @@ export function SuppliersPage() {
       <PurchaseOrdersPanel />
       <RfqsPanel />
       <SupplierContractsPanel />
+      <SupplierRatingsPanel />
       <VendorReturnsPanel />
       <PriceHistoryPanel />
     </div>
@@ -219,7 +221,7 @@ function SupplierEditPanel({ companyId, supplier, onClose }: SupplierEditPanelPr
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
 
-      <form onSubmit={handleSubmit((values) => updateSupplier.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateSupplier.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />

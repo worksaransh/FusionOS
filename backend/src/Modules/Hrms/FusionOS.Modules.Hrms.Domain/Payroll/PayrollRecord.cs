@@ -85,11 +85,13 @@ public sealed class PayrollRecord : TenantAggregateRoot
     }
 
     /// <summary>
-    /// Approved -> Paid. Deliberately does not integrate with Finance/any bank
-    /// payment rail or post a JournalEntry — it records the fact that this
-    /// record was paid, nothing more, same restraint as FixedAsset.Dispose not
-    /// calculating gain/loss. A real disbursement/GL-posting integration is a
-    /// distinct, separately-scoped future slice.
+    /// Approved -> Paid. Does not itself integrate with any bank payment rail —
+    /// this still just records the fact that this record was paid, same
+    /// restraint as FixedAsset.Dispose not calculating gain/loss. It does now
+    /// raise <see cref="PayrollRecordPaid"/> so Finance's PayrollRecordPaidConsumer
+    /// can post the corresponding Debit Salary Expense / Credit Salary Payable
+    /// JournalEntry — the GL-posting integration this doc comment used to flag
+    /// as "a distinct, separately-scoped future slice" is that consumer.
     /// </summary>
     public void MarkPaid(DateTimeOffset paidAt)
     {
@@ -98,5 +100,7 @@ public sealed class PayrollRecord : TenantAggregateRoot
 
         Status = PayrollStatus.Paid;
         PaidAt = paidAt;
+
+        Raise(new PayrollRecordPaid(Id, CompanyId, EmployeeId, GrossPay, PeriodMonth, PeriodYear));
     }
 }

@@ -7,9 +7,11 @@ namespace FusionOS.Modules.Core.Application.Companies.Commands.CreateCompany;
 /// The one fully-implemented vertical slice for Phase 0 (05_MODULE_ROADMAP.md).
 /// Company creation does not require a permission check — it is the bootstrap
 /// action of a fresh tenant — but it IS audited.
+/// Implements IPubliclyAccessible (Phase 9 hardening fix, 2026-07-25): explicitly
+/// exempts this pre-auth bootstrap action from AuthorizationBehavior's fail-closed check.
 /// </summary>
 public sealed record CreateCompanyCommand(string Name, string LegalName, string BaseCurrency, string? TaxId)
-    : ICommand<CompanyDto>, IAuditableCommand
+    : ICommand<CompanyDto>, IAuditableCommand, IPubliclyAccessible
 {
     public string EntityType => nameof(Domain.Companies.Company);
     public Guid EntityId { get; init; }

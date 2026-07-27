@@ -55,6 +55,33 @@ interface RfqDto {
   supplierQuotes: SupplierQuoteDto[];
 }
 
+interface RfqQuoteComparisonCellDto {
+  supplierId: string;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+interface RfqQuoteComparisonLineDto {
+  rfqLineId: string;
+  productId: string;
+  requestedQuantity: number;
+  quotes: RfqQuoteComparisonCellDto[];
+}
+
+interface RfqQuoteComparisonSupplierDto {
+  supplierQuoteId: string;
+  supplierId: string;
+  supplierName: string | null;
+  totalAmount: number;
+}
+
+interface RfqQuoteComparisonDto {
+  rfqId: string;
+  status: string;
+  suppliers: RfqQuoteComparisonSupplierDto[];
+  lines: RfqQuoteComparisonLineDto[];
+}
+
 /**
  * RFQ — the pre-PO stage named in PurchaseOrder's own doc comment as coming
  * "later" (docs/IMPLEMENTATION_PLAN.md Phase 10 item 1). Structurally the
@@ -129,7 +156,7 @@ export function RfqsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">RFQs</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createRfq.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => createRfq.mutate(values))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             {fields.map((field, index) => (
               <div key={field.id} className="flex items-end gap-2">
@@ -193,7 +220,9 @@ export function RfqsPanel() {
                 render: (rfq: RfqDto) => (
                   <RfqRowActions
                     rfq={rfq}
+                    companyId={companyId}
                     supplierOptions={supplierOptions}
+                    productOptions={productOptions}
                     onSend={() => sendRfq.mutate(rfq.id)}
                     onSubmitQuote={(supplierId, lines) => submitQuote.mutate({ rfqId: rfq.id, supplierId, lines })}
                     onAward={(supplierQuoteId) => awardRfq.mutate({ rfqId: rfq.id, supplierQuoteId })}
@@ -218,7 +247,9 @@ export function RfqsPanel() {
 
 interface RfqRowActionsProps {
   rfq: RfqDto;
+  companyId: string;
   supplierOptions: ReturnType<typeof useSupplierOptions>;
+  productOptions: ReturnType<typeof useProductOptions>;
   onSend: () => void;
   onSubmitQuote: (supplierId: string, lines: { productId: string; quantity: number; unitPrice: number }[]) => void;
   onAward: (supplierQuoteId: string) => void;
@@ -231,7 +262,7 @@ interface RfqRowActionsProps {
  * open/closed toggle and per-line prices, the award selection) — a table
  * column render function has nowhere else to keep that state.
  */
-function RfqRowActions({ rfq, supplierOptions, onSend, onSubmitQuote, onAward, onConvert }: RfqRowActionsProps) {
+function RfqRowActions({ rfq, companyId, supplierOptions, productOptions, onSend, onSubmitQuote, onAward, onConvert }: RfqRowActionsProps) {
   const [quoting, setQuoting] = useState(false);
   const [supplierId, setSupplierId] = useState('');
   const [prices, setPrices] = useState<Record<string, string>>({});
@@ -295,6 +326,16 @@ function RfqRowActions({ rfq, supplierOptions, onSend, onSubmitQuote, onAward, o
           </div>
         )}
 
+        {rfq.supplierQuotes.length >= 2 && (
+          <QuoteComparisonTable
+            companyId={companyId}
+            rfqId={rfq.id}
+            productOptions={productOptions}
+            supplierOptions={supplierOptions}
+            onPickQuote={setSelectedQuoteId}
+          />
+        )}
+
         {rfq.supplierQuotes.length > 0 && (
           <div className="flex items-center gap-2">
             <select
@@ -305,7 +346,7 @@ function RfqRowActions({ rfq, supplierOptions, onSend, onSubmitQuote, onAward, o
               <option value="">Pick a quote…</option>
               {rfq.supplierQuotes.map((q) => (
                 <option key={q.id} value={q.id}>
-                  Supplier {q.supplierId.slice(0, 8)}… — {q.totalAmount.toLocaleString()}
+                  Supplier {supplierLabel(q.supplierId, supplierOptions)} — {q.totalAmount.toLocaleString()}
                 </option>
               ))}
             </select>
@@ -327,4 +368,107 @@ function RfqRowActions({ rfq, supplierOptions, onSend, onSubmitQuote, onAward, o
   }
 
   return null;
+}
+
+function productLabel(productId: string, productOptions: ReturnType<typeof useProductOptions>): string {
+  return productOptions.options.find((o) => o.id === productId)?.label ?? `Product ${productId.slice(0, 8)}…`;
+}
+
+function supplierLabel(supplierId: string, supplierOptions: ReturnType<typeof useSupplierOptions>): string {
+  return supplierOptions.options.find((o) => o.id === supplierId)?.label ?? `${supplierId.slice(0, 8)}…`;
+}
+
+interface QuoteComparisonTableProps {
+  companyId: string;
+  rfqId: string;
+  productOptions: ReturnType<typeof useProductOptions>;
+  supplierOptions: ReturnType<typeof useSupplierOptions>;
+  onPickQuote: (supplierQuoteId: string) => void;
+}
+
+/**
+ * Line-by-line, side-by-side quote comparison — replaces "guess from a
+ * dropdown of totals" with the actual per-product prices a decision-maker
+ * needs, backed by GetRfqQuoteComparisonQuery (rows = RFQ lines, columns =
+ * suppliers, matching the DTO's own row/column choice). Only rendered once
+ * 2+ suppliers have quoted; with a single quote there is nothing to compare.
+ * Clicking a supplier's total pre-selects that quote in the Award dropdown
+ * below, but doesn't award it — Award still requires the explicit button.
+ */
+function QuoteComparisonTable({ companyId, rfqId, productOptions, supplierOptions, onPickQuote }: QuoteComparisonTableProps) {
+  const comparisonQuery = useQuery({
+    queryKey: ['rfq-quote-comparison', companyId, rfqId],
+    queryFn: () => apiClient.get<RfqQuoteComparisonDto>(`/procurement/rfqs/${rfqId}/quote-comparison?companyId=${companyId}`),
+    enabled: Boolean(companyId && rfqId),
+  });
+
+  if (comparisonQuery.isLoading) {
+    return <p className="text-xs text-text-muted">Loading quote comparison…</p>;
+  }
+  if (!comparisonQuery.data || comparisonQuery.data.suppliers.length === 0) {
+    return null;
+  }
+
+  const { suppliers, lines } = comparisonQuery.data;
+  const cheapestTotal = Math.min(...suppliers.map((s) => s.totalAmount));
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-border">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-border bg-surface-muted">
+            <th className="p-2 text-left font-medium">Product</th>
+            <th className="p-2 text-right font-medium">Qty</th>
+            {suppliers.map((s) => (
+              <th key={s.supplierId} className="p-2 text-right font-medium">
+                {s.supplierName ?? supplierLabel(s.supplierId, supplierOptions)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((line) => {
+            const cellPrices = line.quotes.map((q) => q.unitPrice);
+            const cheapestPrice = cellPrices.length > 0 ? Math.min(...cellPrices) : null;
+            return (
+              <tr key={line.rfqLineId} className="border-b border-border last:border-0">
+                <td className="p-2">{productLabel(line.productId, productOptions)}</td>
+                <td className="p-2 text-right">{line.requestedQuantity}</td>
+                {suppliers.map((s) => {
+                  const cell = line.quotes.find((q) => q.supplierId === s.supplierId);
+                  const isCheapest = cell !== undefined && cheapestPrice !== null && cell.unitPrice === cheapestPrice;
+                  return (
+                    <td
+                      key={s.supplierId}
+                      className={`p-2 text-right ${isCheapest ? 'bg-success/10 font-semibold text-success' : ''}`}
+                    >
+                      {cell ? cell.unitPrice.toLocaleString() : '—'}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot>
+          <tr className="bg-surface-muted font-semibold">
+            <td className="p-2" colSpan={2}>Total</td>
+            {suppliers.map((s) => (
+              <td key={s.supplierId} className={`p-2 text-right ${s.totalAmount === cheapestTotal ? 'text-success' : ''}`}>
+                <button
+                  type="button"
+                  className="underline decoration-dotted underline-offset-2"
+                  onClick={() => onPickQuote(s.supplierQuoteId)}
+                  title="Pre-select this supplier's quote in the Award dropdown below"
+                >
+                  {s.totalAmount.toLocaleString()}
+                </button>
+                {s.totalAmount === cheapestTotal && <span className="ml-1 text-[10px] font-normal">(cheapest)</span>}
+              </td>
+            ))}
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
 }

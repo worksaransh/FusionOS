@@ -3,7 +3,13 @@ using FusionOS.Modules.Crm.Application.Opportunities.Contracts;
 
 namespace FusionOS.Modules.Crm.Application.Opportunities.Commands.CreateOpportunity;
 
-public sealed record CreateOpportunityCommand(Guid CompanyId, Guid LeadId, string Name, decimal EstimatedValue)
+public sealed record CreateOpportunityCommand(
+    Guid CompanyId,
+    Guid LeadId,
+    string Name,
+    decimal EstimatedValue,
+    decimal? Probability = null,
+    DateTimeOffset? ExpectedCloseDate = null)
     : ICommand<OpportunityDto>, IRequirePermission, IAuditableCommand
 {
     public string[] RequiredPermissions => new[] { "crm.opportunity.create" };

@@ -12,6 +12,10 @@ import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue';
 import type { PagedResult } from '../../../shared/api/types';
 import { MaintenanceRequestsPanel } from './MaintenanceRequestsPanel';
 import { MaintenanceSchedulesPanel } from './MaintenanceSchedulesPanel';
+import { MeterReadingsPanel } from './MeterReadingsPanel';
+import { DowntimeMetricsPanel } from './DowntimeMetricsPanel';
+import { MaintenanceDashboardPanel } from './MaintenanceDashboardPanel';
+import { ChecklistTemplatesPanel } from './ChecklistTemplatesPanel';
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -29,7 +33,16 @@ interface AssetDto {
   location: string | null;
   isActive: boolean;
   createdAt: string;
+  warrantyExpirationDate: string | null;
+  warrantyProvider: string | null;
+  isUnderWarranty?: boolean;
 }
+
+const warrantySchema = z.object({
+  warrantyExpirationDate: z.string().or(z.literal('')),
+  warrantyProvider: z.string().max(200).or(z.literal('')),
+});
+type WarrantyFormValues = z.infer<typeof warrantySchema>;
 
 /**
  * Assets — Maintenance's first real frontend slice (backend has existed
@@ -44,6 +57,7 @@ export function AssetsPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const [editingWarrantyAssetId, setEditingWarrantyAssetId] = useState<string | null>(null);
 
   const assetsQuery = useQuery({
     queryKey: ['assets', companyId, debouncedSearch],
@@ -97,8 +111,10 @@ export function AssetsPage() {
       <h1 className="mb-1 text-xl font-semibold text-text">Assets</h1>
       <p className="mb-4 text-sm text-text-muted">The machine register — Maintenance, Phase 5.</p>
 
+      <MaintenanceDashboardPanel />
+
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createAsset.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form noValidate onSubmit={handleSubmit((values) => createAsset.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-sm">
             Code
             <Controller
@@ -156,18 +172,30 @@ export function AssetsPage() {
             { header: 'Code', render: (row: AssetDto) => row.code },
             { header: 'Name', render: (row: AssetDto) => row.name },
             { header: 'Location', render: (row: AssetDto) => row.location ?? '—' },
+            {
+              header: 'Warranty',
+              render: (row: AssetDto) =>
+                row.warrantyExpirationDate
+                  ? `${new Date(row.warrantyExpirationDate).toLocaleDateString()}${row.warrantyProvider ? ` (${row.warrantyProvider})` : ''}`
+                  : '—',
+            },
             { header: 'Status', render: (row: AssetDto) => (row.isActive ? 'Active' : 'Inactive') },
             {
               header: 'Actions',
               render: (row: AssetDto) => (
-                <Button
-                  type="button"
-                  variant="danger"
-                  disabled={!row.isActive || deactivateAsset.isPending}
-                  onClick={() => deactivateAsset.mutate(row.id)}
-                >
-                  {row.isActive ? 'Deactivate' : 'Deactivated'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="secondary" onClick={() => setEditingWarrantyAssetId(row.id)}>
+                    Edit warranty
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    disabled={!row.isActive || deactivateAsset.isPending}
+                    onClick={() => deactivateAsset.mutate(row.id)}
+                  >
+                    {row.isActive ? 'Deactivate' : 'Deactivated'}
+                  </Button>
+                </div>
               ),
             },
           ]}
@@ -183,8 +211,91 @@ export function AssetsPage() {
         <p role="alert" className="mt-2 text-sm text-danger">Could not deactivate that asset.</p>
       )}
 
+      {editingWarrantyAssetId && (
+        <WarrantyEditPanel
+          companyId={companyId}
+          asset={assetsQuery.data?.data.find((a) => a.id === editingWarrantyAssetId) ?? null}
+          onClose={() => setEditingWarrantyAssetId(null)}
+        />
+      )}
+
       <MaintenanceRequestsPanel />
       <MaintenanceSchedulesPanel />
+      <MeterReadingsPanel />
+      <DowntimeMetricsPanel />
+      <ChecklistTemplatesPanel />
     </div>
+  );
+}
+
+interface WarrantyEditPanelProps {
+  companyId: string;
+  asset: AssetDto | null;
+  onClose: () => void;
+}
+
+function WarrantyEditPanel({ companyId, asset, onClose }: WarrantyEditPanelProps) {
+  const queryClient = useQueryClient();
+
+  const { control, handleSubmit, formState: { isSubmitting } } = useForm<WarrantyFormValues>({
+    resolver: zodResolver(warrantySchema),
+    values: {
+      warrantyExpirationDate: asset?.warrantyExpirationDate ? asset.warrantyExpirationDate.slice(0, 10) : '',
+      warrantyProvider: asset?.warrantyProvider ?? '',
+    },
+  });
+
+  const updateWarranty = useMutation({
+    mutationFn: (values: WarrantyFormValues) =>
+      apiClient.put<AssetDto>(`/maintenance/assets/${asset!.id}`, {
+        companyId,
+        name: asset!.name,
+        location: asset!.location,
+        warrantyExpirationDate: values.warrantyExpirationDate || null,
+        warrantyProvider: values.warrantyProvider || null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets', companyId] });
+      onClose();
+    },
+  });
+
+  if (!asset) return null;
+
+  return (
+    <Card className="mt-6">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-text">Edit warranty — {asset.code}</h2>
+        <Button variant="secondary" onClick={onClose}>Close</Button>
+      </div>
+      <form noValidate onSubmit={handleSubmit((values) => updateWarranty.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          Warranty expiration date
+          <Controller
+            control={control}
+            name="warrantyExpirationDate"
+            render={({ field }) => (
+              <input type="date" className="rounded-md border border-border bg-surface px-2 py-1.5" {...field} />
+            )}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Warranty provider
+          <Controller
+            control={control}
+            name="warrantyProvider"
+            render={({ field }) => (
+              <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...field} />
+            )}
+          />
+        </label>
+        <div className="col-span-full">
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save warranty'}</Button>
+          {updateWarranty.isError && (
+            <span role="alert" className="ml-3 text-sm text-danger">Could not save warranty details.</span>
+          )}
+        </div>
+      </form>
+    </Card>
   );
 }

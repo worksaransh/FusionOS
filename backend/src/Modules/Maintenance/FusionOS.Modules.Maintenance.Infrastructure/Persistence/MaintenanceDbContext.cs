@@ -13,7 +13,10 @@ namespace FusionOS.Modules.Maintenance.Infrastructure.Persistence;
 /// (MaintenanceRequest) — 05_MODULE_ROADMAP.md's Maintenance line item.
 /// Preventive maintenance scheduling (MaintenanceSchedule) and technician
 /// assignment on MaintenanceRequest were added in a follow-up pass (2026-07-20).
-/// Spare parts tracking is not yet mapped here — a separately-scoped follow-up.
+/// Spare parts tracking (SparePartUsage, owned by MaintenanceRequest, same shape
+/// as Manufacturing's WorkOrderComponent) was added 2026-07-23 — mapped via
+/// MaintenanceRequestConfiguration/SparePartUsageConfiguration, no DbSet of its
+/// own needed since it has no independent lifecycle outside its parent.
 /// </summary>
 public sealed class MaintenanceDbContext : BaseDbContext
 {
@@ -23,6 +26,8 @@ public sealed class MaintenanceDbContext : BaseDbContext
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<MaintenanceRequest> MaintenanceRequests => Set<MaintenanceRequest>();
     public DbSet<MaintenanceSchedule> MaintenanceSchedules => Set<MaintenanceSchedule>();
+    public DbSet<Domain.MeterReadings.MeterReading> MeterReadings => Set<Domain.MeterReadings.MeterReading>();
+    public DbSet<Domain.ChecklistTemplates.ChecklistTemplate> ChecklistTemplates => Set<Domain.ChecklistTemplates.ChecklistTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

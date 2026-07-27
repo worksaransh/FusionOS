@@ -43,12 +43,23 @@ public sealed class CreateContactCommandHandler : IRequestHandler<CreateContactC
             });
         }
 
+        // Duplicate check runs BEFORE creating, but is advisory only — see ContactDto.
+        // IsPossibleDuplicate. Two different real contacts (e.g. two employees at the same
+        // company sharing a general inbox) can legitimately share an email, so this warns
+        // rather than blocks — unlike a genuine uniqueness constraint enforced elsewhere in
+        // this codebase (e.g. Product.Sku), where a collision really is invalid.
+        var normalizedEmail = string.IsNullOrWhiteSpace(request.Email)
+            ? null
+            : request.Email.Trim().ToLowerInvariant();
+        var isPossibleDuplicate = normalizedEmail is not null
+            && await _contactRepository.IsEmailAlreadyUsedAsync(request.CompanyId, normalizedEmail, cancellationToken);
+
         var contact = Domain.Contacts.Contact.Create(
             request.CompanyId, request.Name, request.Email, request.Phone, request.Title, request.AccountId, request.LeadId);
 
         await _contactRepository.AddAsync(contact, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ContactMapper.ToDto(contact);
+        return ContactMapper.ToDto(contact, isPossibleDuplicate);
     }
 }

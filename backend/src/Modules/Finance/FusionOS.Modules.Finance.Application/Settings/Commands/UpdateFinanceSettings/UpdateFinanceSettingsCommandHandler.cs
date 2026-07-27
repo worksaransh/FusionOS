@@ -33,6 +33,10 @@ public sealed class UpdateFinanceSettingsCommandHandler : IRequestHandler<Update
         await EnsureAccountExistsAsync(request.CompanyId, request.DefaultSalesRevenueAccountId, nameof(request.DefaultSalesRevenueAccountId), cancellationToken);
         await EnsureAccountExistsAsync(request.CompanyId, request.DefaultApAccountId, nameof(request.DefaultApAccountId), cancellationToken);
         await EnsureAccountExistsAsync(request.CompanyId, request.DefaultPurchaseExpenseAccountId, nameof(request.DefaultPurchaseExpenseAccountId), cancellationToken);
+        await EnsureAccountExistsAsync(request.CompanyId, request.DefaultDisposalProceedsAccountId, nameof(request.DefaultDisposalProceedsAccountId), cancellationToken);
+        await EnsureAccountExistsAsync(request.CompanyId, request.DefaultGainLossOnDisposalAccountId, nameof(request.DefaultGainLossOnDisposalAccountId), cancellationToken);
+        await EnsureAccountExistsAsync(request.CompanyId, request.DefaultSalaryExpenseAccountId, nameof(request.DefaultSalaryExpenseAccountId), cancellationToken);
+        await EnsureAccountExistsAsync(request.CompanyId, request.DefaultSalaryPayableAccountId, nameof(request.DefaultSalaryPayableAccountId), cancellationToken);
 
         var settings = await _repository.GetByCompanyIdAsync(request.CompanyId, cancellationToken);
         if (settings is null)
@@ -41,7 +45,10 @@ public sealed class UpdateFinanceSettingsCommandHandler : IRequestHandler<Update
             await _repository.AddAsync(settings, cancellationToken);
         }
 
-        settings.ConfigureAccounts(request.DefaultArAccountId, request.DefaultSalesRevenueAccountId, request.DefaultApAccountId, request.DefaultPurchaseExpenseAccountId);
+        settings.ConfigureAccounts(
+            request.DefaultArAccountId, request.DefaultSalesRevenueAccountId, request.DefaultApAccountId, request.DefaultPurchaseExpenseAccountId,
+            request.DefaultDisposalProceedsAccountId, request.DefaultGainLossOnDisposalAccountId);
+        settings.ConfigurePayrollAccounts(request.DefaultSalaryExpenseAccountId, request.DefaultSalaryPayableAccountId);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return GetFinanceSettingsQueryHandler.MapToDto(settings);

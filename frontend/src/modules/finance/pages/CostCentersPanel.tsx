@@ -104,7 +104,7 @@ export function CostCentersPanel() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createCostCenter.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createCostCenter.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Code
             <Controller
@@ -233,7 +233,7 @@ function CostCenterEditPanel({ companyId, costCenter, onClose }: CostCenterEditP
         <h3 className="text-base font-semibold text-text">Edit cost center — {costCenter.code}</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateCostCenter.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateCostCenter.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <Controller

@@ -106,7 +106,7 @@ export function QuotationsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Quotations</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createQuotation.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => createQuotation.mutate(values))} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm">
             Customer
             <Controller

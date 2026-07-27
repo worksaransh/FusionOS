@@ -100,7 +100,7 @@ export function VendorReturnsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Vendor Returns</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createVendorReturn.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form noValidate onSubmit={handleSubmit((values) => createVendorReturn.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-sm">
             Purchase order
             <Controller

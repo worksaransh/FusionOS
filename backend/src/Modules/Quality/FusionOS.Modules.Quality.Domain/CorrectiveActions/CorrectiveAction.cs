@@ -46,6 +46,29 @@ public sealed class CorrectiveAction : TenantAggregateRoot
     public DateTimeOffset? ClosedAt { get; private set; }
     public DateTimeOffset? VerifiedAt { get; private set; }
 
+    /// <summary>
+    /// Structured RCA support (additive, 2026-07-23): tags which technique produced
+    /// <see cref="RootCauseDescription"/>. Defaults to <see cref="CorrectiveActions.RcaMethod.Other"/>
+    /// so every pre-existing CAPA and every caller that omits it behaves exactly as before this
+    /// field existed — RootCauseDescription remains the one required free-text field regardless
+    /// of method.
+    /// </summary>
+    public RcaMethod RcaMethod { get; private set; } = RcaMethod.Other;
+
+    /// <summary>
+    /// Optional structured "5 Whys" chain, populated only when <see cref="RcaMethod"/> is
+    /// <see cref="CorrectiveActions.RcaMethod.FiveWhys"/>. Five plain nullable string columns on
+    /// the aggregate rather than a child entity — same "small structured shape with no independent
+    /// identity, lifecycle, or querying need of its own" reasoning that keeps RoutingOperation and
+    /// InspectionItem as child entities only where they DO need their own id/lifecycle; a fixed-length
+    /// 1-to-5 "why" chain has neither, so plain columns are the simpler fit.
+    /// </summary>
+    public string? Why1 { get; private set; }
+    public string? Why2 { get; private set; }
+    public string? Why3 { get; private set; }
+    public string? Why4 { get; private set; }
+    public string? Why5 { get; private set; }
+
     private CorrectiveAction() { }
 
     public static CorrectiveAction Create(
@@ -55,7 +78,13 @@ public sealed class CorrectiveAction : TenantAggregateRoot
         string correctiveActionDescription,
         string preventiveActionDescription,
         Guid assignedToUserId,
-        DateTimeOffset dueDate)
+        DateTimeOffset dueDate,
+        RcaMethod rcaMethod = RcaMethod.Other,
+        string? why1 = null,
+        string? why2 = null,
+        string? why3 = null,
+        string? why4 = null,
+        string? why5 = null)
     {
         if (nonConformanceReportId == Guid.Empty)
             throw new ArgumentException("Non-conformance report id is required.", nameof(nonConformanceReportId));
@@ -80,11 +109,22 @@ public sealed class CorrectiveAction : TenantAggregateRoot
             AssignedToUserId = assignedToUserId,
             DueDate = dueDate,
             Status = CorrectiveActionStatus.Open,
+            RcaMethod = rcaMethod,
+            // The why-steps are only meaningful for FiveWhys — silently dropped for any other
+            // method rather than rejected, so a caller that always sends whatever the user typed
+            // (even if they later switch the method dropdown) doesn't need to clear them itself.
+            Why1 = rcaMethod == RcaMethod.FiveWhys ? Trim(why1) : null,
+            Why2 = rcaMethod == RcaMethod.FiveWhys ? Trim(why2) : null,
+            Why3 = rcaMethod == RcaMethod.FiveWhys ? Trim(why3) : null,
+            Why4 = rcaMethod == RcaMethod.FiveWhys ? Trim(why4) : null,
+            Why5 = rcaMethod == RcaMethod.FiveWhys ? Trim(why5) : null,
         };
 
         capa.Raise(new CorrectiveActionCreated(capa.Id, companyId, nonConformanceReportId, assignedToUserId));
         return capa;
     }
+
+    private static string? Trim(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     /// <summary>Marks work as underway. Requires the plan to still be Open.</summary>
     public void Start()

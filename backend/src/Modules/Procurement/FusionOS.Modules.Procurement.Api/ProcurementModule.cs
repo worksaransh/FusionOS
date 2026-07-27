@@ -8,6 +8,7 @@ using FusionOS.Modules.Procurement.Application.Rfqs.Contracts;
 using FusionOS.Modules.Procurement.Application.SupplierContracts.Contracts;
 using FusionOS.Modules.Procurement.Application.Suppliers.Commands.CreateSupplier;
 using FusionOS.Modules.Procurement.Application.Suppliers.Contracts;
+using FusionOS.Modules.Procurement.Application.SupplierRatings.Contracts;
 using FusionOS.Modules.Procurement.Application.VendorReturns.Contracts;
 using FusionOS.Modules.Procurement.Infrastructure.Persistence;
 using FusionOS.Modules.Procurement.Infrastructure.Repositories;
@@ -35,6 +36,11 @@ public sealed class ProcurementModule : IModule
         services.AddScoped<IRfqRepository, RfqRepository>();
         services.AddScoped<ISupplierContractRepository, SupplierContractRepository>();
         services.AddScoped<IVendorReturnRepository, VendorReturnRepository>();
+
+        // Vendor Rating (Phase 4 Procurement depth, 2026-07-22) — manual
+        // quality/delivery scores alongside the existing derived scorecard report.
+        services.AddScoped<ISupplierRatingRepository, SupplierRatingRepository>();
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProcessedIntegrationEventStore, EfProcessedIntegrationEventStore<ProcurementDbContext>>();
 
@@ -45,6 +51,11 @@ public sealed class ProcurementModule : IModule
         // Purchase Order's received-status. Discovered generically by
         // KafkaConsumerHostedService at startup.
         services.AddScoped<IIntegrationEventConsumer, GoodsReceiptLineReceivedConsumer>();
+
+        // PO approval workflow engine integration (Phase 4, 2026-07-22) — closes
+        // the loop on Core's ApprovalRequest deciding a PurchaseOrder's fate.
+        services.AddScoped<IIntegrationEventConsumer, ApprovalRequestApprovedConsumer>();
+        services.AddScoped<IIntegrationEventConsumer, ApprovalRequestRejectedConsumer>();
 
         services.AddControllers().AddApplicationPart(typeof(ProcurementModule).Assembly);
 

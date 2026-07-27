@@ -27,6 +27,23 @@ public sealed class Lead : TenantAggregateRoot
     /// </summary>
     public Guid? AccountId { get; private set; }
 
+    /// <summary>
+    /// Optional opaque reference into Core's own User — the sales rep who owns this
+    /// lead ("territory via ownership"). Never existence-validated here, same
+    /// "opaque cross-module reference" convention as MaintenanceRequest.
+    /// AssignedTechnicianUserId — set via <see cref="AssignOwner"/>.
+    /// </summary>
+    public Guid? OwnerId { get; private set; }
+
+    /// <summary>
+    /// A 0-100 rules-based lead score (see Application's LeadScoringService for how the
+    /// number itself is derived — this aggregate only stores and range-validates it via
+    /// <see cref="UpdateScore"/>). Set once at creation with whatever signals are already
+    /// known, then refreshed later by RecalculateLeadScoreCommand once the lead has an
+    /// Account and/or logged Activities.
+    /// </summary>
+    public int Score { get; private set; }
+
     private Lead() { }
 
     public static Lead Create(Guid companyId, string name, string? contactEmail, string? contactPhone, string? source)
@@ -44,6 +61,7 @@ public sealed class Lead : TenantAggregateRoot
             ContactPhone = string.IsNullOrWhiteSpace(contactPhone) ? null : contactPhone.Trim(),
             Source = string.IsNullOrWhiteSpace(source) ? null : source.Trim(),
             Status = LeadStatus.New,
+            Score = 0,
         };
 
         lead.Raise(new LeadCreated(lead.Id, companyId, lead.Name));
@@ -81,4 +99,20 @@ public sealed class Lead : TenantAggregateRoot
 
     /// <summary>Sets or clears (pass null) which Account this lead's organization corresponds to.</summary>
     public void AssignAccount(Guid? accountId) => AccountId = accountId;
+
+    /// <summary>Sets or clears (pass null) which Core user owns/works this lead.</summary>
+    public void AssignOwner(Guid? ownerId) => OwnerId = ownerId;
+
+    /// <summary>
+    /// Overwrites the stored score — called by CreateLeadCommandHandler at creation time
+    /// and by RecalculateLeadScoreCommandHandler afterwards. Range-validated here (0-100);
+    /// the scoring logic itself lives outside the aggregate, in LeadScoringService.
+    /// </summary>
+    public void UpdateScore(int score)
+    {
+        if (score is < 0 or > 100)
+            throw new ArgumentOutOfRangeException(nameof(score), score, "Lead score must be between 0 and 100.");
+
+        Score = score;
+    }
 }

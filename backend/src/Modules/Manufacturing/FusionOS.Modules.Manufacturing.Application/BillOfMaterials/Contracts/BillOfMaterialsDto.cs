@@ -11,4 +11,8 @@ public sealed record BillOfMaterialsDto(
     Guid ProductId,
     bool IsActive,
     IReadOnlyList<BomLineDto> Lines,
-    IReadOnlyList<RoutingOperationDto> Operations);
+    IReadOnlyList<RoutingOperationDto> Operations,
+    int Version,
+    bool IsCurrentVersion,
+    Guid? PreviousVersionId,
+    bool IsPrimary);

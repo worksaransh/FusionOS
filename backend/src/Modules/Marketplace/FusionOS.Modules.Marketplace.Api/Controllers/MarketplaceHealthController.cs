@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FusionOS.Modules.Marketplace.Api.Controllers;
 
-/// <summary>The only endpoint this not-yet-implemented module exposes: proof it is registered and reachable.</summary>
+/// <summary>Reports genuine module status — Marketplace has real PluginListing catalog and PluginInstallation lifecycle (install/enable/disable/uninstall) bookkeeping, but deliberately no plugin execution runtime — see PluginInstallation's own doc comment for that scope decision.</summary>
 [ApiController]
 [Route("api/v1/marketplace/health")]
 public sealed class MarketplaceHealthController : ControllerBase
@@ -11,7 +11,8 @@ public sealed class MarketplaceHealthController : ControllerBase
     public IActionResult Get() => Ok(new
     {
         module = "Marketplace",
-        status = "scaffolded",
+        status = "active-catalog-and-bookkeeping",
         roadmapPhase = "Phase 8 — Marketplace & Ecosystem",
+        slices = new[] { "plugin-listings", "plugin-installations (bookkeeping only, no execution runtime)" },
     });
 }

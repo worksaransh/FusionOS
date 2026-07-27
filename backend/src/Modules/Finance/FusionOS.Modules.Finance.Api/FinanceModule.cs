@@ -4,6 +4,7 @@ using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
 using FusionOS.Modules.Finance.Application.Accounts.Commands.CreateAccount;
 using FusionOS.Modules.Finance.Application.Accounts.Contracts;
+using FusionOS.Modules.Finance.Application.AccountingPeriods.Contracts;
 using FusionOS.Modules.Finance.Application.BankAccounts.Contracts;
 using FusionOS.Modules.Finance.Application.BankStatementLines.Contracts;
 using FusionOS.Modules.Finance.Application.BudgetLines.Contracts;
@@ -15,9 +16,11 @@ using FusionOS.Modules.Finance.Application.IntegrationEvents.Consumers;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using FusionOS.Modules.Finance.Application.Payables.Contracts;
 using FusionOS.Modules.Finance.Application.Receivables.Contracts;
+using FusionOS.Modules.Finance.Application.RecurringJournalEntries.Contracts;
 using FusionOS.Modules.Finance.Application.Settings.Contracts;
 using FusionOS.Modules.Finance.Application.TaxJurisdictions.Contracts;
 using FusionOS.Modules.Finance.Application.TaxRates.Contracts;
+using FusionOS.Modules.Finance.Application.TaxTransactions.Contracts;
 using FusionOS.Modules.Finance.Infrastructure.Persistence;
 using FusionOS.Modules.Finance.Infrastructure.Repositories;
 using FusionOS.SharedKernel.Events;
@@ -69,6 +72,7 @@ public sealed class FinanceModule : IModule
         services.AddScoped<ICostCenterRepository, CostCenterRepository>();
         services.AddScoped<ITaxJurisdictionRepository, TaxJurisdictionRepository>();
         services.AddScoped<ITaxRateRepository, TaxRateRepository>();
+        services.AddScoped<ITaxTransactionRepository, TaxTransactionRepository>();
         services.AddScoped<IBankAccountRepository, BankAccountRepository>();
         services.AddScoped<IBankStatementLineRepository, BankStatementLineRepository>();
         services.AddScoped<IExchangeRateRepository, ExchangeRateRepository>();
@@ -77,6 +81,11 @@ public sealed class FinanceModule : IModule
         services.AddScoped<IFixedAssetRepository, FixedAssetRepository>();
         services.AddScoped<IFinanceSettingsRepository, FinanceSettingsRepository>();
         services.AddScoped<IPurchaseOrderFactRepository, PurchaseOrderFactRepository>();
+
+        // Fiscal Year/Period Close + Recurring Journal Entries (Phase 5, 2026-07-22).
+        services.AddScoped<IAccountingPeriodRepository, AccountingPeriodRepository>();
+        services.AddScoped<IRecurringJournalEntryTemplateRepository, RecurringJournalEntryTemplateRepository>();
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProcessedIntegrationEventStore, EfProcessedIntegrationEventStore<FinanceDbContext>>();
 
@@ -100,6 +109,12 @@ public sealed class FinanceModule : IModule
         // the ordered-amount leg of the three-way match's local PurchaseOrderFact
         // read-model — see PurchaseOrderFact's class doc comment.
         services.AddScoped<IIntegrationEventConsumer, PurchaseOrderApprovedConsumer>();
+
+        // Finance reacts to HRMS's PayrollRecordPaid event by posting a Debit
+        // Salary Expense / Credit Salary Payable JournalEntry — closes the
+        // GL-posting gap PayrollRecord.MarkPaid's own doc comment flagged as
+        // "a distinct, separately-scoped future slice."
+        services.AddScoped<IIntegrationEventConsumer, PayrollRecordPaidConsumer>();
 
         services.AddControllers().AddApplicationPart(typeof(FinanceModule).Assembly);
 

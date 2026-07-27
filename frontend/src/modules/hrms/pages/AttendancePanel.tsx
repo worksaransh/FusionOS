@@ -111,7 +111,7 @@ export function AttendancePanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Attendance</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => recordAttendance.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form noValidate onSubmit={handleSubmit((values) => recordAttendance.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-sm">
             Employee
             <Controller
@@ -288,7 +288,7 @@ function AttendanceEditPanel({ companyId, record, onClose }: AttendanceEditPanel
         <h3 className="text-base font-semibold text-text">Edit attendance — {new Date(record.date).toLocaleDateString()}</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateRecord.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <form noValidate onSubmit={handleSubmit((values) => updateRecord.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           Status
           <Controller

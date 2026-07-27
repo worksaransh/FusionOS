@@ -27,6 +27,13 @@ public sealed class ContactRepository : IContactRepository
     public Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default) =>
         Filtered(companyId, search).CountAsync(cancellationToken);
 
+    public Task<bool> IsEmailAlreadyUsedAsync(Guid companyId, string normalizedEmail, CancellationToken cancellationToken = default) =>
+        // Email is already stored trimmed + lower-cased by Contact.Create/UpdateDetails, so
+        // a plain equality check against an already-normalized input is sufficient here.
+        // Only active contacts count — a deactivated contact isn't really "still around" to
+        // collide with.
+        _context.Contacts.AnyAsync(c => c.CompanyId == companyId && c.IsActive && c.Email == normalizedEmail, cancellationToken);
+
     private IQueryable<Contact> Filtered(Guid companyId, string? search)
     {
         var query = _context.Contacts.Where(c => c.CompanyId == companyId);

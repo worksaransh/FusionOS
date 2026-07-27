@@ -37,6 +37,7 @@ type EditFormValues = z.infer<typeof editSchema>;
 
 const disposeSchema = z.object({
   disposedDate: z.string().min(1, 'Disposed date is required'),
+  disposalProceeds: z.string().refine((v) => v.trim() !== '' && Number(v) >= 0, 'Disposal proceeds must be zero or greater (use 0 for a simple discard)'),
 });
 type DisposeFormValues = z.infer<typeof disposeSchema>;
 
@@ -95,13 +96,30 @@ interface JournalEntryDto {
   lines: JournalEntryLineDto[];
 }
 
+// Result of POST .../{id}/dispose (2026-07-22) — the disposed FixedAsset plus
+// the computed disposal gain/loss (AccumulatedDepreciation/NetBookValue as of
+// the disposal date, GainOrLoss = DisposalProceeds - NetBookValue) and, only
+// when Finance has the necessary default accounts configured, the real
+// Posted JournalEntry written for it. journalEntry is null when GL posting
+// was skipped — the disposal itself still always succeeds either way (see
+// DisposeFixedAssetCommandHandler's own doc comment).
+interface DisposeFixedAssetResultDto {
+  fixedAsset: FixedAssetDto;
+  accumulatedDepreciation: number;
+  netBookValue: number;
+  gainOrLoss: number;
+  journalEntry: JournalEntryDto | null;
+}
+
 /**
  * Fixed Assets — M8g, Finance depth: fixed assets. Master data (Code/Name/
  * AssetAccountId/AccumulatedDepreciationAccountId/CostCenterId/
  * AcquisitionDate/AcquisitionCost/SalvageValue/UsefulLifeMonths) plus three
  * dedicated actions per row: "Dispose" (a genuine one-way business state
- * change — see FixedAsset.Dispose's own doc comment for why no gain/loss is
- * calculated), "View depreciation schedule" (a pure on-demand calculation —
+ * change that also computes disposal gain/loss and, when the necessary
+ * default accounts are configured, posts it to the GL — see
+ * DisposeFixedAssetCommandHandler's own doc comment), "View depreciation
+ * schedule" (a pure on-demand calculation —
  * see GetDepreciationScheduleQueryHandler's own doc comment: nothing is
  * persisted, no JournalEntry is ever created), and "Post Depreciation" (posts
  * one month of straight-line depreciation as a real Posted JournalEntry —
@@ -188,7 +206,7 @@ export function FixedAssetsPanel() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createFixedAsset.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <form noValidate onSubmit={handleSubmit((values) => createFixedAsset.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <label className="flex flex-col gap-1 text-sm">
             Code
             <Controller
@@ -450,7 +468,7 @@ function FixedAssetEditPanel({ companyId, fixedAsset, onClose }: FixedAssetEditP
         Only name and cost center are editable — acquisition cost, salvage value, useful life, and account references
         are fixed at creation (see FixedAsset.UpdateDetails's own doc comment).
       </p>
-      <form onSubmit={handleSubmit((values) => updateFixedAsset.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateFixedAsset.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <Controller
@@ -502,18 +520,19 @@ function FixedAssetDisposePanel({ companyId, fixedAsset, onClose }: FixedAssetDi
 
   const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<DisposeFormValues>({
     resolver: zodResolver(disposeSchema),
-    defaultValues: { disposedDate: '' },
+    defaultValues: { disposedDate: '', disposalProceeds: '0' },
   });
 
   const disposeFixedAsset = useMutation({
     mutationFn: (values: DisposeFormValues) =>
-      apiClient.post<FixedAssetDto>(`/finance/fixed-assets/${fixedAsset.id}/dispose`, {
+      apiClient.post<DisposeFixedAssetResultDto>(`/finance/fixed-assets/${fixedAsset.id}/dispose`, {
         companyId,
         disposedDate: new Date(values.disposedDate).toISOString(),
+        disposalProceeds: Number(values.disposalProceeds),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fixed-assets', companyId] });
-      onClose();
+      queryClient.invalidateQueries({ queryKey: ['journal-entries', companyId] });
     },
   });
 
@@ -524,10 +543,13 @@ function FixedAssetDisposePanel({ companyId, fixedAsset, onClose }: FixedAssetDi
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
       <p className="mb-3 text-xs text-text-muted">
-        Records the disposal date only — no gain/loss on disposal is calculated or posted to the GL (see
-        FixedAsset.Dispose's own doc comment). This is a one-way business state change.
+        Records the disposal date and computes the disposal gain/loss (proceeds minus net book value as of that
+        date). Use 0 proceeds for a simple discard/scrap. When Finance has the necessary default accounts configured,
+        a real Posted JournalEntry is also written to the GL — otherwise the disposal is still recorded and the
+        gain/loss figures below are still shown, just not posted (see DisposeFixedAssetCommandHandler's own doc
+        comment). This is a one-way business state change.
       </p>
-      <form onSubmit={handleSubmit((values) => disposeFixedAsset.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => disposeFixedAsset.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Disposed date
           <Controller
@@ -539,6 +561,17 @@ function FixedAssetDisposePanel({ companyId, fixedAsset, onClose }: FixedAssetDi
           />
           {errors.disposedDate && <span className="text-xs text-danger">{errors.disposedDate.message}</span>}
         </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Disposal proceeds
+          <Controller
+            control={control}
+            name="disposalProceeds"
+            render={({ field }) => (
+              <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="0.00" {...field} />
+            )}
+          />
+          {errors.disposalProceeds && <span className="text-xs text-danger">{errors.disposalProceeds.message}</span>}
+        </label>
         <div className="col-span-2 flex items-center gap-3">
           <Button type="submit" variant="danger" disabled={isSubmitting}>{isSubmitting ? 'Recording…' : 'Record disposal'}</Button>
           {disposeFixedAsset.isError && (
@@ -546,6 +579,30 @@ function FixedAssetDisposePanel({ companyId, fixedAsset, onClose }: FixedAssetDi
           )}
         </div>
       </form>
+      {disposeFixedAsset.isSuccess && (
+        <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-text-muted">Accumulated depreciation</dt>
+            <dd className="font-medium text-text">{disposeFixedAsset.data.accumulatedDepreciation.toLocaleString()}</dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">Net book value</dt>
+            <dd className="font-medium text-text">{disposeFixedAsset.data.netBookValue.toLocaleString()}</dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">Gain / (loss)</dt>
+            <dd className={`font-medium ${disposeFixedAsset.data.gainOrLoss < 0 ? 'text-danger' : 'text-text'}`}>
+              {disposeFixedAsset.data.gainOrLoss.toLocaleString()}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-text-muted">GL posting</dt>
+            <dd className="font-medium text-text">
+              {disposeFixedAsset.data.journalEntry ? disposeFixedAsset.data.journalEntry.status : 'Skipped (accounts not configured)'}
+            </dd>
+          </div>
+        </dl>
+      )}
     </Card>
   );
 }
@@ -586,7 +643,7 @@ function FixedAssetDepreciationSchedulePanel({ companyId, fixedAsset, onClose }:
         here is persisted and no journal entry is ever created — see GetDepreciationScheduleQueryHandler's own doc
         comment.
       </p>
-      <form className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           As of date
           <Controller
@@ -673,7 +730,7 @@ function FixedAssetPostDepreciationPanel({ companyId, fixedAsset, onClose }: Fix
         Credit this asset's accumulated-depreciation account. Unlike the schedule above, this DOES write to the GL.
         There is no duplicate-posting guard, so make sure this period hasn't already been posted.
       </p>
-      <form onSubmit={handleSubmit((values) => postDepreciation.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => postDepreciation.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Depreciation expense account
           <Controller

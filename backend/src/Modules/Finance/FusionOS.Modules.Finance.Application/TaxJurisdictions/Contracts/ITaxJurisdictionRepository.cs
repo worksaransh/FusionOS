@@ -7,4 +7,11 @@ public interface ITaxJurisdictionRepository
     Task AddAsync(Domain.TaxJurisdictions.TaxJurisdiction taxJurisdiction, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Domain.TaxJurisdictions.TaxJurisdiction>> ListAsync(Guid companyId, string? search, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Every active TaxJurisdiction for the company, unpaged — backs
+    /// GetTaxPeriodSummaryReportQuery, which needs the whole active jurisdiction
+    /// set in one shot to resolve each TaxRate's parent in-memory.
+    /// </summary>
+    Task<IReadOnlyList<Domain.TaxJurisdictions.TaxJurisdiction>> ListAllActiveAsync(Guid companyId, CancellationToken cancellationToken = default);
 }

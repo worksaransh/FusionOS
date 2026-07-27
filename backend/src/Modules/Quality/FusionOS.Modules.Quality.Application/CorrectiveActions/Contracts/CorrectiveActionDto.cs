@@ -10,7 +10,13 @@ public sealed record CorrectiveActionDto(
     DateTimeOffset DueDate,
     string Status,
     DateTimeOffset? ClosedAt,
-    DateTimeOffset? VerifiedAt);
+    DateTimeOffset? VerifiedAt,
+    string RcaMethod,
+    string? Why1,
+    string? Why2,
+    string? Why3,
+    string? Why4,
+    string? Why5);
 
 /// <summary>Single place that turns a CorrectiveAction aggregate into its DTO, shared by every handler that returns one.</summary>
 public static class CorrectiveActionMapper
@@ -25,5 +31,11 @@ public static class CorrectiveActionMapper
         correctiveAction.DueDate,
         correctiveAction.Status.ToString(),
         correctiveAction.ClosedAt,
-        correctiveAction.VerifiedAt);
+        correctiveAction.VerifiedAt,
+        correctiveAction.RcaMethod.ToString(),
+        correctiveAction.Why1,
+        correctiveAction.Why2,
+        correctiveAction.Why3,
+        correctiveAction.Why4,
+        correctiveAction.Why5);
 }

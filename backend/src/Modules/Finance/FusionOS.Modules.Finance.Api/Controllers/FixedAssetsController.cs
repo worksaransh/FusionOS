@@ -85,8 +85,10 @@ public sealed class FixedAssetsController : ControllerBase
         return Ok(result);
     }
 
-    // Records the asset as disposed — no gain/loss calculation or GL posting
-    // (see FixedAsset.Dispose's own doc comment).
+    // Records the asset as disposed and — as of 2026-07-22 — computes and, when
+    // the necessary default accounts are configured, posts a real disposal
+    // gain/loss JournalEntry to the GL (see DisposeFixedAssetCommandHandler's
+    // own doc comment).
     [HttpPost("{id:guid}/dispose")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -94,7 +96,7 @@ public sealed class FixedAssetsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Dispose(Guid id, [FromBody] DisposeFixedAssetRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new DisposeFixedAssetCommand(request.CompanyId, id, request.DisposedDate), cancellationToken);
+        var result = await _sender.Send(new DisposeFixedAssetCommand(request.CompanyId, id, request.DisposedDate, request.DisposalProceeds), cancellationToken);
         return Ok(result);
     }
 
@@ -143,6 +145,6 @@ public sealed record UpdateFixedAssetRequest(Guid CompanyId, string Name, Guid? 
 
 public sealed record DeactivateFixedAssetRequest(Guid CompanyId);
 
-public sealed record DisposeFixedAssetRequest(Guid CompanyId, DateTimeOffset DisposedDate);
+public sealed record DisposeFixedAssetRequest(Guid CompanyId, DateTimeOffset DisposedDate, decimal DisposalProceeds = 0m);
 
 public sealed record PostDepreciationRequest(Guid CompanyId, Guid DepreciationExpenseAccountId, DateTimeOffset PeriodEnd);

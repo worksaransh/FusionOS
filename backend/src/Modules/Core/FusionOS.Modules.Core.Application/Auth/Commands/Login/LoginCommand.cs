@@ -10,5 +10,7 @@ namespace FusionOS.Modules.Core.Application.Auth.Commands.Login;
 /// Not IRequirePermission (nothing is authenticated yet) and not IAuditableCommand
 /// (AuditBehavior requires a current user, which does not exist pre-login;
 /// login/logout auditing is tracked separately — see README known-gaps).
+/// Implements IPubliclyAccessible (Phase 9 hardening fix, 2026-07-25): explicitly
+/// exempts this pre-auth action from AuthorizationBehavior's now-fail-closed check.
 /// </summary>
-public sealed record LoginCommand(string Email, string Password, Guid? CompanyId) : ICommand<AuthResultDto>;
+public sealed record LoginCommand(string Email, string Password, Guid? CompanyId) : ICommand<AuthResultDto>, IPubliclyAccessible;

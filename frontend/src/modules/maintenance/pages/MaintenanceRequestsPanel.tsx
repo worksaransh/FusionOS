@@ -9,7 +9,7 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
-import { useAssetOptions, useUserOptions } from '../../../shared/api/entityOptions';
+import { useAssetOptions, useProductOptions, useUserOptions, useWarehouseOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
 const REQUEST_TYPES = ['Preventive', 'Breakdown'] as const;
@@ -21,9 +21,13 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+const decimalString = (message: string) => z.string().refine((v) => v === '' || (/^\d+(\.\d+)?$/.test(v) && Number(v) >= 0), message).or(z.literal(''));
+
 const completeSchema = z.object({
   resolutionNotes: z.string().max(1000).or(z.literal('')),
   actualDowntimeMinutes: z.string().refine((v) => v === '' || (/^\d+$/.test(v) && Number(v) >= 0), 'Must be a non-negative whole number').or(z.literal('')),
+  laborHours: decimalString('Must be a non-negative number'),
+  laborRatePerHour: decimalString('Must be a non-negative number'),
 });
 type CompleteFormValues = z.infer<typeof completeSchema>;
 
@@ -31,6 +35,23 @@ const assignTechnicianSchema = z.object({
   technicianUserId: z.string().uuid('Pick a technician'),
 });
 type AssignTechnicianFormValues = z.infer<typeof assignTechnicianSchema>;
+
+const sparePartUsageSchema = z.object({
+  productId: z.string().uuid('Pick a product'),
+  warehouseId: z.string().uuid('Pick a warehouse'),
+  quantityUsed: z.string().refine((v) => /^\d+(\.\d+)?$/.test(v) && Number(v) > 0, 'Must be a positive number'),
+  unitCost: z.string().refine((v) => v === '' || (/^\d+(\.\d+)?$/.test(v) && Number(v) >= 0), 'Must be a non-negative number').or(z.literal('')),
+});
+type SparePartUsageFormValues = z.infer<typeof sparePartUsageSchema>;
+
+interface SparePartUsageDto {
+  id: string;
+  productId: string;
+  warehouseId: string;
+  quantityUsed: number;
+  unitCost: number;
+  usedAt: string;
+}
 
 interface MaintenanceRequestDto {
   id: string;
@@ -43,6 +64,10 @@ interface MaintenanceRequestDto {
   resolutionNotes: string | null;
   assignedTechnicianUserId: string | null;
   actualDowntimeMinutes: number | null;
+  laborHours: number | null;
+  laborRatePerHour: number | null;
+  totalCost: number;
+  sparePartUsages: SparePartUsageDto[];
 }
 
 /**
@@ -59,6 +84,7 @@ export function MaintenanceRequestsPanel() {
   const queryClient = useQueryClient();
   const [completingRequestId, setCompletingRequestId] = useState<string | null>(null);
   const [assigningRequestId, setAssigningRequestId] = useState<string | null>(null);
+  const [managingSparePartsRequestId, setManagingSparePartsRequestId] = useState<string | null>(null);
 
   const assetOptions = useAssetOptions(companyId);
   const technicianOptions = useUserOptions(companyId);
@@ -104,13 +130,14 @@ export function MaintenanceRequestsPanel() {
 
   const completingRequest = requestsQuery.data?.data.find((r) => r.id === completingRequestId) ?? null;
   const assigningRequest = requestsQuery.data?.data.find((r) => r.id === assigningRequestId) ?? null;
+  const managingSparePartsRequest = requestsQuery.data?.data.find((r) => r.id === managingSparePartsRequestId) ?? null;
 
   return (
     <div className="mt-8">
       <h2 className="mb-3 text-lg font-semibold text-text">Maintenance Requests</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createRequest.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form noValidate onSubmit={handleSubmit((values) => createRequest.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-sm">
             Asset
             <Controller
@@ -178,6 +205,7 @@ export function MaintenanceRequestsPanel() {
                   : '—',
             },
             { header: 'Downtime', render: (row: MaintenanceRequestDto) => (row.actualDowntimeMinutes != null ? `${row.actualDowntimeMinutes} min` : '—') },
+            { header: 'Total cost', render: (row: MaintenanceRequestDto) => row.totalCost.toLocaleString(undefined, { style: 'currency', currency: 'USD' }) },
             {
               header: 'Actions',
               render: (row: MaintenanceRequestDto) => (
@@ -190,6 +218,11 @@ export function MaintenanceRequestsPanel() {
                   {row.status === 'Open' && (
                     <Button type="button" variant="secondary" disabled={startRequest.isPending} onClick={() => startRequest.mutate(row.id)}>
                       Start
+                    </Button>
+                  )}
+                  {row.status === 'InProgress' && (
+                    <Button type="button" variant="secondary" onClick={() => setManagingSparePartsRequestId(row.id)}>
+                      Spare parts
                     </Button>
                   )}
                   {row.status === 'InProgress' && (
@@ -229,6 +262,14 @@ export function MaintenanceRequestsPanel() {
           onClose={() => setAssigningRequestId(null)}
         />
       )}
+
+      {managingSparePartsRequest && (
+        <SparePartUsagePanel
+          companyId={companyId}
+          request={managingSparePartsRequest}
+          onClose={() => setManagingSparePartsRequestId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -244,7 +285,7 @@ function CompleteMaintenanceRequestPanel({ companyId, request, onClose }: Comple
 
   const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<CompleteFormValues>({
     resolver: zodResolver(completeSchema),
-    defaultValues: { resolutionNotes: '', actualDowntimeMinutes: '' },
+    defaultValues: { resolutionNotes: '', actualDowntimeMinutes: '', laborHours: '', laborRatePerHour: '' },
   });
 
   const completeRequest = useMutation({
@@ -253,6 +294,8 @@ function CompleteMaintenanceRequestPanel({ companyId, request, onClose }: Comple
         companyId,
         resolutionNotes: values.resolutionNotes || null,
         actualDowntimeMinutes: values.actualDowntimeMinutes === '' ? null : Number(values.actualDowntimeMinutes),
+        laborHours: values.laborHours === '' ? null : Number(values.laborHours),
+        laborRatePerHour: values.laborRatePerHour === '' ? null : Number(values.laborRatePerHour),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-requests', companyId] });
@@ -266,7 +309,7 @@ function CompleteMaintenanceRequestPanel({ companyId, request, onClose }: Comple
         <h3 className="text-base font-semibold text-text">Complete request — {request.description}</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => completeRequest.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <form noValidate onSubmit={handleSubmit((values) => completeRequest.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           Resolution notes (optional)
           <Controller
@@ -287,6 +330,28 @@ function CompleteMaintenanceRequestPanel({ companyId, request, onClose }: Comple
             )}
           />
           {errors.actualDowntimeMinutes && <span className="text-xs text-danger">{errors.actualDowntimeMinutes.message}</span>}
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Labor hours (optional)
+          <Controller
+            control={control}
+            name="laborHours"
+            render={({ field }) => (
+              <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="2.5" {...field} />
+            )}
+          />
+          {errors.laborHours && <span className="text-xs text-danger">{errors.laborHours.message}</span>}
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Labor rate per hour (optional)
+          <Controller
+            control={control}
+            name="laborRatePerHour"
+            render={({ field }) => (
+              <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="45.00" {...field} />
+            )}
+          />
+          {errors.laborRatePerHour && <span className="text-xs text-danger">{errors.laborRatePerHour.message}</span>}
         </label>
         <div className="col-span-full flex items-center gap-3">
           <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Mark completed'}</Button>
@@ -334,7 +399,7 @@ function AssignTechnicianPanel({ companyId, request, technicianOptions, onClose 
         </h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => assignTechnician.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => assignTechnician.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Technician
           <Controller
@@ -360,6 +425,154 @@ function AssignTechnicianPanel({ companyId, request, technicianOptions, onClose 
           )}
         </div>
       </form>
+    </Card>
+  );
+}
+
+interface SparePartUsagePanelProps {
+  companyId: string;
+  request: MaintenanceRequestDto;
+  onClose: () => void;
+}
+
+/**
+ * Records spare parts consumed against an InProgress request (spare parts tracking
+ * follow-up, 2026-07-23) — product + warehouse + quantity + unit cost, same "one more
+ * input needed" small sub-form shape as CompleteMaintenanceRequestPanel/
+ * AssignTechnicianPanel above. Posting itself only records the usage on this request;
+ * Inventory's own SparePartsConsumedForMaintenanceConsumer is what actually debits the
+ * Stock Ledger, asynchronously, off the raised domain event — this form has no direct
+ * knowledge of that and simply refetches the request afterward to show the updated list
+ * + running TotalCost.
+ */
+function SparePartUsagePanel({ companyId, request, onClose }: SparePartUsagePanelProps) {
+  const queryClient = useQueryClient();
+  const productOptions = useProductOptions(companyId);
+  const warehouseOptions = useWarehouseOptions(companyId);
+
+  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<SparePartUsageFormValues>({
+    resolver: zodResolver(sparePartUsageSchema),
+    defaultValues: { productId: '', warehouseId: '', quantityUsed: '', unitCost: '' },
+  });
+
+  const recordUsage = useMutation({
+    mutationFn: (values: SparePartUsageFormValues) =>
+      apiClient.post<MaintenanceRequestDto>(`/maintenance/requests/${request.id}/spare-parts`, {
+        companyId,
+        productId: values.productId,
+        warehouseId: values.warehouseId,
+        quantityUsed: Number(values.quantityUsed),
+        unitCost: values.unitCost === '' ? 0 : Number(values.unitCost),
+      }),
+    onSuccess: () => {
+      reset({ productId: '', warehouseId: '', quantityUsed: '', unitCost: '' });
+      queryClient.invalidateQueries({ queryKey: ['maintenance-requests', companyId] });
+    },
+  });
+
+  return (
+    <Card className="mt-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-base font-semibold text-text">Spare parts — {request.description}</h3>
+        <Button variant="secondary" onClick={onClose}>Close</Button>
+      </div>
+      <form noValidate onSubmit={handleSubmit((values) => recordUsage.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <label className="flex flex-col gap-1 text-sm">
+          Product
+          <Controller
+            control={control}
+            name="productId"
+            render={({ field }) => (
+              <EntityCombobox
+                value={field.value}
+                onChange={field.onChange}
+                options={productOptions.options}
+                isLoading={productOptions.isLoading}
+                onSearchChange={productOptions.onSearchChange}
+                placeholder="Search products…"
+              />
+            )}
+          />
+          {errors.productId && <span className="text-xs text-danger">{errors.productId.message}</span>}
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Warehouse
+          <Controller
+            control={control}
+            name="warehouseId"
+            render={({ field }) => (
+              <EntityCombobox
+                value={field.value}
+                onChange={field.onChange}
+                options={warehouseOptions.options}
+                isLoading={warehouseOptions.isLoading}
+                onSearchChange={warehouseOptions.onSearchChange}
+                placeholder="Search warehouses…"
+              />
+            )}
+          />
+          {errors.warehouseId && <span className="text-xs text-danger">{errors.warehouseId.message}</span>}
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Quantity used
+          <Controller
+            control={control}
+            name="quantityUsed"
+            render={({ field }) => (
+              <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="2" {...field} />
+            )}
+          />
+          {errors.quantityUsed && <span className="text-xs text-danger">{errors.quantityUsed.message}</span>}
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Unit cost (optional)
+          <Controller
+            control={control}
+            name="unitCost"
+            render={({ field }) => (
+              <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="12.50" {...field} />
+            )}
+          />
+          {errors.unitCost && <span className="text-xs text-danger">{errors.unitCost.message}</span>}
+        </label>
+        <div className="col-span-full flex items-center gap-3">
+          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Recording…' : 'Record usage'}</Button>
+          {recordUsage.isError && (
+            <span role="alert" className="text-sm text-danger">Could not record that spare part usage.</span>
+          )}
+        </div>
+      </form>
+
+      <div className="mt-4">
+        <h4 className="mb-2 text-sm font-semibold text-text">Parts used</h4>
+        {request.sparePartUsages.length === 0 ? (
+          <p className="text-sm text-muted">No spare parts recorded yet.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-muted">
+                <th className="pb-1">Product</th>
+                <th className="pb-1">Warehouse</th>
+                <th className="pb-1">Qty</th>
+                <th className="pb-1">Unit cost</th>
+                <th className="pb-1">Line total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {request.sparePartUsages.map((usage) => (
+                <tr key={usage.id}>
+                  <td className="py-1">{productOptions.options.find((p) => p.id === usage.productId)?.label ?? usage.productId}</td>
+                  <td className="py-1">{warehouseOptions.options.find((w) => w.id === usage.warehouseId)?.label ?? usage.warehouseId}</td>
+                  <td className="py-1">{usage.quantityUsed}</td>
+                  <td className="py-1">{usage.unitCost.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</td>
+                  <td className="py-1">{(usage.quantityUsed * usage.unitCost).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="mt-3 text-sm font-semibold text-text">Total cost: {request.totalCost.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</p>
+      </div>
     </Card>
   );
 }

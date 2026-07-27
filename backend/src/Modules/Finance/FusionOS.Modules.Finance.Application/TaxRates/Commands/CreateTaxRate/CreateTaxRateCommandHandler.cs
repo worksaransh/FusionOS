@@ -35,7 +35,15 @@ public sealed class CreateTaxRateCommandHandler : IRequestHandler<CreateTaxRateC
             });
         }
 
-        var taxRate = TaxRate.Create(request.CompanyId, request.TaxJurisdictionId, request.Code, request.Name, request.Percentage);
+        if (!Enum.TryParse<GstComponent>(request.GstComponent, ignoreCase: true, out var gstComponent))
+        {
+            throw new ValidationException(new[]
+            {
+                new FluentValidation.Results.ValidationFailure(nameof(request.GstComponent), $"Unknown GST component '{request.GstComponent}'."),
+            });
+        }
+
+        var taxRate = TaxRate.Create(request.CompanyId, request.TaxJurisdictionId, request.Code, request.Name, request.Percentage, gstComponent);
 
         await _repository.AddAsync(taxRate, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -44,5 +52,5 @@ public sealed class CreateTaxRateCommandHandler : IRequestHandler<CreateTaxRateC
     }
 
     internal static TaxRateDto MapToDto(TaxRate taxRate) => new(
-        taxRate.Id, taxRate.TaxJurisdictionId, taxRate.Code, taxRate.Name, taxRate.Percentage, taxRate.IsActive, taxRate.CreatedAt);
+        taxRate.Id, taxRate.TaxJurisdictionId, taxRate.Code, taxRate.Name, taxRate.Percentage, taxRate.IsActive, taxRate.CreatedAt, taxRate.GstComponent.ToString());
 }

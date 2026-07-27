@@ -1,7 +1,9 @@
 using FusionOS.Modules.Crm.Application.Leads.Commands.AssignLeadAccount;
+using FusionOS.Modules.Crm.Application.Leads.Commands.AssignLeadOwner;
 using FusionOS.Modules.Crm.Application.Leads.Commands.CreateLead;
 using FusionOS.Modules.Crm.Application.Leads.Commands.DisqualifyLead;
 using FusionOS.Modules.Crm.Application.Leads.Commands.QualifyLead;
+using FusionOS.Modules.Crm.Application.Leads.Commands.RecalculateLeadScore;
 using FusionOS.Modules.Crm.Application.Leads.Queries.GetLeadById;
 using FusionOS.Modules.Crm.Application.Leads.Queries.ListLeads;
 using MediatR;
@@ -22,6 +24,7 @@ public sealed class LeadsController : ControllerBase
 
     public LeadsController(ISender sender) => _sender = sender;
 
+    /// <summary>Creates a new lead in the New stage for the given company.</summary>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -33,6 +36,7 @@ public sealed class LeadsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Id, companyId = request.CompanyId }, result);
     }
 
+    /// <summary>Gets a single lead by id, scoped to the given company (companyId is required, not inferred from the lead).</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -43,6 +47,7 @@ public sealed class LeadsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Lists leads for a company with optional free-text search, paginated (default page size 25).</summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
@@ -51,6 +56,7 @@ public sealed class LeadsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Moves the lead to Qualified, making it eligible to be converted into an Opportunity.</summary>
     [HttpPost("{id:guid}/qualify")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -62,6 +68,7 @@ public sealed class LeadsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Moves the lead to Disqualified, ending its lifecycle without creating an Opportunity.</summary>
     [HttpPost("{id:guid}/disqualify")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -73,6 +80,7 @@ public sealed class LeadsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Links (or clears, if AccountId is null) the CRM Account this lead belongs to.</summary>
     [HttpPost("{id:guid}/assign-account")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -83,6 +91,30 @@ public sealed class LeadsController : ControllerBase
         var result = await _sender.Send(new AssignLeadAccountCommand(request.CompanyId, id, request.AccountId), cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>Assigns (or clears, if OwnerId is null) the user responsible for working this lead.</summary>
+    [HttpPost("{id:guid}/assign-owner")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AssignOwner(Guid id, [FromBody] AssignLeadOwnerRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new AssignLeadOwnerCommand(request.CompanyId, id, request.OwnerId), cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>Re-runs LeadScoringService against this lead's current AccountId/logged Activities — see RecalculateLeadScoreCommand for why "crm.lead.qualify" is the permission reused here.</summary>
+    [HttpPost("{id:guid}/recalculate-score")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RecalculateScore(Guid id, [FromBody] LeadActionRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new RecalculateLeadScoreCommand(request.CompanyId, id), cancellationToken);
+        return Ok(result);
+    }
 }
 
 public sealed record CreateLeadRequest(Guid CompanyId, string Name, string? ContactEmail, string? ContactPhone, string? Source);
@@ -90,3 +122,5 @@ public sealed record CreateLeadRequest(Guid CompanyId, string Name, string? Cont
 public sealed record LeadActionRequest(Guid CompanyId);
 
 public sealed record AssignLeadAccountRequest(Guid CompanyId, Guid? AccountId);
+
+public sealed record AssignLeadOwnerRequest(Guid CompanyId, Guid? OwnerId);

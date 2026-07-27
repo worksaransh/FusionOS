@@ -8,7 +8,11 @@ public sealed record UpdateFinanceSettingsCommand(
     Guid? DefaultArAccountId,
     Guid? DefaultSalesRevenueAccountId,
     Guid? DefaultApAccountId,
-    Guid? DefaultPurchaseExpenseAccountId)
+    Guid? DefaultPurchaseExpenseAccountId,
+    Guid? DefaultDisposalProceedsAccountId = null,
+    Guid? DefaultGainLossOnDisposalAccountId = null,
+    Guid? DefaultSalaryExpenseAccountId = null,
+    Guid? DefaultSalaryPayableAccountId = null)
     : ICommand<FinanceSettingsDto>, IRequirePermission, IAuditableCommand
 {
     public string[] RequiredPermissions => new[] { "finance.settings.update" };

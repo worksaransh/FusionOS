@@ -5,6 +5,7 @@ using FusionOS.Modules.Finance.Application.IntegrationEvents.Consumers;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using FusionOS.Modules.Finance.Application.Payables.Contracts;
 using FusionOS.Modules.Finance.Application.Settings.Contracts;
+using FusionOS.Modules.Finance.Application.TaxTransactions.Contracts;
 using FusionOS.Modules.Finance.Domain.JournalEntries;
 using FusionOS.Modules.Finance.Domain.Payables;
 using FusionOS.SharedKernel.Events;
@@ -46,7 +47,8 @@ public class PurchaseOrderGoodsReceiptCostedConsumerTests
         settings.ConfigureAccounts(null, null, apAccountId, expenseAccountId);
         settingsRepository.GetByCompanyIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(settings);
 
-        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, processedEvents, unitOfWork);
+        var taxTransactionRepository = Substitute.For<ITaxTransactionRepository>();
+        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, taxTransactionRepository, processedEvents, unitOfWork);
         var payload = BuildPayload(Guid.NewGuid(), companyId, Guid.NewGuid(), 800m);
 
         await consumer.HandleAsync(Guid.NewGuid(), companyId, payload, CancellationToken.None);
@@ -70,8 +72,9 @@ public class PurchaseOrderGoodsReceiptCostedConsumerTests
         var processedEvents = Substitute.For<IProcessedIntegrationEventStore>();
         processedEvents.HasProcessedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
         var unitOfWork = Substitute.For<IUnitOfWork>();
+        var taxTransactionRepository = Substitute.For<ITaxTransactionRepository>();
 
-        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, processedEvents, unitOfWork);
+        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, taxTransactionRepository, processedEvents, unitOfWork);
         var payload = BuildPayload(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 800m);
 
         await consumer.HandleAsync(Guid.NewGuid(), Guid.NewGuid(), payload, CancellationToken.None);
@@ -95,8 +98,9 @@ public class PurchaseOrderGoodsReceiptCostedConsumerTests
         var processedEvents = Substitute.For<IProcessedIntegrationEventStore>();
         processedEvents.HasProcessedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
         var unitOfWork = Substitute.For<IUnitOfWork>();
+        var taxTransactionRepository = Substitute.For<ITaxTransactionRepository>();
 
-        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, processedEvents, unitOfWork);
+        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, taxTransactionRepository, processedEvents, unitOfWork);
         var purchaseOrderId = Guid.NewGuid();
         var payload = BuildPayload(purchaseOrderId, Guid.NewGuid(), Guid.NewGuid(), 800m);
 
@@ -123,7 +127,8 @@ public class PurchaseOrderGoodsReceiptCostedConsumerTests
         var processedEvents = Substitute.For<IProcessedIntegrationEventStore>();
         processedEvents.HasProcessedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, processedEvents, unitOfWork);
+        var taxTransactionRepository = Substitute.For<ITaxTransactionRepository>();
+        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, taxTransactionRepository, processedEvents, unitOfWork);
         var payload = JsonSerializer.Serialize(new
         {
             CompanyId = Guid.NewGuid(),
@@ -152,7 +157,8 @@ public class PurchaseOrderGoodsReceiptCostedConsumerTests
         var processedEvents = Substitute.For<IProcessedIntegrationEventStore>();
         processedEvents.HasProcessedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, processedEvents, unitOfWork);
+        var taxTransactionRepository = Substitute.For<ITaxTransactionRepository>();
+        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, taxTransactionRepository, processedEvents, unitOfWork);
         var payload = BuildPayload(Guid.NewGuid(), Guid.NewGuid(), Guid.Empty, 800m);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -173,7 +179,8 @@ public class PurchaseOrderGoodsReceiptCostedConsumerTests
         var processedEvents = Substitute.For<IProcessedIntegrationEventStore>();
         processedEvents.HasProcessedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, processedEvents, unitOfWork);
+        var taxTransactionRepository = Substitute.For<ITaxTransactionRepository>();
+        var consumer = new PurchaseOrderGoodsReceiptCostedConsumer(ledgerRepository, factRepository, journalEntryRepository, settingsRepository, taxTransactionRepository, processedEvents, unitOfWork);
         var payload = BuildPayload(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), -800m);
 
         await Assert.ThrowsAsync<InvalidOperationException>(

@@ -101,7 +101,7 @@ export function PayrollPanel() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createDraft.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <form noValidate onSubmit={handleSubmit((values) => createDraft.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <label className="flex flex-col gap-1 text-sm">
             Employee
             <Controller

@@ -100,7 +100,7 @@ export function StockLedgerPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Stock Ledger</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => adjustStock.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => adjustStock.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Product
             <Controller

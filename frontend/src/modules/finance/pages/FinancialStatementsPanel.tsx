@@ -37,6 +37,23 @@ interface ProfitAndLossReportDto {
   netIncome: number;
 }
 
+interface CashFlowStatementLineDto {
+  label: string;
+  amount: number;
+}
+interface CashFlowStatementReportDto {
+  periodStart: string;
+  periodEnd: string;
+  netIncome: number;
+  operatingLines: CashFlowStatementLineDto[];
+  netCashFromOperatingActivities: number;
+  investingLines: CashFlowStatementLineDto[];
+  netCashFromInvestingActivities: number;
+  financingLines: CashFlowStatementLineDto[];
+  netCashFromFinancingActivities: number;
+  netChangeInCash: number;
+}
+
 interface BalanceSheetLineDto {
   accountId: string;
   accountCode: string;
@@ -94,6 +111,12 @@ export function FinancialStatementsPanel() {
     queryKey: ['balance-sheet', companyId, asOfDate],
     queryFn: () => apiClient.get<BalanceSheetReportDto>(`/finance/reports/balance-sheet?companyId=${companyId}&asOfDate=${asOfDate}`),
     enabled: Boolean(companyId && asOfDate),
+  });
+
+  const cashFlowStatementQuery = useQuery({
+    queryKey: ['cash-flow-statement', companyId, periodStart, periodEnd],
+    queryFn: () => apiClient.get<CashFlowStatementReportDto>(`/finance/reports/cash-flow-statement?companyId=${companyId}&periodStart=${periodStart}&periodEnd=${periodEnd}`),
+    enabled: Boolean(companyId && periodStart && periodEnd),
   });
 
   if (!companyId) return null;
@@ -228,6 +251,56 @@ export function FinancialStatementsPanel() {
             {' · '}Total liabilities: <span className="font-semibold">{balanceSheetQuery.data.totalLiabilities.toLocaleString()}</span>
             {' · '}Total equity: <span className="font-semibold">{balanceSheetQuery.data.totalEquity.toLocaleString()}</span>
             {' · '}{balanceSheetQuery.data.isBalanced ? '✓ Balanced' : '⚠ Not balanced'}
+          </p>
+        )}
+      </Card>
+
+      <h3 className="mb-2 mt-6 text-base font-semibold text-text">Cash Flow Statement (indirect method)</h3>
+      <p className="mb-2 text-xs text-text-muted">
+        Uses the same P&amp;L period above. Derived entirely from GL/ledger balances, not a dedicated cash-transaction feed — Investing only reflects fixed-asset acquisitions (disposal proceeds are not tracked in this ledger), and Financing only reflects equity-account movement (loans, if any, are not separately tracked). See the backend report for the full documented scope.
+      </p>
+      <Card>
+        <p className="mb-2 text-sm font-medium text-text-muted">Operating activities</p>
+        <DataTable
+          columns={[
+            { header: 'Line', render: (l: CashFlowStatementLineDto) => l.label },
+            { header: 'Amount', render: (l: CashFlowStatementLineDto) => l.amount.toLocaleString() },
+          ]}
+          rows={cashFlowStatementQuery.data?.operatingLines}
+          isLoading={cashFlowStatementQuery.isLoading}
+          isError={cashFlowStatementQuery.isError}
+          errorMessage="Could not load the cash flow statement."
+          emptyMessage="No operating activity for this period."
+          rowKey={(l) => l.label}
+        />
+        <p className="mb-2 mt-4 text-sm font-medium text-text-muted">Investing activities</p>
+        <DataTable
+          columns={[
+            { header: 'Line', render: (l: CashFlowStatementLineDto) => l.label },
+            { header: 'Amount', render: (l: CashFlowStatementLineDto) => l.amount.toLocaleString() },
+          ]}
+          rows={cashFlowStatementQuery.data?.investingLines}
+          isLoading={cashFlowStatementQuery.isLoading}
+          emptyMessage="No investing activity for this period."
+          rowKey={(l) => l.label}
+        />
+        <p className="mb-2 mt-4 text-sm font-medium text-text-muted">Financing activities</p>
+        <DataTable
+          columns={[
+            { header: 'Line', render: (l: CashFlowStatementLineDto) => l.label },
+            { header: 'Amount', render: (l: CashFlowStatementLineDto) => l.amount.toLocaleString() },
+          ]}
+          rows={cashFlowStatementQuery.data?.financingLines}
+          isLoading={cashFlowStatementQuery.isLoading}
+          emptyMessage="No financing activity for this period."
+          rowKey={(l) => l.label}
+        />
+        {cashFlowStatementQuery.data && (
+          <p className="mt-3 text-sm">
+            Net cash from operating: <span className="font-semibold">{cashFlowStatementQuery.data.netCashFromOperatingActivities.toLocaleString()}</span>
+            {' · '}Investing: <span className="font-semibold">{cashFlowStatementQuery.data.netCashFromInvestingActivities.toLocaleString()}</span>
+            {' · '}Financing: <span className="font-semibold">{cashFlowStatementQuery.data.netCashFromFinancingActivities.toLocaleString()}</span>
+            {' · '}Net change in cash: <span className="font-semibold">{cashFlowStatementQuery.data.netChangeInCash.toLocaleString()}</span>
           </p>
         )}
       </Card>

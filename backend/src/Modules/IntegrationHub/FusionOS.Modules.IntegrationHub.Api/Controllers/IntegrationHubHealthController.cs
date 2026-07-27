@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FusionOS.Modules.IntegrationHub.Api.Controllers;
 
-/// <summary>The only endpoint this not-yet-implemented module exposes: proof it is registered and reachable.</summary>
+/// <summary>Reports genuine module status — IntegrationHub has real connector sync adapters (Shopify, Razorpay, Stripe, Delhivery, Shiprocket, Ondc) calling documented external APIs, plus a Tally migration pipeline, not just a registration probe.</summary>
 [ApiController]
 [Route("api/v1/integration_hub/health")]
 public sealed class IntegrationHubHealthController : ControllerBase
@@ -11,7 +11,8 @@ public sealed class IntegrationHubHealthController : ControllerBase
     public IActionResult Get() => Ok(new
     {
         module = "IntegrationHub",
-        status = "scaffolded",
-        roadmapPhase = "Phase 9 — Integrations & Mobile",
+        status = "active",
+        roadmapPhase = "Phase 8 — AI & Integrations",
+        slices = new[] { "integration-connectors", "connector-connections", "connector-sync-runs", "tally-migrations" },
     });
 }

@@ -8,6 +8,11 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import type { PagedResult } from '../../../shared/api/types';
+import { ForecastsPanel } from './ForecastsPanel';
+import { AiSearchPanel } from './AiSearchPanel';
+import { KpiNarrativeReportPanel } from './KpiNarrativeReportPanel';
+import { OcrJobsPanel } from './OcrJobsPanel';
+import { CopilotPanel } from './CopilotPanel';
 
 const schema = z.object({
   type: z.string().min(1, 'Type is required').max(100),
@@ -99,7 +104,7 @@ export function RecommendationsPage() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => recordRecommendation.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => recordRecommendation.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Type
             <Controller
@@ -186,6 +191,12 @@ export function RecommendationsPage() {
       {(acceptRecommendation.isError || dismissRecommendation.isError) && (
         <p role="alert" className="mt-2 text-sm text-danger">Could not update that recommendation.</p>
       )}
+
+      <OcrJobsPanel />
+      <AiSearchPanel />
+      <KpiNarrativeReportPanel />
+      <ForecastsPanel />
+      <CopilotPanel />
     </div>
   );
 }

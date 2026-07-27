@@ -14,6 +14,7 @@ public sealed class DispatchConfiguration : IEntityTypeConfiguration<Dispatch>
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);
         builder.HasIndex(x => new { x.CompanyId, x.SalesOrderId });
+        builder.HasIndex(x => x.PickListId); // opaque, unvalidated cross-module reference into Warehouse's PickList (see Dispatch.cs's doc comment) — same "index the nullable opaque FK" convention as GoodsReceiptConfiguration's PurchaseOrderId index.
 
         builder.HasMany(x => x.Lines)
             .WithOne()

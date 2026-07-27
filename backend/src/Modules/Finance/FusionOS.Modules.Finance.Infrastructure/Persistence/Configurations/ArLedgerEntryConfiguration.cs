@@ -17,6 +17,7 @@ public sealed class ArLedgerEntryConfiguration : IEntityTypeConfiguration<ArLedg
         builder.Ignore(x => x.RowVersion);
         builder.HasIndex(x => new { x.CompanyId, x.CustomerId });
         builder.HasIndex(x => x.InvoiceId);
+        builder.HasIndex(x => x.BankAccountId); // bank-tied-payments follow-up — optional, mapped by convention (nullable Guid column)
         builder.Ignore(x => x.DomainEvents);
     }
 }

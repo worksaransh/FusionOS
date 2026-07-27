@@ -4,6 +4,7 @@ using FusionOS.Modules.Quality.Application.CorrectiveActions.Commands.StartCorre
 using FusionOS.Modules.Quality.Application.CorrectiveActions.Commands.VerifyCorrectiveAction;
 using FusionOS.Modules.Quality.Application.CorrectiveActions.Queries.GetCorrectiveActionById;
 using FusionOS.Modules.Quality.Application.CorrectiveActions.Queries.ListCorrectiveActions;
+using FusionOS.Modules.Quality.Domain.CorrectiveActions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,7 +36,13 @@ public sealed class CorrectiveActionsController : ControllerBase
             request.CorrectiveActionDescription,
             request.PreventiveActionDescription,
             request.AssignedToUserId,
-            request.DueDate);
+            request.DueDate,
+            request.RcaMethod,
+            request.Why1,
+            request.Why2,
+            request.Why3,
+            request.Why4,
+            request.Why5);
         var result = await _sender.Send(command, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = result.Id, companyId = request.CompanyId }, result);
     }
@@ -99,6 +106,12 @@ public sealed record CreateCorrectiveActionRequest(
     string CorrectiveActionDescription,
     string PreventiveActionDescription,
     Guid AssignedToUserId,
-    DateTimeOffset DueDate);
+    DateTimeOffset DueDate,
+    RcaMethod RcaMethod = RcaMethod.Other,
+    string? Why1 = null,
+    string? Why2 = null,
+    string? Why3 = null,
+    string? Why4 = null,
+    string? Why5 = null);
 
 public sealed record CorrectiveActionActionRequest(Guid CompanyId);

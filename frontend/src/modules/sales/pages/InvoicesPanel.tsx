@@ -136,7 +136,7 @@ export function InvoicesPanel() {
 
       <Card className="mb-6">
         <FormProvider {...formMethods}>
-          <form onSubmit={handleSubmit((values) => createInvoice.mutate(values))} className="flex flex-col gap-4">
+          <form noValidate onSubmit={handleSubmit((values) => createInvoice.mutate(values))} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-sm">
                 Sales Order

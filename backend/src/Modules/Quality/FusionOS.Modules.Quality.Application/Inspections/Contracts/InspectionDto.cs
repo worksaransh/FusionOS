@@ -1,6 +1,13 @@
 namespace FusionOS.Modules.Quality.Application.Inspections.Contracts;
 
-public sealed record InspectionItemDto(Guid Id, string Characteristic, bool? Passed, string? Notes);
+public sealed record InspectionItemDto(
+    Guid Id,
+    string Characteristic,
+    bool? Passed,
+    string? Notes,
+    decimal? MeasuredValue,
+    decimal? LowerControlLimit,
+    decimal? UpperControlLimit);
 
 public sealed record InspectionDto(
     Guid Id,
@@ -17,5 +24,12 @@ public static class InspectionMapper
         inspection.Type.ToString(),
         inspection.ReferenceId,
         inspection.Status.ToString(),
-        inspection.Items.Select(i => new InspectionItemDto(i.Id, i.Characteristic, i.Passed, i.Notes)).ToList());
+        inspection.Items.Select(i => new InspectionItemDto(
+            i.Id,
+            i.Characteristic,
+            i.Passed,
+            i.Notes,
+            i.MeasuredValue,
+            i.LowerControlLimit,
+            i.UpperControlLimit)).ToList());
 }

@@ -18,6 +18,7 @@ public sealed class JournalEntriesController : ControllerBase
 
     public JournalEntriesController(ISender sender) => _sender = sender;
 
+    /// <summary>Creates a new (unposted) journal entry. Lines must balance — total debits must equal total credits.</summary>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -30,6 +31,7 @@ public sealed class JournalEntriesController : ControllerBase
         return CreatedAtAction(nameof(List), new { companyId = request.CompanyId }, result);
     }
 
+    /// <summary>Lists journal entries for a company, paginated (default page size 25). Pass format=csv to download the page as a CSV file instead of JSON.</summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] string? format = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
@@ -43,6 +45,7 @@ public sealed class JournalEntriesController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Posts the journal entry to the General Ledger, making it final — posted entries are no longer editable.</summary>
     [HttpPost("{id:guid}/post")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

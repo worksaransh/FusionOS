@@ -12,11 +12,14 @@ import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import { useTaxJurisdictionOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
+const GST_COMPONENTS = ['NotApplicable', 'CGST', 'SGST', 'IGST'] as const;
+
 const schema = z.object({
   taxJurisdictionId: z.string().uuid('Pick a tax jurisdiction'),
   code: z.string().min(1, 'Code is required').max(20),
   name: z.string().min(1, 'Name is required').max(200),
   percentage: z.string().refine((v) => Number(v) >= 0 && Number(v) <= 100, 'Percentage must be between 0 and 100'),
+  gstComponent: z.enum(GST_COMPONENTS),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -37,6 +40,7 @@ interface TaxRateDto {
   percentage: number;
   isActive: boolean;
   createdAt: string;
+  gstComponent: string;
 }
 
 /**
@@ -56,7 +60,7 @@ export function TaxRatesPanel() {
 
   const { control, handleSubmit, watch, reset, setError, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { taxJurisdictionId: '', code: '', name: '', percentage: '0' },
+    defaultValues: { taxJurisdictionId: '', code: '', name: '', percentage: '0', gstComponent: 'NotApplicable' },
   });
   const watchedTaxJurisdictionId = watch('taxJurisdictionId');
   const effectiveTaxJurisdictionId = lookupTaxJurisdictionId || watchedTaxJurisdictionId;
@@ -69,9 +73,10 @@ export function TaxRatesPanel() {
         code: values.code,
         name: values.name,
         percentage: Number(values.percentage),
+        gstComponent: values.gstComponent,
       }),
     onSuccess: (_data, variables) => {
-      reset({ taxJurisdictionId: variables.taxJurisdictionId, code: '', name: '', percentage: '0' });
+      reset({ taxJurisdictionId: variables.taxJurisdictionId, code: '', name: '', percentage: '0', gstComponent: 'NotApplicable' });
       setLookupTaxJurisdictionId(variables.taxJurisdictionId);
       queryClient.invalidateQueries({ queryKey: ['tax-rates', companyId, variables.taxJurisdictionId] });
     },
@@ -111,7 +116,7 @@ export function TaxRatesPanel() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createTaxRate.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createTaxRate.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             Tax jurisdiction
             <Controller
@@ -166,6 +171,21 @@ export function TaxRatesPanel() {
             />
             {errors.percentage && <span className="text-xs text-danger">{errors.percentage.message}</span>}
           </label>
+          <label className="flex flex-col gap-1 text-sm">
+            GST component
+            <Controller
+              control={control}
+              name="gstComponent"
+              render={({ field }) => (
+                <select className="rounded-md border border-border bg-surface px-2 py-1.5" {...field}>
+                  {GST_COMPONENTS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
+            />
+            {errors.gstComponent && <span className="text-xs text-danger">{errors.gstComponent.message}</span>}
+          </label>
           <div className="col-span-2">
             <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating…' : 'Create tax rate'}</Button>
           </div>
@@ -182,6 +202,7 @@ export function TaxRatesPanel() {
               { header: 'Code', render: (row: TaxRateDto) => row.code },
               { header: 'Name', render: (row: TaxRateDto) => row.name },
               { header: 'Percentage', render: (row: TaxRateDto) => `${row.percentage}%` },
+              { header: 'GST component', render: (row: TaxRateDto) => <GstComponentCell companyId={companyId} taxJurisdictionId={effectiveTaxJurisdictionId} taxRate={row} /> },
               { header: 'Status', render: (row: TaxRateDto) => (row.isActive ? 'Active' : 'Inactive') },
               { header: 'Created', render: (row: TaxRateDto) => new Date(row.createdAt).toLocaleDateString() },
               {
@@ -273,7 +294,7 @@ function TaxRateEditPanel({ companyId, taxJurisdictionId, taxRate, onClose }: Ta
         <h2 className="text-lg font-semibold text-text">Edit tax rate — {taxRate.code}</h2>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateTaxRate.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateTaxRate.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <Controller
@@ -304,5 +325,38 @@ function TaxRateEditPanel({ companyId, taxJurisdictionId, taxRate, onClose }: Ta
         </div>
       </form>
     </Card>
+  );
+}
+
+interface GstComponentCellProps {
+  companyId: string;
+  taxJurisdictionId: string;
+  taxRate: TaxRateDto;
+}
+
+/** GST filing support (2026-07-22) — inline reclassify, same "select + save on change" pattern as a status dropdown, since this is a metadata correction rather than a full edit form. */
+function GstComponentCell({ companyId, taxJurisdictionId, taxRate }: GstComponentCellProps) {
+  const queryClient = useQueryClient();
+
+  const reclassify = useMutation({
+    mutationFn: (gstComponent: string) =>
+      apiClient.post<TaxRateDto>(`/finance/tax-rates/${taxRate.id}/reclassify-gst-component`, { companyId, gstComponent }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tax-rates', companyId, taxJurisdictionId] }),
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <select
+        className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
+        value={taxRate.gstComponent}
+        disabled={reclassify.isPending}
+        onChange={(e) => reclassify.mutate(e.target.value)}
+      >
+        {GST_COMPONENTS.map((c) => (
+          <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
+      {reclassify.isError && <span className="text-xs text-danger">Failed</span>}
+    </div>
   );
 }

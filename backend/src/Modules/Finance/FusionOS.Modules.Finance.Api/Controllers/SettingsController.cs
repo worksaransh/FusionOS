@@ -39,7 +39,9 @@ public sealed class SettingsController : ControllerBase
     {
         var command = new UpdateFinanceSettingsCommand(
             request.CompanyId, request.DefaultArAccountId, request.DefaultSalesRevenueAccountId,
-            request.DefaultApAccountId, request.DefaultPurchaseExpenseAccountId);
+            request.DefaultApAccountId, request.DefaultPurchaseExpenseAccountId,
+            request.DefaultDisposalProceedsAccountId, request.DefaultGainLossOnDisposalAccountId,
+            request.DefaultSalaryExpenseAccountId, request.DefaultSalaryPayableAccountId);
         var result = await _sender.Send(command, cancellationToken);
         return Ok(result);
     }
@@ -50,4 +52,8 @@ public sealed record UpdateFinanceSettingsRequest(
     Guid? DefaultArAccountId,
     Guid? DefaultSalesRevenueAccountId,
     Guid? DefaultApAccountId,
-    Guid? DefaultPurchaseExpenseAccountId);
+    Guid? DefaultPurchaseExpenseAccountId,
+    Guid? DefaultDisposalProceedsAccountId = null,
+    Guid? DefaultGainLossOnDisposalAccountId = null,
+    Guid? DefaultSalaryExpenseAccountId = null,
+    Guid? DefaultSalaryPayableAccountId = null);

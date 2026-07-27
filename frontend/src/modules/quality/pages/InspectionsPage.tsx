@@ -12,12 +12,19 @@ import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import type { PagedResult } from '../../../shared/api/types';
 import { CorrectiveActionsPanel } from './CorrectiveActionsPanel';
 import { NonConformanceReportsPanel } from './NonConformanceReportsPanel';
+import { InspectionPlansPanel, type InspectionPlanDto } from './InspectionPlansPanel';
+import { QualityHoldsPanel } from './QualityHoldsPanel';
+import { QualityAuditsPanel } from './QualityAuditsPanel';
+import { DeviationRequestsPanel } from './DeviationRequestsPanel';
+import { CertificatesPanel } from './CertificatesPanel';
+import { CalibrationRecordsPanel } from './CalibrationRecordsPanel';
 
-const INSPECTION_TYPES = ['IncomingGoods', 'Production'] as const;
+const INSPECTION_TYPES = ['IncomingGoods', 'Production', 'Final'] as const;
 
 const schema = z.object({
   type: z.enum(INSPECTION_TYPES),
-  referenceId: z.string().uuid('Must be a valid id (the work order or goods receipt being inspected)'),
+  referenceId: z.string().uuid('Must be a valid id (the work order, goods receipt, or dispatch being inspected)'),
+  inspectionPlanId: z.string(),
   characteristics: z.array(z.object({ value: z.string().min(1, 'Characteristic cannot be blank').max(200) })).min(1, 'At least one characteristic is required'),
 });
 type FormValues = z.infer<typeof schema>;
@@ -28,6 +35,8 @@ const resultsSchema = z.object({
     passed: z.enum(['true', 'false']),
     notes: z.string().max(500).or(z.literal('')),
   })),
+  raiseHoldOnFailure: z.boolean(),
+  heldEntityType: z.string().max(100).or(z.literal('')),
 });
 type ResultsFormValues = z.infer<typeof resultsSchema>;
 
@@ -69,11 +78,29 @@ export function InspectionsPage() {
     enabled: Boolean(companyId),
   });
 
+  const inspectionPlansQuery = useQuery({
+    queryKey: ['inspection-plans', companyId],
+    queryFn: () => apiClient.get<PagedResult<InspectionPlanDto>>(`/quality/inspection-plans?companyId=${companyId}&page=1&pageSize=100`),
+    enabled: Boolean(companyId),
+  });
+  const activePlans = (inspectionPlansQuery.data?.data ?? []).filter((p) => p.isActive);
+
   const { control, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { type: 'IncomingGoods', referenceId: '', characteristics: [{ value: '' }] },
+    defaultValues: { type: 'IncomingGoods', referenceId: '', inspectionPlanId: '', characteristics: [{ value: '' }] },
   });
-  const { fields, append, remove } = useFieldArray({ control, name: 'characteristics' });
+  const { fields, append, remove, replace } = useFieldArray({ control, name: 'characteristics' });
+
+  // Applying a plan pre-fills the characteristic list from its template — still editable
+  // before submit, and picking a different plan simply replaces the list again. Selecting
+  // the blank option leaves whatever is currently typed untouched.
+  const applyPlan = (planId: string, onChange: (value: string) => void) => {
+    onChange(planId);
+    const plan = activePlans.find((p) => p.id === planId);
+    if (plan) {
+      replace(plan.characteristics.map((c) => ({ value: c.characteristicName })));
+    }
+  };
 
   const createInspection = useMutation({
     mutationFn: (values: FormValues) =>
@@ -82,9 +109,10 @@ export function InspectionsPage() {
         type: values.type,
         referenceId: values.referenceId,
         characteristics: values.characteristics.map((c) => c.value),
+        inspectionPlanId: values.inspectionPlanId || null,
       }),
     onSuccess: () => {
-      reset({ type: 'IncomingGoods', referenceId: '', characteristics: [{ value: '' }] });
+      reset({ type: 'IncomingGoods', referenceId: '', inspectionPlanId: '', characteristics: [{ value: '' }] });
       queryClient.invalidateQueries({ queryKey: ['inspections', companyId] });
     },
     onError: (error) => {
@@ -110,7 +138,7 @@ export function InspectionsPage() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createInspection.mutate(values))} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit((values) => createInspection.mutate(values))} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               Type
@@ -127,7 +155,7 @@ export function InspectionsPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              Reference id (Work Order or Goods Receipt id)
+              Reference id (Work Order, Goods Receipt, or Dispatch id)
               <Controller
                 control={control}
                 name="referenceId"
@@ -136,6 +164,25 @@ export function InspectionsPage() {
                 )}
               />
               {errors.referenceId && <span className="text-xs text-danger">{errors.referenceId.message}</span>}
+            </label>
+            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+              Apply inspection plan (optional — pre-fills characteristics below, still editable)
+              <Controller
+                control={control}
+                name="inspectionPlanId"
+                render={({ field }) => (
+                  <select
+                    className="rounded-md border border-border bg-surface px-2 py-1.5"
+                    value={field.value}
+                    onChange={(e) => applyPlan(e.target.value, field.onChange)}
+                  >
+                    <option value="">— No plan —</option>
+                    {activePlans.map((plan) => (
+                      <option key={plan.id} value={plan.id}>{plan.name} ({plan.inspectionType})</option>
+                    ))}
+                  </select>
+                )}
+              />
             </label>
           </div>
 
@@ -208,8 +255,14 @@ export function InspectionsPage() {
         />
       )}
 
+      <InspectionPlansPanel />
+      <QualityHoldsPanel />
       <NonConformanceReportsPanel />
       <CorrectiveActionsPanel />
+      <QualityAuditsPanel />
+      <DeviationRequestsPanel />
+      <CertificatesPanel />
+      <CalibrationRecordsPanel />
     </div>
   );
 }
@@ -223,22 +276,28 @@ interface RecordInspectionResultsPanelProps {
 function RecordInspectionResultsPanel({ companyId, inspection, onClose }: RecordInspectionResultsPanelProps) {
   const queryClient = useQueryClient();
 
-  const { control, handleSubmit, formState: { isSubmitting } } = useForm<ResultsFormValues>({
+  const { control, handleSubmit, watch, formState: { isSubmitting } } = useForm<ResultsFormValues>({
     resolver: zodResolver(resultsSchema),
     values: {
       results: inspection.items.map((item) => ({ characteristic: item.characteristic, passed: 'true' as const, notes: '' })),
+      raiseHoldOnFailure: false,
+      heldEntityType: '',
     },
   });
   const { fields } = useFieldArray({ control, name: 'results' });
+  const raiseHoldOnFailure = watch('raiseHoldOnFailure');
 
   const recordResults = useMutation({
     mutationFn: (values: ResultsFormValues) =>
       apiClient.post<InspectionDto>(`/quality/inspections/${inspection.id}/results`, {
         companyId,
         results: values.results.map((r) => ({ characteristic: r.characteristic, passed: r.passed === 'true', notes: r.notes || null })),
+        raiseHoldOnFailure: values.raiseHoldOnFailure,
+        heldEntityType: values.raiseHoldOnFailure ? values.heldEntityType || null : null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inspections', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['quality-holds', companyId] });
       onClose();
     },
   });
@@ -249,7 +308,7 @@ function RecordInspectionResultsPanel({ companyId, inspection, onClose }: Record
         <h3 className="text-base font-semibold text-text">Record results — {inspection.type} inspection</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => recordResults.mutate(values))} className="flex flex-col gap-3">
+      <form noValidate onSubmit={handleSubmit((values) => recordResults.mutate(values))} className="flex flex-col gap-3">
         {fields.map((field, index) => (
           <div key={field.id} className="flex items-end gap-3">
             <span className="w-56 text-sm">{field.characteristic}</span>
@@ -278,6 +337,41 @@ function RecordInspectionResultsPanel({ companyId, inspection, onClose }: Record
             </label>
           </div>
         ))}
+
+        <div className="flex flex-col gap-2 rounded-md border border-border p-3">
+          <label className="flex items-center gap-2 text-sm">
+            <Controller
+              control={control}
+              name="raiseHoldOnFailure"
+              render={({ field: lineField }) => (
+                <input
+                  type="checkbox"
+                  checked={lineField.value}
+                  onChange={(e) => lineField.onChange(e.target.checked)}
+                />
+              )}
+            />
+            Raise a Quality Hold if this inspection fails
+          </label>
+          <p className="text-xs text-text-muted">
+            Opt-in only — never automatic. If checked and any characteristic fails, a Quality
+            Hold is placed against the entity type below, using this inspection's own reference
+            id as the held entity id.
+          </p>
+          {raiseHoldOnFailure && (
+            <label className="flex max-w-xs flex-col gap-1 text-sm">
+              Held entity type
+              <Controller
+                control={control}
+                name="heldEntityType"
+                render={({ field: lineField }) => (
+                  <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="InventoryLot" {...lineField} />
+                )}
+              />
+            </label>
+          )}
+        </div>
+
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={isSubmitting} className="w-fit">{isSubmitting ? 'Saving…' : 'Submit results'}</Button>
           {recordResults.isError && (

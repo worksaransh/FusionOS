@@ -27,6 +27,18 @@ public sealed class LeadRepository : ILeadRepository
     public Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default) =>
         Filtered(companyId, search).CountAsync(cancellationToken);
 
+    public async Task<(int TotalCount, int ConvertedCount)> GetConversionCountsAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        var totalCount = await _context.Leads.CountAsync(l => l.CompanyId == companyId, cancellationToken);
+        var convertedCount = await _context.Leads.CountAsync(l => l.CompanyId == companyId && l.Status == LeadStatus.Converted, cancellationToken);
+        return (totalCount, convertedCount);
+    }
+
+    public Task<bool> IsEmailAlreadyUsedAsync(Guid companyId, string normalizedEmail, CancellationToken cancellationToken = default) =>
+        // ContactEmail is already stored trimmed + lower-cased by Lead.Create, so a plain
+        // equality check against an already-normalized input is sufficient here.
+        _context.Leads.AnyAsync(l => l.CompanyId == companyId && l.ContactEmail == normalizedEmail, cancellationToken);
+
     private IQueryable<Lead> Filtered(Guid companyId, string? search)
     {
         var query = _context.Leads.Where(l => l.CompanyId == companyId);

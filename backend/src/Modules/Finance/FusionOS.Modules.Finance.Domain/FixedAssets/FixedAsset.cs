@@ -12,16 +12,17 @@ namespace FusionOS.Modules.Finance.Domain.FixedAssets;
 /// that calculation and why nothing about it is persisted here or anywhere
 /// else.
 ///
-/// <b>Scope decision (Phase M8g, 2026-07-17), documented here the same way
-/// every other M8 sub-slice's class doc comment documents its scope-out:</b>
-/// this slice is master data plus a read-only calculation only. There is no
-/// automated monthly depreciation run that posts real JournalEntries to the
-/// GL, no disposal gain/loss calculation (that needs sale proceeds, which
-/// this aggregate never collects) posted to the GL, and no depreciation
-/// method other than straight-line (no declining-balance, no
-/// units-of-production). Full fixed-asset accounting — a depreciation-run
-/// process, disposal gain/loss posting, and additional depreciation methods —
-/// is a distinct, separately-scoped, materially larger future phase.
+/// <b>Scope decision (Phase M8g, 2026-07-17; disposal gain/loss posting added
+/// 2026-07-22 — see DisposeFixedAssetCommandHandler), documented here the
+/// same way every other M8 sub-slice's class doc comment documents its
+/// scope-out:</b> this slice is master data plus a read-only depreciation
+/// calculation, and (as of 2026-07-22) real gain/loss-on-disposal GL posting
+/// via DisposeFixedAssetCommandHandler. There is still no automated monthly
+/// depreciation *run* (PostMonthlyDepreciationCommand posts one asset, one
+/// period, at a time, by hand) and no depreciation method other than
+/// straight-line (no declining-balance, no units-of-production). A
+/// depreciation-run process and additional depreciation methods remain a
+/// distinct, separately-scoped, materially larger future phase.
 ///
 /// AssetAccountId and AccumulatedDepreciationAccountId are both in-module FKs
 /// into Account, validated by the command handler before this aggregate is
@@ -140,13 +141,14 @@ public sealed class FixedAsset : TenantAggregateRoot
     /// <summary>
     /// Marks the asset disposed — a genuine, one-way business-meaningful
     /// state change, distinct from <see cref="Deactivate"/> (see that
-    /// method's own doc comment for the distinction). Deliberately does NOT
-    /// calculate or post any gain/loss-on-disposal amount: that requires
-    /// knowing the actual sale/scrap proceeds (which this command never
-    /// collects) and posting the result to the GL, both explicitly out of
-    /// scope for this slice (see class doc comment). A future disposal
-    /// accounting slice can add that on top of this DisposedDate flag without
-    /// needing to touch this method's shape.
+    /// method's own doc comment for the distinction). This method itself only
+    /// flips IsDisposed/DisposedDate; it deliberately does not calculate or
+    /// post any gain/loss-on-disposal amount itself — that needs the actual
+    /// sale/scrap proceeds, which is a command-level input, not a field this
+    /// aggregate stores. See DisposeFixedAssetCommandHandler for the
+    /// gain/loss calculation (using CalculateAccumulatedDepreciation/
+    /// CalculateBookValue below) and GL posting that now happens alongside
+    /// this state change.
     /// </summary>
     public void Dispose(DateTimeOffset disposedDate)
     {
@@ -158,6 +160,44 @@ public sealed class FixedAsset : TenantAggregateRoot
         IsDisposed = true;
         DisposedDate = disposedDate;
     }
+
+    /// <summary>
+    /// The constant straight-line monthly depreciation figure — (AcquisitionCost
+    /// - SalvageValue) / UsefulLifeMonths — the same every month for the
+    /// asset's whole useful life. Single source of truth for this calculation:
+    /// both GetDepreciationScheduleQueryHandler's read-only schedule and
+    /// DisposeFixedAssetCommandHandler's disposal gain/loss posting delegate
+    /// to this method (and the two below it) rather than each re-deriving the
+    /// figure independently.
+    /// </summary>
+    public decimal CalculateMonthlyDepreciationAmount() => (AcquisitionCost - SalvageValue) / UsefulLifeMonths;
+
+    /// <summary>
+    /// Whole calendar months elapsed between AcquisitionDate and asOfDate (a
+    /// month only counts once asOfDate's day-of-month has reached
+    /// AcquisitionDate's day-of-month), clamped to [0, UsefulLifeMonths] — see
+    /// GetDepreciationScheduleQueryHandler's own (former) doc comment for the
+    /// full rationale, now implemented here as the single shared calculation.
+    /// </summary>
+    public int CalculateMonthsElapsed(DateTimeOffset asOfDate)
+    {
+        if (asOfDate < AcquisitionDate)
+            return 0;
+
+        var months = ((asOfDate.Year - AcquisitionDate.Year) * 12) + (asOfDate.Month - AcquisitionDate.Month);
+        if (asOfDate.Day < AcquisitionDate.Day)
+            months--;
+
+        return Math.Clamp(months, 0, UsefulLifeMonths);
+    }
+
+    /// <summary>AccumulatedDepreciation as of asOfDate = MonthlyDepreciationAmount * MonthsElapsed.</summary>
+    public decimal CalculateAccumulatedDepreciation(DateTimeOffset asOfDate) =>
+        CalculateMonthlyDepreciationAmount() * CalculateMonthsElapsed(asOfDate);
+
+    /// <summary>BookValue as of asOfDate = AcquisitionCost - AccumulatedDepreciation.</summary>
+    public decimal CalculateBookValue(DateTimeOffset asOfDate) =>
+        AcquisitionCost - CalculateAccumulatedDepreciation(asOfDate);
 
     /// <summary>
     /// The standard "hide from active lists" soft-deactivate every other

@@ -13,6 +13,7 @@ public sealed class AssetConfiguration : IEntityTypeConfiguration<Asset>
         builder.Property(x => x.Code).HasMaxLength(20).IsRequired();
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Location).HasMaxLength(200);
+        builder.Property(x => x.WarrantyProvider).HasMaxLength(200);
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md)
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);

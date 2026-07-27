@@ -3,8 +3,10 @@ using FusionOS.Modules.Finance.Application.Accounts.Contracts;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using FusionOS.Modules.Finance.Application.Payables.Contracts;
 using FusionOS.Modules.Finance.Application.Settings.Contracts;
+using FusionOS.Modules.Finance.Application.TaxTransactions.Contracts;
 using FusionOS.Modules.Finance.Domain.JournalEntries;
 using FusionOS.Modules.Finance.Domain.Payables;
+using FusionOS.Modules.Finance.Domain.TaxTransactions;
 using FusionOS.SharedKernel.Events;
 
 namespace FusionOS.Modules.Finance.Application.IntegrationEvents.Consumers;
@@ -37,6 +39,12 @@ namespace FusionOS.Modules.Finance.Application.IntegrationEvents.Consumers;
 /// by construction), and a Kafka consumer has no user-facing channel to surface
 /// a rejection anyway — an over-receipt against the ordered amount is a
 /// Procurement/Warehouse problem to surface, not a message to poison.
+///
+/// <b>GST filing support (2026-07-22):</b> also records an input TaxTransaction
+/// when the payload carries a TaxRateId — the input-tax-credit leg
+/// GetGstReturnSummaryReportQuery nets against output tax. Skipped entirely
+/// when TaxRateId is null (the line carries no tax), same as the event's own
+/// producing side.
 /// </summary>
 public sealed class PurchaseOrderGoodsReceiptCostedConsumer : IIntegrationEventConsumer
 {
@@ -44,6 +52,7 @@ public sealed class PurchaseOrderGoodsReceiptCostedConsumer : IIntegrationEventC
     private readonly IPurchaseOrderFactRepository _factRepository;
     private readonly IJournalEntryRepository _journalEntryRepository;
     private readonly IFinanceSettingsRepository _settingsRepository;
+    private readonly ITaxTransactionRepository _taxTransactionRepository;
     private readonly IProcessedIntegrationEventStore _processedEvents;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -52,6 +61,7 @@ public sealed class PurchaseOrderGoodsReceiptCostedConsumer : IIntegrationEventC
         IPurchaseOrderFactRepository factRepository,
         IJournalEntryRepository journalEntryRepository,
         IFinanceSettingsRepository settingsRepository,
+        ITaxTransactionRepository taxTransactionRepository,
         IProcessedIntegrationEventStore processedEvents,
         IUnitOfWork unitOfWork)
     {
@@ -59,6 +69,7 @@ public sealed class PurchaseOrderGoodsReceiptCostedConsumer : IIntegrationEventC
         _factRepository = factRepository;
         _journalEntryRepository = journalEntryRepository;
         _settingsRepository = settingsRepository;
+        _taxTransactionRepository = taxTransactionRepository;
         _processedEvents = processedEvents;
         _unitOfWork = unitOfWork;
     }
@@ -109,11 +120,21 @@ public sealed class PurchaseOrderGoodsReceiptCostedConsumer : IIntegrationEventC
             await _journalEntryRepository.AddAsync(journalEntry, cancellationToken);
         }
 
+        if (payload.TaxRateId is { } taxRateId
+            && !await _taxTransactionRepository.ExistsForSourceAsync(payload.CompanyId, nameof(Payload), payload.PurchaseOrderId, taxRateId, cancellationToken))
+        {
+            var taxTransaction = TaxTransaction.Record(
+                payload.CompanyId, TaxTransactionDirection.Input, taxRateId, payload.TaxAmount,
+                DateTimeOffset.UtcNow, nameof(Payload), payload.PurchaseOrderId);
+            await _taxTransactionRepository.AddAsync(taxTransaction, cancellationToken);
+        }
+
         _processedEvents.MarkProcessed(eventId, EventType);
 
         // One SaveChangesAsync — the ledger entry, the fact upsert, the
-        // optional journal entry, and the idempotency marker share the same
-        // scoped DbContext instance, so this commits all of them atomically.
+        // optional journal entry, the optional tax transaction, and the
+        // idempotency marker share the same scoped DbContext instance, so
+        // this commits all of them atomically.
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
@@ -146,5 +167,7 @@ public sealed class PurchaseOrderGoodsReceiptCostedConsumer : IIntegrationEventC
         Guid ProductId,
         decimal QuantityReceived,
         decimal UnitCost,
-        decimal LineAmount);
+        decimal LineAmount,
+        Guid? TaxRateId = null,
+        decimal TaxAmount = 0m);
 }

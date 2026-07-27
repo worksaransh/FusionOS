@@ -5,6 +5,7 @@ using FusionOS.Modules.Finance.Application.IntegrationEvents.Consumers;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using FusionOS.Modules.Finance.Application.Receivables.Contracts;
 using FusionOS.Modules.Finance.Application.Settings.Contracts;
+using FusionOS.Modules.Finance.Application.TaxTransactions.Contracts;
 using FusionOS.Modules.Finance.Domain.JournalEntries;
 using FusionOS.Modules.Finance.Domain.Receivables;
 using FusionOS.SharedKernel.Events;
@@ -25,6 +26,7 @@ public class InvoiceIssuedConsumerTests
         var ledgerRepository = Substitute.For<IArLedgerRepository>();
         var journalEntryRepository = Substitute.For<IJournalEntryRepository>();
         var settingsRepository = Substitute.For<IFinanceSettingsRepository>();
+        var taxTransactionRepository = Substitute.For<ITaxTransactionRepository>();
         var processedEvents = Substitute.For<IProcessedIntegrationEventStore>();
         processedEvents.HasProcessedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
         var unitOfWork = Substitute.For<IUnitOfWork>();
@@ -35,7 +37,7 @@ public class InvoiceIssuedConsumerTests
         settingsRepository.GetByCompanyIdAsync(companyId, Arg.Any<CancellationToken>())
             .Returns(BuildSettings(companyId, arAccountId, revenueAccountId, null, null));
 
-        var consumer = new InvoiceIssuedConsumer(ledgerRepository, journalEntryRepository, settingsRepository, processedEvents, unitOfWork);
+        var consumer = new InvoiceIssuedConsumer(ledgerRepository, journalEntryRepository, settingsRepository, taxTransactionRepository, processedEvents, unitOfWork);
         var payload = BuildPayload(Guid.NewGuid(), companyId, Guid.NewGuid(), 500m);
 
         await consumer.HandleAsync(Guid.NewGuid(), companyId, payload, CancellationToken.None);
@@ -56,11 +58,12 @@ public class InvoiceIssuedConsumerTests
         var journalEntryRepository = Substitute.For<IJournalEntryRepository>();
         var settingsRepository = Substitute.For<IFinanceSettingsRepository>();
         settingsRepository.GetByCompanyIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((FusionOS.Modules.Finance.Domain.Settings.FinanceSettings?)null);
+        var taxTransactionRepository = Substitute.For<ITaxTransactionRepository>();
         var processedEvents = Substitute.For<IProcessedIntegrationEventStore>();
         processedEvents.HasProcessedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
         var unitOfWork = Substitute.For<IUnitOfWork>();
 
-        var consumer = new InvoiceIssuedConsumer(ledgerRepository, journalEntryRepository, settingsRepository, processedEvents, unitOfWork);
+        var consumer = new InvoiceIssuedConsumer(ledgerRepository, journalEntryRepository, settingsRepository, taxTransactionRepository, processedEvents, unitOfWork);
         var payload = BuildPayload(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 500m);
 
         await consumer.HandleAsync(Guid.NewGuid(), Guid.NewGuid(), payload, CancellationToken.None);
@@ -76,11 +79,12 @@ public class InvoiceIssuedConsumerTests
         var ledgerRepository = Substitute.For<IArLedgerRepository>();
         var journalEntryRepository = Substitute.For<IJournalEntryRepository>();
         var settingsRepository = Substitute.For<IFinanceSettingsRepository>();
+        var taxTransactionRepository = Substitute.For<ITaxTransactionRepository>();
         var processedEvents = Substitute.For<IProcessedIntegrationEventStore>();
         processedEvents.HasProcessedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
         var unitOfWork = Substitute.For<IUnitOfWork>();
 
-        var consumer = new InvoiceIssuedConsumer(ledgerRepository, journalEntryRepository, settingsRepository, processedEvents, unitOfWork);
+        var consumer = new InvoiceIssuedConsumer(ledgerRepository, journalEntryRepository, settingsRepository, taxTransactionRepository, processedEvents, unitOfWork);
         var payload = BuildPayload(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 500m);
 
         await consumer.HandleAsync(Guid.NewGuid(), Guid.NewGuid(), payload, CancellationToken.None);

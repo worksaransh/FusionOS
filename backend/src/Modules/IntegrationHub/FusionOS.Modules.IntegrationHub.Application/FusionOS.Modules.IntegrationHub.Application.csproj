@@ -3,6 +3,9 @@
   <ItemGroup>
     <ProjectReference Include="../FusionOS.Modules.IntegrationHub.Domain/FusionOS.Modules.IntegrationHub.Domain.csproj" />
     <ProjectReference Include="../../../Shared/FusionOS.BuildingBlocks.Application/FusionOS.BuildingBlocks.Application.csproj" />
+    <!-- Migration Load stage dispatches into Finance's real CreateAccountCommand via ISender — same
+         cross-module Application reference pattern Ai.Application already uses for Sales/Inventory/Crm. -->
+    <ProjectReference Include="../../Finance/FusionOS.Modules.Finance.Application/FusionOS.Modules.Finance.Application.csproj" />
   </ItemGroup>
 
 </Project>

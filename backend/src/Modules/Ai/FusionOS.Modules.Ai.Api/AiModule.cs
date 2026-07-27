@@ -1,10 +1,19 @@
 using FusionOS.BuildingBlocks.Application;
 using FusionOS.BuildingBlocks.Application.Modularity;
 using FusionOS.BuildingBlocks.EventBus;
+using FusionOS.BuildingBlocks.Infrastructure.Persistence;
+using FusionOS.Modules.Ai.Application.Copilot.Chat;
+using FusionOS.Modules.Ai.Application.Copilot.Contracts;
+using FusionOS.Modules.Ai.Application.Copilot.Retrieval;
+using FusionOS.Modules.Ai.Application.DemandHistory.Contracts;
+using FusionOS.Modules.Ai.Application.IntegrationEvents.Consumers;
+using FusionOS.Modules.Ai.Application.OcrJobs;
+using FusionOS.Modules.Ai.Application.OcrJobs.Contracts;
 using FusionOS.Modules.Ai.Application.Recommendations.Commands.RecordRecommendation;
 using FusionOS.Modules.Ai.Application.Recommendations.Contracts;
 using FusionOS.Modules.Ai.Infrastructure.Persistence;
 using FusionOS.Modules.Ai.Infrastructure.Repositories;
+using FusionOS.SharedKernel.Events;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -16,9 +25,15 @@ namespace FusionOS.Modules.Ai.Api;
 /// Phase 7 — AI Platform, first slice (2026-07-18). Registers the module's DbContext,
 /// Recommendations CQRS, repository, and the outbox dispatcher that relays
 /// RecommendationCreated/RecommendationAccepted to Kafka (03_SYSTEM_ARCHITECTURE.md §4.2).
-/// AI publishes events but consumes none this slice, so no IIntegrationEventConsumer is
-/// registered here — consistent with 12_AI_PLATFORM.md §3's requirement that AI never sit
-/// in the synchronous critical path of a transactional module.
+///
+/// Phase 8 — AI &amp; Integrations adds the module's first IIntegrationEventConsumer:
+/// DispatchLineDispatchedConsumer, reacting to Sales' real dispatch events to build the
+/// DemandHistoryEntry read-model GetDemandForecastQuery computes from. This is a narrow,
+/// deliberate exception to the "AI never sits in the synchronous critical path of a
+/// transactional module" posture 12_AI_PLATFORM.md §3 describes — the consumer only ever
+/// appends a local read-model row asynchronously off the outbox relay, never blocks or
+/// participates in Sales' own transaction, and produces no side effect any other module
+/// depends on.
 /// </summary>
 public sealed class AiModule : IModule
 {
@@ -33,6 +48,30 @@ public sealed class AiModule : IModule
 
         services.AddScoped<IRecommendationRepository, RecommendationRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Phase 8 — AI & Integrations. OCR job tracking + its provider seam; see
+        // IOcrProvider's own doc comment for why UnavailableOcrProvider is the only
+        // implementation registered — there is no real OCR backend in this environment.
+        services.AddScoped<IOcrJobRepository, OcrJobRepository>();
+        services.AddScoped<IOcrProvider, UnavailableOcrProvider>();
+
+        // Phase 8 — AI & Integrations. Real demand-history read-model + the honest,
+        // deterministic forecast computed over it (GetDemandForecastQuery) — see
+        // DemandHistoryEntry's own class doc comment for why this replaces the
+        // out-of-reach Python ML forecasting service with genuine statistics over
+        // real dispatched-quantity events.
+        services.AddScoped<IDemandHistoryRepository, DemandHistoryRepository>();
+        services.AddScoped<IProcessedIntegrationEventStore, EfProcessedIntegrationEventStore<AiDbContext>>();
+        services.AddScoped<IIntegrationEventConsumer, DispatchLineDispatchedConsumer>();
+
+        // Phase 8 — AI Copilot. CopilotRetrievalStep wraps AI Search's RunAiSearchQuery (see
+        // that class's doc comment); IChatResponseProvider is the seam a real LLM-backed
+        // implementation plugs into once an API key is available — TemplateChatResponseProvider
+        // is the deliberate, honest, deterministic placeholder shipped instead (see its own
+        // and IChatResponseProvider's doc comments).
+        services.AddScoped<ICopilotSessionRepository, CopilotSessionRepository>();
+        services.AddScoped<CopilotRetrievalStep>();
+        services.AddScoped<IChatResponseProvider, TemplateChatResponseProvider>();
 
         services.AddModuleApplication(typeof(RecordRecommendationCommand).Assembly);
 

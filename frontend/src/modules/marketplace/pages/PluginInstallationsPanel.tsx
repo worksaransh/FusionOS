@@ -90,7 +90,7 @@ export function PluginInstallationsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Installed Plugins</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => installPlugin.mutate(values))} className="flex flex-col gap-4 sm:flex-row sm:items-end">
+        <form noValidate onSubmit={handleSubmit((values) => installPlugin.mutate(values))} className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <label className="flex flex-1 flex-col gap-1 text-sm">
             Plugin listing
             <Controller

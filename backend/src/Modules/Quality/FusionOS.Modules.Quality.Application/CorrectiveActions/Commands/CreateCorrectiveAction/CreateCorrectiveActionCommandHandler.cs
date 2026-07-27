@@ -40,7 +40,13 @@ public sealed class CreateCorrectiveActionCommandHandler : IRequestHandler<Creat
             request.CorrectiveActionDescription,
             request.PreventiveActionDescription,
             request.AssignedToUserId,
-            request.DueDate);
+            request.DueDate,
+            request.RcaMethod,
+            request.Why1,
+            request.Why2,
+            request.Why3,
+            request.Why4,
+            request.Why5);
 
         await _repository.AddAsync(correctiveAction, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

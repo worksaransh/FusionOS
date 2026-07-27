@@ -17,6 +17,8 @@ public sealed class ManufacturingDbContext : BaseDbContext
 
     public DbSet<FusionOS.Modules.Manufacturing.Domain.BillOfMaterials.BillOfMaterials> BillsOfMaterials => Set<FusionOS.Modules.Manufacturing.Domain.BillOfMaterials.BillOfMaterials>();
     public DbSet<FusionOS.Modules.Manufacturing.Domain.WorkOrders.WorkOrder> WorkOrders => Set<FusionOS.Modules.Manufacturing.Domain.WorkOrders.WorkOrder>();
+    public DbSet<FusionOS.Modules.Manufacturing.Domain.WorkCenters.WorkCenter> WorkCenters => Set<FusionOS.Modules.Manufacturing.Domain.WorkCenters.WorkCenter>();
+    public DbSet<FusionOS.Modules.Manufacturing.Domain.Machines.Machine> Machines => Set<FusionOS.Modules.Manufacturing.Domain.Machines.Machine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

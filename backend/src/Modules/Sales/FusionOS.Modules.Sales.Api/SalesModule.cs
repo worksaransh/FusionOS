@@ -11,11 +11,14 @@ using FusionOS.Modules.Sales.Application.Customers.Contracts;
 using FusionOS.Modules.Sales.Application.Discounts.Contracts;
 using FusionOS.Modules.Sales.Application.Dispatches.Contracts;
 using FusionOS.Modules.Sales.Application.Invoices.Contracts;
+using FusionOS.Modules.Sales.Application.PortalUsers.Contracts;
 using FusionOS.Modules.Sales.Application.PriceLists.Contracts;
 using FusionOS.Modules.Sales.Application.Quotations.Contracts;
+using FusionOS.Modules.Sales.Application.Returns.Contracts;
 using FusionOS.Modules.Sales.Application.SalesOrders.Contracts;
 using FusionOS.Modules.Sales.Infrastructure.Persistence;
 using FusionOS.Modules.Sales.Infrastructure.Repositories;
+using FusionOS.Modules.Sales.Infrastructure.Security;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -43,6 +46,19 @@ public sealed class SalesModule : IModule
         services.AddScoped<IPriceListRepository, PriceListRepository>();
         services.AddScoped<ISalesCommissionRateRepository, SalesCommissionRateRepository>();
         services.AddScoped<IDiscountRuleRepository, DiscountRuleRepository>();
+
+        // Sales Returns / RMA (Phase 4 depth, 2026-07-22) — distinct from and
+        // optionally linked to CreditNote, never auto-cascading into one.
+        services.AddScoped<ISalesReturnRepository, SalesReturnRepository>();
+
+        // Customer Portal MVP (Phase 4, net-new, 2026-07-22) — a completely
+        // separate identity system from staff Users/RBAC; see
+        // CustomerPortalUser's own doc comment for why.
+        services.AddScoped<ICustomerPortalUserRepository, CustomerPortalUserRepository>();
+        services.AddScoped<IPortalPasswordHasher, BCryptPortalPasswordHasher>();
+        services.AddScoped<IPortalTokenService, PortalJwtTokenService>();
+        services.Configure<PortalJwtOptions>(configuration.GetSection(PortalJwtOptions.SectionName));
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddModuleApplication(typeof(CreateCustomerCommand).Assembly);

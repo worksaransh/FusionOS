@@ -29,12 +29,46 @@ public sealed class BillOfMaterials : TenantAggregateRoot
     public bool IsActive { get; private set; } = true;
     public IReadOnlyList<BomLine> Lines => _lines.AsReadOnly();
 
+    /// <summary>
+    /// BOM Versioning (Phase 6, 2026-07-22). Starts at 1; <see cref="CreateNewVersion"/>
+    /// produces a new row with Version + 1, linked back via <see cref="PreviousVersionId"/>,
+    /// and marks this instance's <see cref="IsCurrentVersion"/> false — the old version is
+    /// never mutated in place or hard-deleted, same "supersede, don't overwrite" discipline
+    /// as Finance's AccountingPeriod close.
+    /// </summary>
+    public int Version { get; private set; } = 1;
+
+    /// <summary>True only for the newest version in this BOM's version chain — the one Work Orders and MRP should read by default.</summary>
+    public bool IsCurrentVersion { get; private set; } = true;
+
+    /// <summary>The BillOfMaterials this one superseded, or null for a version-1 BOM.</summary>
+    public Guid? PreviousVersionId { get; private set; }
+
+    /// <summary>
+    /// Alternative BOM (Phase 6, 2026-07-22). Multiple active BillOfMaterials rows may
+    /// already exist for the same ProductId (nothing enforces one-per-product at the
+    /// data-model level — only Code is unique). IsPrimary marks which one a Work Order
+    /// should default to when the caller doesn't explicitly pick a BillOfMaterialsId;
+    /// the others are "alternatives" (different sourcing/substitute components for the
+    /// same finished product). Enforcing "only one primary per product" is the
+    /// SetPrimaryBillOfMaterialsCommandHandler's job (it must load every BOM for the
+    /// product to clear the others) — this aggregate only tracks its own flag.
+    /// </summary>
+    public bool IsPrimary { get; private set; } = true;
+
     /// <summary>The routing's operations in production order — always sorted by SequenceNumber for consumers, regardless of insertion/storage order.</summary>
     public IReadOnlyList<RoutingOperation> Operations => _operations.OrderBy(o => o.SequenceNumber).ToList();
 
     private BillOfMaterials() { }
 
-    public static BillOfMaterials Create(Guid companyId, string code, string name, Guid productId, IReadOnlyCollection<BomLineInput> lines)
+    /// <summary>
+    /// <paramref name="isPrimary"/> defaults to true so a product's first-ever BOM is
+    /// automatically its primary one. When creating an ALTERNATIVE BOM for a product
+    /// that already has an active one, the caller (CreateBillOfMaterialsCommandHandler)
+    /// must explicitly pass false — this factory has no repository access to check for
+    /// existing BOMs itself, so it cannot enforce "only one primary per product" alone.
+    /// </summary>
+    public static BillOfMaterials Create(Guid companyId, string code, string name, Guid productId, IReadOnlyCollection<BomLineInput> lines, bool isPrimary = true)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new ArgumentException("Bill of materials code is required.", nameof(code));
@@ -51,6 +85,7 @@ public sealed class BillOfMaterials : TenantAggregateRoot
             Code = code.Trim().ToUpperInvariant(),
             Name = name.Trim(),
             ProductId = productId,
+            IsPrimary = isPrimary,
         };
 
         var seen = new HashSet<Guid>();
@@ -61,7 +96,7 @@ public sealed class BillOfMaterials : TenantAggregateRoot
             if (!seen.Add(line.ComponentProductId))
                 throw new ArgumentException($"Component product '{line.ComponentProductId}' appears more than once in the bill of materials.", nameof(lines));
 
-            bom._lines.Add(BomLine.Create(line.ComponentProductId, line.Quantity));
+            bom._lines.Add(BomLine.Create(line.ComponentProductId, line.Quantity, line.UnitCost));
         }
 
         bom.Raise(new BillOfMaterialsCreated(bom.Id, companyId, productId, bom.Code));
@@ -70,6 +105,57 @@ public sealed class BillOfMaterials : TenantAggregateRoot
 
     /// <summary>The standard soft-deactivate — a superseded BOM is hidden from active lists, never hard-deleted.</summary>
     public void Deactivate() => IsActive = false;
+
+    /// <summary>Marks this BOM as the product's primary/default one — see the IsPrimary property doc comment for the multi-BOM-per-product coordination this doesn't itself enforce.</summary>
+    public void MarkAsPrimary() => IsPrimary = true;
+
+    /// <summary>Clears this BOM's primary flag — called on every other BOM for a product when a new one is promoted to primary.</summary>
+    public void ClearPrimary() => IsPrimary = false;
+
+    /// <summary>
+    /// BOM Versioning: produces a new BillOfMaterials row for the same product/code at
+    /// Version + 1, copying this version's routing operations verbatim (a version bump
+    /// is normally a component/quantity change, not a routing rework) while taking a
+    /// fresh set of component lines. Marks this instance as no longer current — the
+    /// caller must persist both this (now-updated) instance and the returned new one.
+    /// </summary>
+    public BillOfMaterials CreateNewVersion(string name, IReadOnlyCollection<BomLineInput> lines)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Bill of materials name is required.", nameof(name));
+        if (lines is null || lines.Count == 0)
+            throw new ArgumentException("A bill of materials must have at least one component line.", nameof(lines));
+
+        var newVersion = new BillOfMaterials
+        {
+            CompanyId = CompanyId,
+            Code = Code,
+            Name = name.Trim(),
+            ProductId = ProductId,
+            Version = Version + 1,
+            PreviousVersionId = Id,
+            IsCurrentVersion = true,
+            IsPrimary = IsPrimary,
+        };
+
+        var seen = new HashSet<Guid>();
+        foreach (var line in lines)
+        {
+            if (line.ComponentProductId == ProductId)
+                throw new ArgumentException("A bill of materials component cannot be the manufactured product itself.", nameof(lines));
+            if (!seen.Add(line.ComponentProductId))
+                throw new ArgumentException($"Component product '{line.ComponentProductId}' appears more than once in the bill of materials.", nameof(lines));
+
+            newVersion._lines.Add(BomLine.Create(line.ComponentProductId, line.Quantity, line.UnitCost));
+        }
+
+        foreach (var operation in Operations)
+            newVersion._operations.Add(RoutingOperation.Create(operation.SequenceNumber, operation.OperationName, operation.WorkCenter, operation.StandardMinutes));
+
+        IsCurrentVersion = false;
+        newVersion.Raise(new BillOfMaterialsVersionCreated(newVersion.Id, CompanyId, ProductId, Id, newVersion.Version));
+        return newVersion;
+    }
 
     /// <summary>Appends a new routing operation at the end of the sequence (current max SequenceNumber + 1, or 1 if none exist yet).</summary>
     public RoutingOperation AddOperation(string operationName, string workCenter, decimal standardMinutes)

@@ -10,12 +10,12 @@ namespace FusionOS.Modules.Warehouse.Domain.GoodsReceipts;
 /// into Procurement's aggregates (§2) — no cross-module foreign key, same
 /// documented, reviewed pattern as Inventory ledger entries referencing Product.
 ///
-/// Not built yet: automatic Stock Ledger crediting and Purchase Order status
-/// advancement both depend on a Kafka consumer subscribing to the
-/// GoodsReceiptLineReceived event this aggregate raises — that consumer does not
-/// exist yet (only the producer side, and the generic outbox-to-Kafka relay, are
-/// wired up in this round). Until it exists, record the corresponding Stock
-/// Adjustment manually via Inventory's existing endpoint.
+/// Automatic Stock Ledger crediting and Purchase Order status advancement both
+/// now happen off the GoodsReceiptLineReceived event this aggregate raises —
+/// see Inventory's and Procurement's own GoodsReceiptLineReceivedConsumer
+/// (plus Quality's, which auto-opens an inbound Inspection from the same
+/// event). No manual Stock Adjustment step is needed for receipts tied to a
+/// Purchase Order anymore.
 /// </summary>
 public sealed class GoodsReceipt : TenantAggregateRoot
 {

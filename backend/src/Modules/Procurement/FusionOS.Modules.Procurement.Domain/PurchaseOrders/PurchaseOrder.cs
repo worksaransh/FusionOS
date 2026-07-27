@@ -44,14 +44,94 @@ public sealed class PurchaseOrder : TenantAggregateRoot
         return order;
     }
 
-    /// <summary>Raises PurchaseOrderApproved — the event Inventory (expected receipt) and Finance (AP accrual) consume per 03_SYSTEM_ARCHITECTURE.md §4.2's event catalog, once cross-module consumption is wired up.</summary>
+    /// <summary>
+    /// Raises PurchaseOrderApproved — the event Inventory (expected receipt) and Finance (AP accrual) consume per 03_SYSTEM_ARCHITECTURE.md §4.2's event catalog, once cross-module consumption is wired up.
+    /// Allowed from Draft (the original, still-working simple maker-checker
+    /// path via ApprovePurchaseOrderCommand) or from PendingApproval (2026-07-22,
+    /// the new path: ApprovalRequestApprovedConsumer calling this once Core's
+    /// generic Approval workflow engine reaches a final Approved decision).
+    /// </summary>
     public void Approve()
     {
-        if (Status != PurchaseOrderStatus.Draft)
-            throw new InvalidOperationException($"Only a Draft purchase order can be approved (current status: {Status}).");
+        if (Status != PurchaseOrderStatus.Draft && Status != PurchaseOrderStatus.PendingApproval)
+            throw new InvalidOperationException($"Only a Draft or PendingApproval purchase order can be approved (current status: {Status}).");
 
         Status = PurchaseOrderStatus.Approved;
         Raise(new PurchaseOrderApproved(Id, CompanyId, SupplierId, TotalAmount));
+    }
+
+    /// <summary>
+    /// Submits a Draft purchase order into Core's generic, multi-step Approval
+    /// workflow engine (2026-07-22) — an additive alternative to the direct
+    /// Approve() path above, not a replacement for it. Raises
+    /// PurchaseOrderSubmittedForApproval on the outbox so Core's
+    /// PurchaseOrderSubmittedForApprovalConsumer can create a real
+    /// ApprovalRequest for it; Procurement never talks to Core's Domain/Application
+    /// types directly (module boundary rule).
+    ///
+    /// No amount threshold is enforced here: this codebase's existing
+    /// convention is to not invent business policy it hasn't been asked for
+    /// (see ApprovalRequest.cs's own doc comment about "who should approve a
+    /// PO over $10,000" being caller-defined, not engine-defined). Submission
+    /// is simply always available to whoever holds the
+    /// procurement.purchase-order.submit-for-approval permission; a future
+    /// FinanceSettings-style threshold configuration can gate the *decision*
+    /// to call this rather than Approve() directly, without any domain change
+    /// here.
+    /// </summary>
+    public void SubmitForApproval(Guid requestedByUserId)
+    {
+        if (Status != PurchaseOrderStatus.Draft)
+            throw new InvalidOperationException($"Only a Draft purchase order can be submitted for approval (current status: {Status}).");
+        if (requestedByUserId == Guid.Empty)
+            throw new ArgumentException("Requested-by user id is required.", nameof(requestedByUserId));
+
+        Status = PurchaseOrderStatus.PendingApproval;
+        Raise(new PurchaseOrderSubmittedForApproval(
+            Id,
+            CompanyId,
+            requestedByUserId,
+            TotalAmount,
+            $"Purchase order {Id} for supplier {SupplierId} totaling {TotalAmount:0.00}"));
+    }
+
+    /// <summary>
+    /// Rejects a purchase order — new (2026-07-22), closing the loop for
+    /// ApprovalRequestRejectedConsumer once Core's Approval workflow engine
+    /// records a rejected step against this PO. Also usable directly from
+    /// Draft (e.g. a future direct-reject UI action), same as Approve()
+    /// supports both a direct path and the workflow-engine path.
+    /// </summary>
+    public void Reject()
+    {
+        if (Status != PurchaseOrderStatus.Draft && Status != PurchaseOrderStatus.PendingApproval)
+            throw new InvalidOperationException($"Only a Draft or PendingApproval purchase order can be rejected (current status: {Status}).");
+
+        Status = PurchaseOrderStatus.Rejected;
+        Raise(new PurchaseOrderRejected(Id, CompanyId, SupplierId, TotalAmount));
+    }
+
+    /// <summary>
+    /// Cancels a purchase order directly (Phase 10 remediation, 2026-07-27,
+    /// closing the long-known gap that Cancel had no domain method, command,
+    /// controller route, or frontend action at all). Deliberately separate
+    /// from Reject(): Reject models an approver turning the PO down through
+    /// the approval workflow, Cancel models the business voiding it for its
+    /// own reasons before it's complete. Allowed from Draft, PendingApproval,
+    /// or Approved — anything not yet Completed (FullyReceived) and not
+    /// already terminal (Cancelled/Rejected), matching the same
+    /// InvalidOperationException-with-message convention as Approve()/Reject().
+    /// A partially-received order is intentionally excluded: goods have
+    /// already changed hands, so cancelling it outright would hide that a
+    /// vendor return is the correct next step instead.
+    /// </summary>
+    public void Cancel()
+    {
+        if (Status != PurchaseOrderStatus.Draft && Status != PurchaseOrderStatus.PendingApproval && Status != PurchaseOrderStatus.Approved)
+            throw new InvalidOperationException($"Only a Draft, PendingApproval, or Approved purchase order can be cancelled (current status: {Status}).");
+
+        Status = PurchaseOrderStatus.Cancelled;
+        Raise(new PurchaseOrderCancelled(Id, CompanyId, SupplierId, TotalAmount));
     }
 
     /// <summary>
@@ -88,8 +168,15 @@ public sealed class PurchaseOrder : TenantAggregateRoot
 
         if (unitCost.HasValue)
         {
+            // Prorate the line's total tax by this receipt's share of the ordered quantity —
+            // a partial receipt shouldn't carry the whole line's tax (GST filing support, 2026-07-22).
+            var taxAmount = line.TaxRateId.HasValue
+                ? Math.Round(line.TaxAmount * (quantityReceived / line.Quantity), 2)
+                : 0m;
+
             Raise(new PurchaseOrderGoodsReceiptCosted(
-                Id, CompanyId, SupplierId, productId, quantityReceived, unitCost.Value, quantityReceived * unitCost.Value));
+                Id, CompanyId, SupplierId, productId, quantityReceived, unitCost.Value, quantityReceived * unitCost.Value,
+                line.TaxRateId, taxAmount));
         }
     }
 }

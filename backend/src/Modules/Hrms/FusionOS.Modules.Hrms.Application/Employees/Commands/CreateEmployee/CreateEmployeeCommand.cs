@@ -3,7 +3,15 @@ using FusionOS.Modules.Hrms.Application.Employees.Contracts;
 
 namespace FusionOS.Modules.Hrms.Application.Employees.Commands.CreateEmployee;
 
-public sealed record CreateEmployeeCommand(Guid CompanyId, string Code, string FullName, string Email, string? DepartmentName, DateTimeOffset HireDate)
+public sealed record CreateEmployeeCommand(
+    Guid CompanyId,
+    string Code,
+    string FullName,
+    string Email,
+    string? DepartmentName,
+    DateTimeOffset HireDate,
+    Guid? DepartmentId = null,
+    Guid? ManagerId = null)
     : ICommand<EmployeeDto>, IRequirePermission, IAuditableCommand
 {
     public string[] RequiredPermissions => new[] { "hrms.employee.create" };

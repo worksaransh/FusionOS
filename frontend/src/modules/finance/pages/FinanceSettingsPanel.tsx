@@ -17,6 +17,8 @@ const schema = z.object({
   defaultSalesRevenueAccountId: optionalUuid,
   defaultApAccountId: optionalUuid,
   defaultPurchaseExpenseAccountId: optionalUuid,
+  defaultSalaryExpenseAccountId: optionalUuid,
+  defaultSalaryPayableAccountId: optionalUuid,
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -26,6 +28,8 @@ interface FinanceSettingsDto {
   defaultSalesRevenueAccountId: string | null;
   defaultApAccountId: string | null;
   defaultPurchaseExpenseAccountId: string | null;
+  defaultSalaryExpenseAccountId: string | null;
+  defaultSalaryPayableAccountId: string | null;
 }
 
 /**
@@ -36,6 +40,10 @@ interface FinanceSettingsDto {
  * four blank keeps that consumer's subledger-only behavior — GL posting
  * turns on automatically for whichever pair (AR+Revenue, AP+Expense) gets
  * configured, no separate toggle needed.
+ *
+ * defaultSalaryExpenseAccountId/defaultSalaryPayableAccountId (2026-07-23)
+ * are the same kind of pair for HRMS's PayrollRecordPaid event — Finance's
+ * PayrollRecordPaidConsumer posts a GL entry once both are configured.
  */
 export function FinanceSettingsPanel() {
   const { companyId } = useActiveCompany();
@@ -50,7 +58,14 @@ export function FinanceSettingsPanel() {
 
   const { control, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { defaultArAccountId: '', defaultSalesRevenueAccountId: '', defaultApAccountId: '', defaultPurchaseExpenseAccountId: '' },
+    defaultValues: {
+      defaultArAccountId: '',
+      defaultSalesRevenueAccountId: '',
+      defaultApAccountId: '',
+      defaultPurchaseExpenseAccountId: '',
+      defaultSalaryExpenseAccountId: '',
+      defaultSalaryPayableAccountId: '',
+    },
   });
 
   useEffect(() => {
@@ -60,6 +75,8 @@ export function FinanceSettingsPanel() {
         defaultSalesRevenueAccountId: settingsQuery.data.defaultSalesRevenueAccountId ?? '',
         defaultApAccountId: settingsQuery.data.defaultApAccountId ?? '',
         defaultPurchaseExpenseAccountId: settingsQuery.data.defaultPurchaseExpenseAccountId ?? '',
+        defaultSalaryExpenseAccountId: settingsQuery.data.defaultSalaryExpenseAccountId ?? '',
+        defaultSalaryPayableAccountId: settingsQuery.data.defaultSalaryPayableAccountId ?? '',
       });
     }
   }, [settingsQuery.data, reset]);
@@ -72,6 +89,8 @@ export function FinanceSettingsPanel() {
         defaultSalesRevenueAccountId: values.defaultSalesRevenueAccountId || null,
         defaultApAccountId: values.defaultApAccountId || null,
         defaultPurchaseExpenseAccountId: values.defaultPurchaseExpenseAccountId || null,
+        defaultSalaryExpenseAccountId: values.defaultSalaryExpenseAccountId || null,
+        defaultSalaryPayableAccountId: values.defaultSalaryPayableAccountId || null,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['finance-settings', companyId] }),
     onError: (error) => {
@@ -90,7 +109,7 @@ export function FinanceSettingsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Finance Settings</h2>
 
       <Card>
-        <form onSubmit={handleSubmit((values) => updateSettings.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => updateSettings.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Default AR account
             <Controller
@@ -162,6 +181,42 @@ export function FinanceSettingsPanel() {
               )}
             />
             {errors.defaultPurchaseExpenseAccountId && <span className="text-xs text-danger">{errors.defaultPurchaseExpenseAccountId.message}</span>}
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Default salary expense account
+            <Controller
+              control={control}
+              name="defaultSalaryExpenseAccountId"
+              render={({ field }) => (
+                <EntityCombobox
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={accountOptions.options}
+                  isLoading={accountOptions.isLoading}
+                  onSearchChange={accountOptions.onSearchChange}
+                  placeholder="Search accounts…"
+                />
+              )}
+            />
+            {errors.defaultSalaryExpenseAccountId && <span className="text-xs text-danger">{errors.defaultSalaryExpenseAccountId.message}</span>}
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Default salary payable account
+            <Controller
+              control={control}
+              name="defaultSalaryPayableAccountId"
+              render={({ field }) => (
+                <EntityCombobox
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={accountOptions.options}
+                  isLoading={accountOptions.isLoading}
+                  onSearchChange={accountOptions.onSearchChange}
+                  placeholder="Search accounts…"
+                />
+              )}
+            />
+            {errors.defaultSalaryPayableAccountId && <span className="text-xs text-danger">{errors.defaultSalaryPayableAccountId.message}</span>}
           </label>
 
           <div className="col-span-full">

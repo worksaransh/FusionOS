@@ -12,8 +12,8 @@ public sealed class ListInspectionsQueryHandler : IRequestHandler<ListInspection
 
     public async Task<PagedResult<InspectionDto>> Handle(ListInspectionsQuery request, CancellationToken cancellationToken)
     {
-        var inspections = await _repository.ListAsync(request.CompanyId, request.Page, request.PageSize, cancellationToken);
-        var total = await _repository.CountAsync(request.CompanyId, cancellationToken);
+        var inspections = await _repository.ListAsync(request.CompanyId, request.Type, request.Page, request.PageSize, cancellationToken);
+        var total = await _repository.CountAsync(request.CompanyId, request.Type, cancellationToken);
 
         var dtos = inspections.Select(InspectionMapper.ToDto).ToList();
 

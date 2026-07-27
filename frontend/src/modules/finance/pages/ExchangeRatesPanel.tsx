@@ -126,7 +126,7 @@ export function ExchangeRatesPanel() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createExchangeRate.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createExchangeRate.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             From currency
             <Controller
@@ -275,7 +275,7 @@ function ExchangeRateEditPanel({ companyId, exchangeRate, onClose }: ExchangeRat
         <h3 className="text-base font-semibold text-text">Edit rate — {exchangeRate.fromCurrencyCode} → {exchangeRate.toCurrencyCode}</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateExchangeRate.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateExchangeRate.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Rate
           <Controller
@@ -338,7 +338,7 @@ function ConvertAmountWidget({ companyId }: { companyId: string }) {
         Looks up the latest active rate for the pair and multiplies — a pure, read-only utility, not wired into any
         other screen's totals.
       </p>
-      <form onSubmit={handleSubmit((values) => convert.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+      <form noValidate onSubmit={handleSubmit((values) => convert.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <label className="flex flex-col gap-1 text-sm">
           From
           <Controller

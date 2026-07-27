@@ -6,6 +6,7 @@ using FusionOS.Modules.Sales.Application.Customers.Commands.DeactivateCustomer;
 using FusionOS.Modules.Sales.Application.Customers.Commands.UpdateCustomer;
 using FusionOS.Modules.Sales.Application.Customers.Queries.GetCustomerById;
 using FusionOS.Modules.Sales.Application.Customers.Queries.ListCustomers;
+using FusionOS.Modules.Sales.Application.PortalUsers.Commands.CreateCustomerPortalUser;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -85,8 +86,28 @@ public sealed class CustomersController : ControllerBase
         var result = await _sender.Send(command, cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Staff-side provisioning of a customer's own Customer Portal login
+    /// (Phase — Customer Portal, 2026-07-22). Customers cannot self-register
+    /// for the portal in this minimal slice (see the task's report for the
+    /// full list of what's deferred) - a staff user holding
+    /// "sales.customer.update" creates the login on the customer's behalf.
+    /// </summary>
+    [HttpPost("{id:guid}/portal-users")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CreatePortalUser(Guid id, [FromBody] CreatePortalUserRequest request, CancellationToken cancellationToken)
+    {
+        var command = new CreateCustomerPortalUserCommand(request.CompanyId, id, request.Email, request.Password);
+        var result = await _sender.Send(command, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, result);
+    }
 }
 
 public sealed record UpdateCustomerRequest(Guid CompanyId, string Name, string? ContactEmail, decimal CreditLimit);
 
 public sealed record AssignPriceListRequest(Guid CompanyId, Guid? PriceListId);
+
+public sealed record CreatePortalUserRequest(Guid CompanyId, string Email, string Password);

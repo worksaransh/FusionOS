@@ -20,6 +20,7 @@ public sealed class LeaveRequestsController : ControllerBase
 
     public LeaveRequestsController(ISender sender) => _sender = sender;
 
+    /// <summary>Submits a new leave request for an employee, in the Requested state pending approval.</summary>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -31,6 +32,7 @@ public sealed class LeaveRequestsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Id, companyId = request.CompanyId }, result);
     }
 
+    /// <summary>Gets a single leave request by id, scoped to the given company.</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -41,6 +43,7 @@ public sealed class LeaveRequestsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Lists leave requests for a company, optionally filtered to one employee, paginated (default page size 25).</summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] Guid? employeeId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
@@ -49,6 +52,7 @@ public sealed class LeaveRequestsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Approves a Requested leave request, presumably decrementing the employee's leave balance.</summary>
     [HttpPost("{id:guid}/approve")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -60,6 +64,7 @@ public sealed class LeaveRequestsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Rejects a Requested leave request, leaving the employee's leave balance untouched.</summary>
     [HttpPost("{id:guid}/reject")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

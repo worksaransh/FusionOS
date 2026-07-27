@@ -8,12 +8,17 @@ namespace FusionOS.Modules.Finance.Domain.BankStatementLines;
 ///
 /// <b>Scope decision (Phase M8d, 2026-07-17), documented here the same way
 /// ApLedgerEntry's own class doc comment documents its scope-out:</b> there
-/// is no bank-feed/file-import integration in this slice (no OFX/CSV/
-/// Plaid-style connector) — every line is created one at a time via
+/// is no bank-feed/live-connector integration in this slice (no OFX/
+/// Plaid-style connector) — a line is either created one at a time via
 /// RecordStatementLineCommand, same manual-entry-first discipline AP started
-/// with. A real bank-feed integration is a distinct, separately-scoped
-/// follow-up, not something to fold into "build the reconciliation master
-/// data." Likewise, matching a line to an existing JournalEntry
+/// with, or, as of the bulk-import follow-up, in a batch via
+/// ImportBankStatementLinesCommand (fed by a hand-rolled CSV upload parsed
+/// at the Api layer — see BankStatementLinesController.Import's own doc
+/// comment). Either way it is still this same factory that creates each
+/// row; a live bank-feed/Plaid-style connector remains a distinct,
+/// separately-scoped follow-up, not something to fold into "build the
+/// reconciliation master data." Likewise, matching a line to an existing
+/// JournalEntry
 /// (<see cref="MatchedJournalEntryId"/>) is always a manual pick by the user
 /// via ReconcileStatementLineCommand — there is no auto-matching algorithm
 /// here (e.g. matching by amount/date proximity), which would be a

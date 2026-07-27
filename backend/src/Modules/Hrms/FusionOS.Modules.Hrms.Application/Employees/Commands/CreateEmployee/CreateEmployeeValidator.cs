@@ -11,5 +11,7 @@ public sealed class CreateEmployeeValidator : AbstractValidator<CreateEmployeeCo
         RuleFor(x => x.FullName).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(200);
         RuleFor(x => x.DepartmentName).MaximumLength(200);
+        RuleFor(x => x.DepartmentId).NotEqual(Guid.Empty).When(x => x.DepartmentId.HasValue);
+        RuleFor(x => x.ManagerId).NotEqual(Guid.Empty).When(x => x.ManagerId.HasValue);
     }
 }

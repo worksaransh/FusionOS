@@ -85,7 +85,7 @@ export function ActivityTimelinePanel({ entityType, entityId }: ActivityTimeline
     <Card className="mt-4">
       <h3 className="mb-3 text-sm font-semibold text-text">Activity</h3>
 
-      <form
+      <form noValidate
         className="mb-4 flex flex-col gap-2"
         onSubmit={(event) => {
           event.preventDefault();

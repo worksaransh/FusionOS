@@ -68,6 +68,18 @@ public sealed class ApLedgerEntry : TenantAggregateRoot
     public string Description { get; private set; } = default!;
     public DateTimeOffset TransactionDate { get; private set; }
 
+    /// <summary>
+    /// Optional opaque reference to Finance's own BankAccount aggregate —
+    /// added as a trailing optional field (bank-tied-payments follow-up) so
+    /// existing callers/tests of RecordPayment keep compiling unchanged.
+    /// Null means "we don't know/didn't record which bank account this
+    /// payment moved through," same as every other RecordPayment field
+    /// before it was optional. Not validated against BankAccount's own
+    /// existence here — same "opaque reference, handler's problem if it
+    /// chooses to check" precedent as SupplierId/PurchaseOrderId.
+    /// </summary>
+    public Guid? BankAccountId { get; private set; }
+
     private ApLedgerEntry() { }
 
     /// <summary>
@@ -111,8 +123,11 @@ public sealed class ApLedgerEntry : TenantAggregateRoot
     /// calling this factory — this factory only enforces shape, not that
     /// cross-entry business rule (mirrors RecordBillCharge/AR's
     /// RecordPayment, which also only validate their own inputs).
+    /// bankAccountId is optional — see <see cref="BankAccountId"/>'s own doc
+    /// comment — and is a new trailing parameter so every existing call site
+    /// keeps compiling unchanged.
     /// </summary>
-    public static ApLedgerEntry RecordPayment(Guid companyId, Guid supplierId, Guid? purchaseOrderId, decimal amount, string? reference, DateTimeOffset? transactionDate = null)
+    public static ApLedgerEntry RecordPayment(Guid companyId, Guid supplierId, Guid? purchaseOrderId, decimal amount, string? reference, DateTimeOffset? transactionDate = null, Guid? bankAccountId = null)
     {
         if (supplierId == Guid.Empty)
             throw new ArgumentException("Supplier id is required.", nameof(supplierId));
@@ -131,6 +146,7 @@ public sealed class ApLedgerEntry : TenantAggregateRoot
             Amount = -amount,
             Description = description,
             TransactionDate = transactionDate ?? DateTimeOffset.UtcNow,
+            BankAccountId = bankAccountId,
         };
     }
 }

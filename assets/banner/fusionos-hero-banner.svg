@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="50%" stop-color="#020617" />
+      <stop offset="100%" stop-color="#090D16" />
+    </linearGradient>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="50%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#8B5CF6" />
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06B6D4" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1E293B" stroke-width="1" opacity="0.4" />
+    </pattern>
+    <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="420" fill="url(#bgGrad)" rx="16" />
+  <rect width="1200" height="420" fill="url(#grid)" rx="16" />
+
+  <!-- Glowing Accent Orbs -->
+  <circle cx="150" cy="80" r="180" fill="#3B82F6" opacity="0.12" filter="url(#glowEffect)" />
+  <circle cx="1050" cy="320" r="220" fill="#8B5CF6" opacity="0.12" filter="url(#glowEffect)" />
+
+  <!-- Border Highlight -->
+  <rect width="1198" height="418" x="1" y="1" fill="none" stroke="#1E293B" stroke-width="2" rx="15" />
+  <rect width="1198" height="418" x="1" y="1" fill="none" stroke="url(#brandGrad)" stroke-width="2" rx="15" opacity="0.4" />
+
+  <!-- Hero Content -->
+  <g transform="translate(80, 80)">
+    <!-- Category Badge -->
+    <rect x="0" y="0" width="230" height="34" rx="17" fill="#1E293B" stroke="#334155" stroke-width="1.5" />
+    <circle cx="18" cy="17" r="5" fill="#10B981" />
+    <text x="32" y="22" font-family="System-UI, sans-serif" font-weight="700" font-size="13" fill="#38BDF8" letter-spacing="1.5">ENTERPRISE ERP OS v1.0</text>
+
+    <!-- Main Heading -->
+    <text x="0" y="95" font-family="System-UI, -apple-system, sans-serif" font-weight="900" font-size="58" fill="#FFFFFF" letter-spacing="-1.5">
+      Fusion<tspan fill="url(#brandGrad)">OS</tspan>
+    </text>
+
+    <!-- Tagline -->
+    <text x="0" y="142" font-family="System-UI, -apple-system, sans-serif" font-weight="600" font-size="24" fill="#E2E8F0">
+      Next-Generation AI-First Enterprise Operating System
+    </text>
+
+    <text x="0" y="175" font-family="System-UI, -apple-system, sans-serif" font-weight="400" font-size="16" fill="#94A3B8">
+      15 Unified Modules • .NET 8 Modular Monolith • React 18 SPA • Real-time Observability
+    </text>
+
+    <!-- Feature Pills -->
+    <g transform="translate(0, 215)">
+      <rect x="0" y="0" width="130" height="36" rx="8" fill="#1E293B" stroke="#3B82F6" stroke-width="1" />
+      <text x="65" y="23" font-family="System-UI, sans-serif" font-weight="600" font-size="13" fill="#60A5FA" text-anchor="middle">⚡ .NET 8 C#</text>
+
+      <rect x="145" y="0" width="130" height="36" rx="8" fill="#1E293B" stroke="#6366F1" stroke-width="1" />
+      <text x="210" y="23" font-family="System-UI, sans-serif" font-weight="600" font-size="13" fill="#818CF8" text-anchor="middle">⚛️ React 18</text>
+
+      <rect x="290" y="0" width="140" height="36" rx="8" fill="#1E293B" stroke="#06B6D4" stroke-width="1" />
+      <text x="360" y="23" font-family="System-UI, sans-serif" font-weight="600" font-size="13" fill="#22D3EE" text-anchor="middle">🐘 PostgreSQL</text>
+
+      <rect x="445" y="0" width="130" height="36" rx="8" fill="#1E293B" stroke="#8B5CF6" stroke-width="1" />
+      <text x="510" y="23" font-family="System-UI, sans-serif" font-weight="600" font-size="13" fill="#A78BFA" text-anchor="middle">🐳 Docker</text>
+
+      <rect x="590" y="0" width="140" height="36" rx="8" fill="#1E293B" stroke="#10B981" stroke-width="1" />
+      <text x="660" y="23" font-family="System-UI, sans-serif" font-weight="600" font-size="13" fill="#34D399" text-anchor="middle">🤖 AI Copilot</text>
+    </g>
+  </g>
+
+  <!-- Right Visual Graphics: Enterprise Isometric Modules Node -->
+  <g transform="translate(850, 80)">
+    <!-- Central Hex Core -->
+    <polygon points="120,40 200,85 200,175 120,220 40,175 40,85" fill="#0F172A" stroke="url(#cyanGrad)" stroke-width="3" filter="url(#glowEffect)" />
+    <text x="120" y="130" font-family="System-UI, sans-serif" font-weight="800" font-size="16" fill="#FFFFFF" text-anchor="middle">CORE</text>
+    <text x="120" y="150" font-family="System-UI, sans-serif" font-weight="600" font-size="12" fill="#38BDF8" text-anchor="middle">ENGINE</text>
+
+    <!-- Satellite Nodes -->
+    <circle cx="40" cy="40" r="24" fill="#1E293B" stroke="#3B82F6" stroke-width="2" />
+    <text x="40" y="44" font-family="sans-serif" font-size="11" fill="#60A5FA" text-anchor="middle" font-weight="bold">FIN</text>
+
+    <circle cx="200" cy="40" r="24" fill="#1E293B" stroke="#6366F1" stroke-width="2" />
+    <text x="200" y="44" font-family="sans-serif" font-size="11" fill="#818CF8" text-anchor="middle" font-weight="bold">MFG</text>
+
+    <circle cx="230" cy="130" r="24" fill="#1E293B" stroke="#8B5CF6" stroke-width="2" />
+    <text x="230" y="134" font-family="sans-serif" font-size="11" fill="#A78BFA" text-anchor="middle" font-weight="bold">INV</text>
+
+    <circle cx="200" cy="220" r="24" fill="#1E293B" stroke="#EC4899" stroke-width="2" />
+    <text x="200" y="224" font-family="sans-serif" font-size="11" fill="#F472B6" text-anchor="middle" font-weight="bold">CRM</text>
+
+    <circle cx="40" cy="220" r="24" fill="#1E293B" stroke="#10B981" stroke-width="2" />
+    <text x="40" y="224" font-family="sans-serif" font-size="11" fill="#34D399" text-anchor="middle" font-weight="bold">AI</text>
+
+    <circle cx="10" cy="130" r="24" fill="#1E293B" stroke="#F59E0B" stroke-width="2" />
+    <text x="10" y="134" font-family="sans-serif" font-size="11" fill="#FBBF24" text-anchor="middle" font-weight="bold">SCM</text>
+  </g>
+</svg>

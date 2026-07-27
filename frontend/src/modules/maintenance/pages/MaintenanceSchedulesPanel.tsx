@@ -108,7 +108,7 @@ export function MaintenanceSchedulesPanel() {
       <p className="mb-3 text-sm text-text-muted">Preventive maintenance recurrence plans against an asset.</p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createSchedule.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <form noValidate onSubmit={handleSubmit((values) => createSchedule.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <label className="flex flex-col gap-1 text-sm">
             Asset
             <Controller
@@ -272,7 +272,7 @@ function MaintenanceScheduleEditPanel({ companyId, schedule, onClose }: Maintena
         <h3 className="text-base font-semibold text-text">Edit schedule — {schedule.description}</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateSchedule.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <form noValidate onSubmit={handleSubmit((values) => updateSchedule.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           Frequency
           <Controller

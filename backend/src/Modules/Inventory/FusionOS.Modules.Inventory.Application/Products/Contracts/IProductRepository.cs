@@ -14,4 +14,16 @@ public interface IProductRepository
     Task AddAsync(Product product, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Product>> ListAsync(Guid companyId, string? search, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Added for the Attributes slice (see ProductVariantAttributeValue's doc
+    /// comment): a direct, Include-independent existence check for a
+    /// (ProductId, VariantId) pair. GetByIdAsync's query does not
+    /// `.Include(p => p.Variants)` today, so relying on the returned
+    /// aggregate's Variants collection to validate a variant id would
+    /// silently see an empty list for any variant persisted in an earlier
+    /// request. This method sidesteps that entirely by querying the
+    /// underlying table directly rather than through the loaded navigation.
+    /// </summary>
+    Task<bool> VariantExistsAsync(Guid productId, Guid variantId, CancellationToken cancellationToken = default);
 }

@@ -7,4 +7,13 @@ public interface IAccountRepository
     Task AddAsync(Domain.Accounts.Account account, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Domain.Accounts.Account>> ListAsync(Guid companyId, string? search, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Advisory duplicate check for CreateAccountCommandHandler — does any active Account in
+    /// this company already carry this exact normalized (trimmed, lower-cased) name? Account
+    /// has no Email field (see Account.cs), so Name is the closest available identity
+    /// signal. Used only to populate AccountDto.IsPossibleDuplicate as a warning, never to
+    /// block creation.
+    /// </summary>
+    Task<bool> IsNameAlreadyUsedAsync(Guid companyId, string normalizedName, CancellationToken cancellationToken = default);
 }

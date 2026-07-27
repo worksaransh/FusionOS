@@ -51,4 +51,9 @@ public sealed class ApLedgerRepository : IApLedgerRepository
 
         return grouped.Select(g => (g.SupplierId, g.Balance, g.OldestChargeDate)).ToList();
     }
+
+    public Task<decimal> SumAmountInRangeAsync(Guid companyId, DateTimeOffset dateFrom, DateTimeOffset dateTo, CancellationToken cancellationToken = default) =>
+        _context.ApLedgerEntries
+            .Where(x => x.CompanyId == companyId && x.TransactionDate >= dateFrom && x.TransactionDate <= dateTo)
+            .SumAsync(x => x.Amount, cancellationToken);
 }

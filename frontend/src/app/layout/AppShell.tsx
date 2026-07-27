@@ -1,6 +1,33 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Menu, Moon, Sun, Search, LogOut, X, Bell, CheckSquare } from 'lucide-react';
+import {
+  Menu,
+  Moon,
+  Sun,
+  Search,
+  LogOut,
+  X,
+  Bell,
+  CheckSquare,
+  Sparkles,
+  LayoutDashboard,
+  Layers,
+  Package,
+  Warehouse as WarehouseIcon,
+  ShoppingBag,
+  TrendingUp,
+  DollarSign,
+  Factory,
+  Users,
+  UserCheck,
+  ShieldCheck,
+  Wrench,
+  BarChart3,
+  Bot,
+  Grid,
+  Cable,
+  Building2,
+} from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '../../shared/theme/ThemeProvider';
 import { useActiveCompany } from '../../shared/company/useActiveCompany';
@@ -10,11 +37,6 @@ import type { PagedResult } from '../../shared/api/types';
 import { MODULES } from '../modules';
 import { CommandPalette } from './CommandPalette';
 
-/**
- * Unread-notification count for the sidebar badge (Phase M7, 2026-07-15) —
- * a cheap page=1/pageSize=1 fetch just to read totalCount off the paged
- * envelope, same trick DashboardPage uses for "Open Sales Orders."
- */
 function useUnreadNotificationCount(companyId: string) {
   const query = useQuery({
     queryKey: ['unread-notification-count', companyId],
@@ -25,32 +47,24 @@ function useUnreadNotificationCount(companyId: string) {
   return query.data?.totalCount ?? 0;
 }
 
-/**
- * Enterprise shell: persistent sidebar nav across every module, a global
- * search/command trigger, and a dark-mode toggle — 06_UI_UX_DESIGN_SYSTEM.md
- * §2, §3, §5. The search button opens a real Cmd/Ctrl+K command palette
- * (CommandPalette.tsx) that jumps to any module route the signed-in user can
- * access; it does not (yet) search across entity data, only routes.
- *
- * The sidebar's module list is filtered down to modules the signed-in user
- * holds at least one permission for (RBAC gating, 07_SECURITY.md) — this is
- * a UX nicety on top of the backend's real authorization checks, not a
- * replacement for them. Dashboard/Approvals/Notifications stay unconditional
- * since every authenticated user, even one on a brand-new zero-permission
- * "Member" role (see RegisterUserCommandHandler), should be able to reach
- * basic navigation.
- * Active company is pre-filled from the signed-in session's company_id claim
- * (07_SECURITY.md) but stays editable — useful for a user who belongs to more
- * than one company, or for testing.
- *
- * Below the `md` breakpoint the sidebar becomes an off-canvas drawer (fixed,
- * translated out of view, toggled by the header's hamburger button) instead
- * of a permanently docked column — the fixed w-64 sidebar previously ate
- * roughly half the viewport width on a phone-sized screen with no way to
- * collapse it (06_UI_UX_DESIGN_SYSTEM.md responsive breakpoints, flagged by
- * the audit's Frontend/UX pass). `md:static md:translate-x-0` restores the
- * original docked layout unchanged on tablet/desktop.
- */
+const moduleIcons: Record<string, React.ReactNode> = {
+  core: <Layers size={16} />,
+  inventory: <Package size={16} />,
+  warehouse: <WarehouseIcon size={16} />,
+  procurement: <ShoppingBag size={16} />,
+  sales: <TrendingUp size={16} />,
+  finance: <DollarSign size={16} />,
+  manufacturing: <Factory size={16} />,
+  crm: <Users size={16} />,
+  hrms: <UserCheck size={16} />,
+  quality: <ShieldCheck size={16} />,
+  maintenance: <Wrench size={16} />,
+  bi: <BarChart3 size={16} />,
+  ai: <Bot size={16} />,
+  marketplace: <Grid size={16} />,
+  integration_hub: <Cable size={16} />,
+};
+
 export function AppShell() {
   const { theme, toggleTheme } = useTheme();
   const { companyId, setCompanyId } = useActiveCompany();
@@ -62,17 +76,11 @@ export function AppShell() {
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const unreadCount = useUnreadNotificationCount(companyId);
 
-  // Only offer modules the signed-in user holds at least one permission for
-  // (module name doubles as the permission-code prefix, e.g. "sales" matches
-  // "sales.customer.read") — a module nobody can act on is just clutter.
   const visibleModules = useMemo(
     () => MODULES.filter((module) => hasPermissionPrefix(module.name)),
     [hasPermissionPrefix],
   );
 
-  // Cmd+K on macOS, Ctrl+K everywhere else, opens the command palette from
-  // anywhere in the shell — Escape/arrow handling lives inside the palette
-  // itself once it's open.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -85,14 +93,11 @@ export function AppShell() {
   }, []);
 
   const handleLogout = async () => {
-    // Best-effort: revoke the refresh token server-side (POST /core/auth/logout)
-    // so it can't be replayed after sign-out. The local session is cleared
-    // either way — a network failure here shouldn't trap the user signed in.
     if (session?.refreshToken) {
       try {
         await apiClient.post('/core/auth/logout', { refreshToken: session.refreshToken });
       } catch {
-        // Ignored — see comment above.
+        // Ignored
       }
     }
     clearSession();
@@ -100,7 +105,7 @@ export function AppShell() {
   };
 
   return (
-    <div className="flex h-screen bg-surface-muted text-text">
+    <div className="flex h-screen bg-surface-muted text-text font-sans antialiased">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground"
@@ -110,19 +115,31 @@ export function AppShell() {
 
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/40 md:hidden"
+          className="fixed inset-0 z-20 bg-black/50 backdrop-blur-xs md:hidden"
           onClick={() => setIsSidebarOpen(false)}
           aria-hidden="true"
         />
       )}
 
+      {/* Persistent Enterprise Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-30 w-64 shrink-0 overflow-y-auto border-r border-border bg-surface p-4 transition-transform duration-200 md:static md:translate-x-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
+        {/* Brand Header */}
         <div className="mb-6 flex items-center justify-between px-2">
-          <span className="text-lg font-semibold">FusionOS</span>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600 text-white font-bold text-base shadow-xs">
+              F
+            </div>
+            <div>
+              <span className="text-base font-bold tracking-tight text-text">FusionOS</span>
+              <span className="ml-1.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary uppercase">
+                Enterprise
+              </span>
+            </div>
+          </div>
           <button
             aria-label="Close navigation"
             onClick={() => setIsSidebarOpen(false)}
@@ -131,112 +148,169 @@ export function AppShell() {
             <X size={18} />
           </button>
         </div>
-        <nav className="flex flex-col gap-1">
-          <NavLink
-            to="/dashboard"
-            onClick={() => setIsSidebarOpen(false)}
-            className={({ isActive }) =>
-              `rounded-md px-2 py-1.5 text-sm ${
-                isActive ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-surface-muted'
-              }`
-            }
-          >
-            Dashboard
-          </NavLink>
-          <NavLink
-            to="/core/approvals"
-            onClick={() => setIsSidebarOpen(false)}
-            className={({ isActive }) =>
-              `flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
-                isActive ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-surface-muted'
-              }`
-            }
-          >
-            <CheckSquare size={14} /> Approvals
-          </NavLink>
-          <NavLink
-            to="/core/notifications"
-            onClick={() => setIsSidebarOpen(false)}
-            className={({ isActive }) =>
-              `flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
-                isActive ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-surface-muted'
-              }`
-            }
-          >
-            <Bell size={14} /> Notifications
-            {unreadCount > 0 && (
-              <span className="ml-auto rounded-full bg-danger px-1.5 py-0.5 text-xs text-white">{unreadCount}</span>
-            )}
-          </NavLink>
-          {visibleModules.map((module) => (
+
+        {/* Navigation Sections */}
+        <nav className="flex flex-col gap-1 text-sm">
+          <div className="mb-2">
+            <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-text-muted">Main</p>
             <NavLink
-              key={module.name}
-              to={`/${module.name}`}
+              to="/dashboard"
               onClick={() => setIsSidebarOpen(false)}
               className={({ isActive }) =>
-                `rounded-md px-2 py-1.5 text-sm ${
-                  isActive ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-surface-muted'
+                `flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground font-medium shadow-xs'
+                    : 'text-text-muted hover:bg-surface-muted hover:text-text'
                 }`
               }
             >
-              {module.label}
-              {!module.implemented && <span className="ml-2 text-xs opacity-60">(scaffolded)</span>}
+              <LayoutDashboard size={16} />
+              <span>Executive Dashboard</span>
             </NavLink>
-          ))}
+
+            <NavLink
+              to="/core/approvals"
+              onClick={() => setIsSidebarOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground font-medium shadow-xs'
+                    : 'text-text-muted hover:bg-surface-muted hover:text-text'
+                }`
+              }
+            >
+              <CheckSquare size={16} />
+              <span>Pending Approvals</span>
+            </NavLink>
+
+            <NavLink
+              to="/core/notifications"
+              onClick={() => setIsSidebarOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground font-medium shadow-xs'
+                    : 'text-text-muted hover:bg-surface-muted hover:text-text'
+                }`
+              }
+            >
+              <Bell size={16} />
+              <span>Notifications</span>
+              {unreadCount > 0 && (
+                <span className="ml-auto rounded-full bg-danger px-1.5 py-0.5 text-xs font-semibold text-white">
+                  {unreadCount}
+                </span>
+              )}
+            </NavLink>
+          </div>
+
+          <div>
+            <p className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+              Business Modules
+            </p>
+            <div className="space-y-0.5">
+              {visibleModules.map((module) => (
+                <NavLink
+                  key={module.name}
+                  to={`/${module.name}`}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground font-medium shadow-xs'
+                        : 'text-text-muted hover:bg-surface-muted hover:text-text'
+                    }`
+                  }
+                >
+                  <span className="shrink-0">{moduleIcons[module.name] || <Layers size={16} />}</span>
+                  <span className="truncate">{module.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
         </nav>
       </aside>
 
+      {/* Main Workspace Frame */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2">
+        {/* Top Header Bar */}
+        <header className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5 sm:px-6 shadow-2xs">
+          <div className="flex items-center gap-3">
             <button
               aria-label="Open navigation"
               onClick={() => setIsSidebarOpen(true)}
-              className="rounded-md border border-border p-2 text-text-muted hover:bg-surface-muted md:hidden"
+              className="rounded-lg border border-border p-2 text-text-muted hover:bg-surface-muted md:hidden"
             >
-              <Menu size={16} />
+              <Menu size={18} />
             </button>
+
+            {/* Quick Cmd+K Palette Trigger */}
             <button
               onClick={() => setIsPaletteOpen(true)}
-              className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-text-muted"
+              className="flex items-center gap-2 rounded-lg border border-border bg-surface-muted/50 px-3 py-1.5 text-xs text-text-muted transition-colors hover:border-primary/40 hover:bg-surface"
             >
-              <Search size={16} />
-              <span className="hidden sm:inline">
-                Search… <kbd className="ml-2 rounded bg-surface-muted px-1.5 text-xs">⌘K</kbd>
-              </span>
+              <Search size={14} />
+              <span className="hidden sm:inline font-medium">Search modules or press</span>
+              <kbd className="rounded bg-surface border border-border px-1.5 py-0.5 text-[10px] font-mono text-text">
+                ⌘K
+              </kbd>
             </button>
           </div>
+
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-xs text-text-muted">
-              <span className="hidden sm:inline">Active company</span>
+            {/* Active Company Selector Input */}
+            <div className="flex items-center gap-2 text-xs">
+              <Building2 size={15} className="text-text-muted hidden sm:inline" />
+              <span className="hidden text-text-muted font-medium lg:inline">Company:</span>
               <input
                 value={companyId}
                 onChange={(e) => setCompanyId(e.target.value)}
-                placeholder="Company ID"
-                className="w-36 rounded-md border border-border bg-surface px-2 py-1 text-text sm:w-72"
+                placeholder="Active Company ID"
+                className="w-32 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs text-text focus:border-primary focus:outline-none sm:w-48"
               />
-            </label>
-          </div>
-          <div className="flex items-center gap-2">
-            {session && <span className="hidden text-xs text-text-muted sm:inline">{session.email}</span>}
+            </div>
+
+            <div className="h-4 w-px bg-border hidden sm:block" />
+
+            {/* AI Fusion Copilot Trigger */}
+            <button
+              onClick={() => navigate('/ai')}
+              className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 px-2.5 py-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 transition-colors"
+            >
+              <Sparkles size={14} />
+              <span className="hidden sm:inline">Fusion AI</span>
+            </button>
+
+            {/* Theme Toggle */}
             <button
               aria-label="Toggle dark mode"
               onClick={toggleTheme}
-              className="rounded-md border border-border p-2 text-text-muted hover:bg-surface-muted"
+              className="rounded-lg border border-border p-2 text-text-muted hover:bg-surface-muted hover:text-text transition-colors"
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
-            <button
-              aria-label="Sign out"
-              onClick={handleLogout}
-              className="flex items-center gap-1 rounded-md border border-border px-2 py-2 text-text-muted hover:bg-surface-muted"
-            >
-              <LogOut size={16} />
-            </button>
+
+            {/* User Session & Logout */}
+            <div className="flex items-center gap-2 border-l border-border pl-3">
+              {session && (
+                <div className="hidden flex-col text-right text-xs lg:flex">
+                  <span className="font-semibold text-text truncate max-w-[120px]">{session.email}</span>
+                  <span className="text-[10px] text-text-muted uppercase tracking-wider">Staff</span>
+                </div>
+              )}
+              <button
+                aria-label="Sign out"
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 rounded-lg border border-border p-2 text-text-muted hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/30 transition-colors"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
         </header>
 
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-4 focus:outline-none sm:p-6">
+        {/* Viewport Render Area */}
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-6 focus:outline-none">
           <Outlet />
         </main>
       </div>
@@ -245,3 +319,4 @@ export function AppShell() {
     </div>
   );
 }
+

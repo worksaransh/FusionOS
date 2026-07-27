@@ -30,6 +30,12 @@ public sealed class FixedAssetRepository : IFixedAssetRepository
     public Task<int> CountAsync(Guid companyId, bool? isDisposed, bool? isActive, CancellationToken cancellationToken = default) =>
         Filtered(companyId, isDisposed, isActive).CountAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<FixedAsset>> ListAllAsync(Guid companyId, CancellationToken cancellationToken = default) =>
+        await _context.FixedAssets
+            .Where(a => a.CompanyId == companyId)
+            .OrderBy(a => a.Code)
+            .ToListAsync(cancellationToken);
+
     private IQueryable<FixedAsset> Filtered(Guid companyId, bool? isDisposed, bool? isActive)
     {
         var query = _context.FixedAssets.Where(a => a.CompanyId == companyId);

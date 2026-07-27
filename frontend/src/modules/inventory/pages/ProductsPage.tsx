@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,11 +9,16 @@ import { Card } from '../../../shared/ui/Card';
 import { CrudListPage } from '../../../shared/ui/CrudListPage';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import type { PagedResult } from '../../../shared/api/types';
+import { Tabs } from '../../../shared/ui/Tabs';
 import { BarcodeLabel } from '../../../shared/barcode/BarcodeLabel';
 import { StockLedgerPanel } from './StockLedgerPanel';
 import { InventoryValuationPanel } from './InventoryValuationPanel';
 import { ReservationsPanel } from './ReservationsPanel';
 import { TransfersPanel } from './TransfersPanel';
+import { BatchesPanel } from './BatchesPanel';
+import { SerialUnitsPanel } from './SerialUnitsPanel';
+import { AttributeDefinitionsPanel } from './AttributeDefinitionsPanel';
+import type { AttributeDefinitionDto, AttributeValueDto } from './AttributeDefinitionsPanel';
 
 const schema = z.object({
   sku: z.string().min(1, 'SKU is required').max(50),
@@ -93,6 +98,7 @@ export function ProductsPage() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [activeInventoryTab, setActiveInventoryTab] = useState('ledger');
   // Barcode/QR support (2026-07-21) — a barcode lookup can find a product outside the current
   // list page (products list is paginated), so the matched product is held here rather than
   // relying solely on `productsQuery`'s current page to contain it.
@@ -185,7 +191,7 @@ export function ProductsPage() {
         },
       ]}
       form={
-        <form onSubmit={handleSubmit((values) => createProduct.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createProduct.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             SKU
             <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('sku')} />
@@ -231,10 +237,47 @@ export function ProductsPage() {
         </div>
       )}
 
-      <StockLedgerPanel />
-      <InventoryValuationPanel />
-      <ReservationsPanel />
-      <TransfersPanel />
+      <div className="mt-8 border-t border-border pt-6">
+        <h2 className="mb-4 text-lg font-bold text-text">Inventory Sub-Modules & Operations</h2>
+        <Tabs
+          tabs={[
+            { id: 'ledger', label: 'Stock Ledger & Valuation' },
+            { id: 'transfers', label: 'Transfers & Reservations' },
+            { id: 'tracking', label: 'Batches & Serials' },
+            { id: 'attributes', label: 'Attribute Schema' },
+          ]}
+          activeTab={activeInventoryTab}
+          onChange={setActiveInventoryTab}
+          className="mb-6"
+        />
+
+        {activeInventoryTab === 'ledger' && (
+          <div className="space-y-6">
+            <StockLedgerPanel />
+            <InventoryValuationPanel />
+          </div>
+        )}
+
+        {activeInventoryTab === 'transfers' && (
+          <div className="space-y-6">
+            <TransfersPanel />
+            <ReservationsPanel />
+          </div>
+        )}
+
+        {activeInventoryTab === 'tracking' && (
+          <div className="space-y-6">
+            <BatchesPanel />
+            <SerialUnitsPanel />
+          </div>
+        )}
+
+        {activeInventoryTab === 'attributes' && (
+          <div>
+            <AttributeDefinitionsPanel />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -279,7 +322,7 @@ function ProductEditPanel({ companyId, product, onClose }: ProductEditPanelProps
         <h2 className="text-lg font-semibold text-text">Edit product — {product.sku}</h2>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateProduct.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateProduct.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <input className="rounded-md border border-border bg-surface px-2 py-1.5" {...register('name')} />
@@ -389,7 +432,7 @@ function UnitOfMeasureConversionsPanel({ companyId, product }: UnitOfMeasureConv
           </tbody>
         </table>
       )}
-      <form
+      <form noValidate
         onSubmit={handleSubmit((values) => addConversion.mutate(values))}
         className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end"
       >
@@ -427,6 +470,7 @@ interface ProductVariantsPanelProps {
 // row (soft-deactivate only, same convention as the product itself).
 function ProductVariantsPanel({ companyId, product }: ProductVariantsPanelProps) {
   const queryClient = useQueryClient();
+  const [expandedVariantId, setExpandedVariantId] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<VariantFormValues>({
     resolver: zodResolver(variantSchema),
@@ -468,35 +512,53 @@ function ProductVariantsPanel({ companyId, product }: ProductVariantsPanelProps)
           <thead>
             <tr className="text-left text-text-muted">
               <th className="pb-1">Variant SKU</th>
-              <th className="pb-1">Attributes</th>
+              <th className="pb-1">Attributes (free-text)</th>
               <th className="pb-1">Status</th>
               <th className="pb-1"></th>
             </tr>
           </thead>
           <tbody>
             {product.variants.map((v) => (
-              <tr key={v.id} className="border-t border-border">
-                <td className="py-1">{v.variantSku}</td>
-                <td className="py-1">{v.attributes}</td>
-                <td className="py-1">{v.isActive ? 'Active' : 'Inactive'}</td>
-                <td className="py-1 text-right">
-                  {v.isActive && (
-                    <Button
-                      type="button"
-                      variant="danger"
-                      disabled={deactivateVariant.isPending && deactivateVariant.variables === v.id}
-                      onClick={() => deactivateVariant.mutate(v.id)}
-                    >
-                      Deactivate
-                    </Button>
-                  )}
-                </td>
-              </tr>
+              <Fragment key={v.id}>
+                <tr className="border-t border-border">
+                  <td className="py-1">{v.variantSku}</td>
+                  <td className="py-1">{v.attributes}</td>
+                  <td className="py-1">{v.isActive ? 'Active' : 'Inactive'}</td>
+                  <td className="py-1 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setExpandedVariantId(expandedVariantId === v.id ? null : v.id)}
+                      >
+                        {expandedVariantId === v.id ? 'Hide attributes' : 'Structured attributes'}
+                      </Button>
+                      {v.isActive && (
+                        <Button
+                          type="button"
+                          variant="danger"
+                          disabled={deactivateVariant.isPending && deactivateVariant.variables === v.id}
+                          onClick={() => deactivateVariant.mutate(v.id)}
+                        >
+                          Deactivate
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+                {expandedVariantId === v.id && (
+                  <tr className="border-t border-border">
+                    <td colSpan={4} className="py-2">
+                      <VariantAttributeValuesPanel companyId={companyId} productId={product.id} variantId={v.id} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>
       )}
-      <form
+      <form noValidate
         onSubmit={handleSubmit((values) => addVariant.mutate(values))}
         className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end"
       >
@@ -517,6 +579,152 @@ function ProductVariantsPanel({ companyId, product }: ProductVariantsPanelProps)
       )}
       {deactivateVariant.isError && (
         <p role="alert" className="mt-2 text-sm text-danger">Could not deactivate that variant.</p>
+      )}
+    </div>
+  );
+}
+
+interface ProductVariantAttributeValueDto {
+  id: string;
+  productId: string;
+  variantId: string;
+  attributeDefinitionId: string;
+  attributeDefinitionName: string;
+  attributeValueId: string;
+  attributeValue: string;
+}
+
+interface VariantAttributeValuesPanelProps {
+  companyId: string;
+  productId: string;
+  variantId: string;
+}
+
+// Structured attribute schema (AttributeDefinitionsPanel below) applied to
+// this specific variant — the reusable counterpart to the free-text
+// Attributes column above. Assigning a value under a definition the variant
+// already carries a value for replaces it (upsert — see
+// AssignAttributeValueToVariantCommand.cs's doc comment), so there is no
+// separate "edit" action, only assign/remove.
+function VariantAttributeValuesPanel({ companyId, productId, variantId }: VariantAttributeValuesPanelProps) {
+  const queryClient = useQueryClient();
+  const [selectedDefinitionId, setSelectedDefinitionId] = useState('');
+  const [selectedValueId, setSelectedValueId] = useState('');
+
+  const assignmentsQuery = useQuery({
+    queryKey: ['variant-attribute-values', companyId, productId, variantId],
+    queryFn: () =>
+      apiClient.get<ProductVariantAttributeValueDto[]>(
+        `/inventory/products/${productId}/variants/${variantId}/attribute-values?companyId=${companyId}`,
+      ),
+    enabled: Boolean(companyId && productId && variantId),
+  });
+
+  const definitionsQuery = useQuery({
+    queryKey: ['attribute-definitions', companyId],
+    queryFn: () => apiClient.get<PagedResult<AttributeDefinitionDto>>(`/inventory/attribute-definitions?companyId=${companyId}&page=1&pageSize=50`),
+    enabled: Boolean(companyId),
+  });
+
+  const valuesQuery = useQuery({
+    queryKey: ['attribute-values', companyId, selectedDefinitionId],
+    queryFn: () => apiClient.get<AttributeValueDto[]>(`/inventory/attribute-definitions/${selectedDefinitionId}/values?companyId=${companyId}`),
+    enabled: Boolean(companyId && selectedDefinitionId),
+  });
+
+  const assignValue = useMutation({
+    mutationFn: (attributeValueId: string) =>
+      apiClient.post<ProductVariantAttributeValueDto>(`/inventory/products/${productId}/variants/${variantId}/attribute-values`, {
+        companyId,
+        attributeValueId,
+      }),
+    onSuccess: () => {
+      setSelectedValueId('');
+      queryClient.invalidateQueries({ queryKey: ['variant-attribute-values', companyId, productId, variantId] });
+    },
+  });
+
+  // Modeled as a POST action, not a DELETE — same convention as RemoveUnitOfMeasureConversion.
+  const removeValue = useMutation({
+    mutationFn: (assignmentId: string) =>
+      apiClient.post(`/inventory/products/${productId}/variants/${variantId}/attribute-values/${assignmentId}/remove`, { companyId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['variant-attribute-values', companyId, productId, variantId] }),
+  });
+
+  const activeDefinitions = (definitionsQuery.data?.data ?? []).filter((d) => d.isActive);
+  const activeValues = (valuesQuery.data ?? []).filter((v) => v.isActive);
+
+  return (
+    <div className="rounded-md border border-border bg-surface-muted p-3">
+      <h4 className="mb-2 text-xs font-semibold uppercase text-text-muted">Structured attribute values</h4>
+      {assignmentsQuery.data && assignmentsQuery.data.length > 0 ? (
+        <ul className="mb-3 flex flex-wrap gap-2">
+          {assignmentsQuery.data.map((a) => (
+            <li key={a.id} className="flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-xs">
+              <span>{a.attributeDefinitionName}: {a.attributeValue}</span>
+              <button
+                type="button"
+                aria-label={`Remove ${a.attributeDefinitionName} ${a.attributeValue}`}
+                className="text-danger disabled:opacity-50"
+                disabled={removeValue.isPending && removeValue.variables === a.id}
+                onClick={() => removeValue.mutate(a.id)}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mb-3 text-xs text-text-muted">No structured attribute values assigned yet.</p>
+      )}
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 text-xs">
+          Attribute
+          <select
+            className="rounded-md border border-border bg-surface px-2 py-1 text-sm"
+            value={selectedDefinitionId}
+            onChange={(e) => {
+              setSelectedDefinitionId(e.target.value);
+              setSelectedValueId('');
+            }}
+          >
+            <option value="">Select…</option>
+            {activeDefinitions.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
+          Value
+          <select
+            className="rounded-md border border-border bg-surface px-2 py-1 text-sm"
+            value={selectedValueId}
+            onChange={(e) => setSelectedValueId(e.target.value)}
+            disabled={!selectedDefinitionId}
+          >
+            <option value="">Select…</option>
+            {activeValues.map((v) => (
+              <option key={v.id} value={v.id}>{v.value}</option>
+            ))}
+          </select>
+        </label>
+        <Button
+          type="button"
+          disabled={!selectedValueId || assignValue.isPending}
+          onClick={() => assignValue.mutate(selectedValueId)}
+        >
+          {assignValue.isPending ? 'Assigning…' : 'Assign'}
+        </Button>
+      </div>
+      {activeDefinitions.length === 0 && (
+        <p className="mt-2 text-xs text-text-muted">No attribute definitions yet — create one below in Attribute Definitions.</p>
+      )}
+      {assignValue.isError && (
+        <p role="alert" className="mt-2 text-xs text-danger">Could not assign that attribute value.</p>
+      )}
+      {removeValue.isError && (
+        <p role="alert" className="mt-2 text-xs text-danger">Could not remove that attribute value.</p>
       )}
     </div>
   );
@@ -632,7 +840,7 @@ function ProductBarcodePanel({ companyId, product }: ProductBarcodePanelProps) {
         symbologies. A scannable Code 39 barcode (uppercase A-Z, 0-9, and - . $ / + % space only)
         can be previewed below whenever the value fits that character set.
       </p>
-      <form onSubmit={handleSubmit((values) => assignBarcode.mutate(values))} className="flex items-end gap-2">
+      <form noValidate onSubmit={handleSubmit((values) => assignBarcode.mutate(values))} className="flex items-end gap-2">
         <label className="flex flex-1 flex-col gap-1 text-sm">
           Barcode value
           <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="e.g. 012345678905" {...register('barcode')} />

@@ -9,8 +9,9 @@ namespace FusionOS.Modules.Quality.Domain.Inspections;
 /// inspection to Passed (all characteristics passed) or Failed (any failed).
 ///
 /// <see cref="ReferenceId"/> is an opaque cross-module reference — a Manufacturing
-/// WorkOrder id for a <see cref="InspectionType.Production"/> inspection, or a
-/// Procurement/Warehouse Goods Receipt id for <see cref="InspectionType.IncomingGoods"/>
+/// WorkOrder id for a <see cref="InspectionType.Production"/> inspection, a
+/// Procurement/Warehouse Goods Receipt id for <see cref="InspectionType.IncomingGoods"/>,
+/// or a Sales DispatchId for a <see cref="InspectionType.Final"/> (final/outgoing) inspection
 /// — never existence-validated here, same convention as InventoryLedgerEntry's WarehouseId.
 /// The type discriminator plus the id is what ties this back to those modules; no
 /// cross-module read or foreign key is taken.
@@ -26,7 +27,16 @@ public sealed class Inspection : TenantAggregateRoot
 
     private Inspection() { }
 
-    public static Inspection Create(Guid companyId, InspectionType type, Guid referenceId, IReadOnlyCollection<string> characteristics)
+    public static Inspection Create(Guid companyId, InspectionType type, Guid referenceId, IReadOnlyCollection<string> characteristics) =>
+        Create(companyId, type, referenceId, characteristics?.Select(c => new InspectionCharacteristicInput(c)).ToList() ?? new List<InspectionCharacteristicInput>());
+
+    /// <summary>
+    /// Richer overload, added for the SPC slice: each characteristic can optionally carry
+    /// control limits set at creation time (see <see cref="InspectionItem"/>'s doc comment).
+    /// The plain-string overload above forwards here with null limits for every
+    /// characteristic, so every existing caller keeps working unchanged.
+    /// </summary>
+    public static Inspection Create(Guid companyId, InspectionType type, Guid referenceId, IReadOnlyCollection<InspectionCharacteristicInput> characteristics)
     {
         if (referenceId == Guid.Empty)
             throw new ArgumentException("A reference id (the work order or goods receipt being inspected) is required.", nameof(referenceId));
@@ -44,13 +54,13 @@ public sealed class Inspection : TenantAggregateRoot
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var characteristic in characteristics)
         {
-            var trimmed = characteristic?.Trim() ?? string.Empty;
+            var trimmed = characteristic.Characteristic?.Trim() ?? string.Empty;
             if (trimmed.Length == 0)
                 throw new ArgumentException("An inspection characteristic cannot be blank.", nameof(characteristics));
             if (!seen.Add(trimmed))
                 throw new ArgumentException($"Characteristic '{trimmed}' appears more than once in the inspection.", nameof(characteristics));
 
-            inspection._items.Add(InspectionItem.Create(trimmed));
+            inspection._items.Add(InspectionItem.Create(trimmed, characteristic.LowerControlLimit, characteristic.UpperControlLimit));
         }
 
         inspection.Raise(new InspectionCreated(inspection.Id, companyId, type.ToString(), referenceId));
@@ -82,7 +92,7 @@ public sealed class Inspection : TenantAggregateRoot
         {
             if (!byCharacteristic.TryGetValue(item.Characteristic, out var result))
                 throw new ArgumentException($"No result was provided for characteristic '{item.Characteristic}'.", nameof(results));
-            item.RecordResult(result.Passed, result.Notes);
+            item.RecordResult(result.Passed, result.MeasuredValue, result.Notes);
         }
 
         if (byCharacteristic.Count != _items.Count)

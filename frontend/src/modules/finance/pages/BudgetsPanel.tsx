@@ -136,7 +136,7 @@ export function BudgetsPanel() {
       </p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createBudget.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form noValidate onSubmit={handleSubmit((values) => createBudget.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-sm">
             Name
             <Controller
@@ -276,7 +276,7 @@ function BudgetEditPanel({ companyId, budget, onClose }: BudgetEditPanelProps) {
         <h3 className="text-base font-semibold text-text">Edit budget — {budget.name}</h3>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateBudget.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <form noValidate onSubmit={handleSubmit((values) => updateBudget.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-sm">
           Name
           <Controller
@@ -382,7 +382,7 @@ function BudgetLinesSection({ companyId, budget, onClose }: BudgetLinesSectionPr
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
 
-      <form onSubmit={handleSubmit((values) => createLine.mutate(values))} className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
+      <form noValidate onSubmit={handleSubmit((values) => createLine.mutate(values))} className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <label className="flex flex-col gap-1 text-sm">
           Account
           <Controller
@@ -564,7 +564,7 @@ function BudgetLineEditPanel({ companyId, budgetId, line, onClose }: BudgetLineE
         <h4 className="text-sm font-semibold text-text">Edit budget line</h4>
         <Button variant="secondary" onClick={onClose}>Close</Button>
       </div>
-      <form onSubmit={handleSubmit((values) => updateLine.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={handleSubmit((values) => updateLine.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
           Budgeted amount
           <Controller

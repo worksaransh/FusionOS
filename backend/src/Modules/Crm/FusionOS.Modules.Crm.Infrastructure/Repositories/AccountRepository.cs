@@ -30,6 +30,13 @@ public sealed class AccountRepository : IAccountRepository
     public Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default) =>
         Filtered(companyId, search).CountAsync(cancellationToken);
 
+    public Task<bool> IsNameAlreadyUsedAsync(Guid companyId, string normalizedName, CancellationToken cancellationToken = default) =>
+        // Unlike ContactEmail/Lead.ContactEmail, Account.Name is stored with its original
+        // casing preserved (only trimmed by Account.Create), so this needs an explicit
+        // case-insensitive comparison rather than a plain equality check. Only active
+        // accounts count — a deactivated account isn't really "still around" to collide with.
+        _context.Accounts.AnyAsync(a => a.CompanyId == companyId && a.IsActive && a.Name.ToLower() == normalizedName, cancellationToken);
+
     private IQueryable<Account> Filtered(Guid companyId, string? search)
     {
         var query = _context.Accounts.Where(a => a.CompanyId == companyId);

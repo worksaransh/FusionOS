@@ -30,6 +30,21 @@ public sealed class AssetRepository : IAssetRepository
     public Task<int> CountAsync(Guid companyId, string? search, CancellationToken cancellationToken = default) =>
         Filtered(companyId, search).CountAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Asset>> ListWithExpiringWarrantyAsync(Guid companyId, int withinDays, CancellationToken cancellationToken = default)
+    {
+        var horizon = DateTimeOffset.UtcNow.AddDays(withinDays);
+
+        return await _context.Assets
+            .Where(a => a.CompanyId == companyId && a.IsActive && a.WarrantyExpirationDate != null && a.WarrantyExpirationDate <= horizon)
+            .OrderBy(a => a.WarrantyExpirationDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Asset>> GetByIdsAsync(Guid companyId, IReadOnlyCollection<Guid> assetIds, CancellationToken cancellationToken = default) =>
+        await _context.Assets
+            .Where(a => a.CompanyId == companyId && assetIds.Contains(a.Id))
+            .ToListAsync(cancellationToken);
+
     private IQueryable<Asset> Filtered(Guid companyId, string? search)
     {
         var query = _context.Assets.Where(a => a.CompanyId == companyId);

@@ -12,6 +12,9 @@ public sealed class BillOfMaterialsConfiguration : IEntityTypeConfiguration<Bill
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Code).HasMaxLength(50).IsRequired();
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Version).IsRequired();
+        builder.Property(x => x.IsCurrentVersion).IsRequired();
+        builder.Property(x => x.IsPrimary).IsRequired();
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md)
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);
@@ -41,6 +44,7 @@ public sealed class BomLineConfiguration : IEntityTypeConfiguration<BomLine>
         builder.ToTable("bom_lines");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Quantity).HasColumnType("numeric(19,4)").IsRequired();
+        builder.Property(x => x.UnitCost).HasColumnType("numeric(19,4)").IsRequired();
     }
 }
 

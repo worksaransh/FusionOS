@@ -183,4 +183,13 @@ public sealed class UserRepository : IUserRepository
 
         await _context.UserCompanyRoles.AddAsync(UserCompanyRole.Create(userId, companyId, roleId), ct);
     }
+
+    public async Task<IReadOnlyList<Guid>> ListUserIdsWithPermissionAsync(Guid companyId, string permissionCode, CancellationToken ct) =>
+        await (from ucr in _context.UserCompanyRoles
+               join rp in _context.RolePermissions on ucr.RoleId equals rp.RoleId
+               join p in _context.Permissions on rp.PermissionId equals p.Id
+               where ucr.CompanyId == companyId && p.Code == permissionCode
+               select ucr.UserId)
+            .Distinct()
+            .ToListAsync(ct);
 }

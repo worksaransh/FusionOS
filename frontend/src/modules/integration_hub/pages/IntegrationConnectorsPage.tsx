@@ -11,6 +11,7 @@ import { useActiveCompany } from '../../../shared/company/useActiveCompany';
 import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue';
 import type { PagedResult } from '../../../shared/api/types';
 import { ConnectorConnectionsPanel } from './ConnectorConnectionsPanel';
+import { MigrationJobsPanel } from './MigrationJobsPanel';
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -104,7 +105,7 @@ export function IntegrationConnectorsPage() {
       <p className="mb-4 text-sm text-text-muted">The connector catalog — Integration Hub, Phase 9.</p>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createConnector.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form noValidate onSubmit={handleSubmit((values) => createConnector.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             Code
             <Controller
@@ -205,6 +206,7 @@ export function IntegrationConnectorsPage() {
       )}
 
       <ConnectorConnectionsPanel />
+      <MigrationJobsPanel />
     </div>
   );
 }

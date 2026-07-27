@@ -1,5 +1,6 @@
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
 using FusionOS.Modules.Finance.Domain.Accounts;
+using FusionOS.Modules.Finance.Domain.AccountingPeriods;
 using FusionOS.Modules.Finance.Domain.BankAccounts;
 using FusionOS.Modules.Finance.Domain.BankStatementLines;
 using FusionOS.Modules.Finance.Domain.BudgetLines;
@@ -10,9 +11,11 @@ using FusionOS.Modules.Finance.Domain.FixedAssets;
 using FusionOS.Modules.Finance.Domain.JournalEntries;
 using FusionOS.Modules.Finance.Domain.Payables;
 using FusionOS.Modules.Finance.Domain.Receivables;
+using FusionOS.Modules.Finance.Domain.RecurringJournalEntries;
 using FusionOS.Modules.Finance.Domain.Settings;
 using FusionOS.Modules.Finance.Domain.TaxJurisdictions;
 using FusionOS.Modules.Finance.Domain.TaxRates;
+using FusionOS.Modules.Finance.Domain.TaxTransactions;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -65,6 +68,9 @@ public sealed class FinanceDbContext : BaseDbContext
     public DbSet<FixedAsset> FixedAssets => Set<FixedAsset>();
     public DbSet<FinanceSettings> FinanceSettings => Set<FinanceSettings>();
     public DbSet<PurchaseOrderFact> PurchaseOrderFacts => Set<PurchaseOrderFact>();
+    public DbSet<AccountingPeriod> AccountingPeriods => Set<AccountingPeriod>();
+    public DbSet<RecurringJournalEntryTemplate> RecurringJournalEntryTemplates => Set<RecurringJournalEntryTemplate>();
+    public DbSet<TaxTransaction> TaxTransactions => Set<TaxTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

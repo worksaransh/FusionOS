@@ -1,6 +1,8 @@
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.AssignMaintenanceRequestTechnician;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.CompleteMaintenanceRequest;
+using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.CompleteMaintenanceRequestChecklistItem;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.CreateMaintenanceRequest;
+using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.RecordSparePartUsage;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.StartMaintenanceRequest;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Queries.GetMaintenanceRequestById;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Queries.ListMaintenanceRequests;
@@ -29,7 +31,7 @@ public sealed class MaintenanceRequestsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Create([FromBody] CreateMaintenanceRequestRequest request, CancellationToken cancellationToken)
     {
-        var command = new CreateMaintenanceRequestCommand(request.CompanyId, request.AssetId, request.Type, request.Description);
+        var command = new CreateMaintenanceRequestCommand(request.CompanyId, request.AssetId, request.Type, request.Description, request.ChecklistTemplateId);
         var result = await _sender.Send(command, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = result.Id, companyId = request.CompanyId }, result);
     }
@@ -70,7 +72,29 @@ public sealed class MaintenanceRequestsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Complete(Guid id, [FromBody] CompleteMaintenanceRequestRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new CompleteMaintenanceRequestCommand(request.CompanyId, id, request.ResolutionNotes, request.ActualDowntimeMinutes), cancellationToken);
+        var result = await _sender.Send(new CompleteMaintenanceRequestCommand(request.CompanyId, id, request.ResolutionNotes, request.ActualDowntimeMinutes, request.LaborHours, request.LaborRatePerHour), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/spare-parts")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RecordSparePartUsage(Guid id, [FromBody] RecordSparePartUsageRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new RecordSparePartUsageCommand(request.CompanyId, id, request.ProductId, request.WarehouseId, request.QuantityUsed, request.UnitCost), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost("{id:guid}/checklist-items/{itemId:guid}/complete")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CompleteChecklistItem(Guid id, Guid itemId, [FromBody] MaintenanceRequestActionRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new CompleteMaintenanceRequestChecklistItemCommand(request.CompanyId, id, itemId), cancellationToken);
         return Ok(result);
     }
 
@@ -86,10 +110,12 @@ public sealed class MaintenanceRequestsController : ControllerBase
     }
 }
 
-public sealed record CreateMaintenanceRequestRequest(Guid CompanyId, Guid AssetId, MaintenanceRequestType Type, string Description);
+public sealed record CreateMaintenanceRequestRequest(Guid CompanyId, Guid AssetId, MaintenanceRequestType Type, string Description, Guid? ChecklistTemplateId = null);
 
 public sealed record MaintenanceRequestActionRequest(Guid CompanyId);
 
-public sealed record CompleteMaintenanceRequestRequest(Guid CompanyId, string? ResolutionNotes, int? ActualDowntimeMinutes = null);
+public sealed record CompleteMaintenanceRequestRequest(Guid CompanyId, string? ResolutionNotes, int? ActualDowntimeMinutes = null, decimal? LaborHours = null, decimal? LaborRatePerHour = null);
 
 public sealed record AssignMaintenanceRequestTechnicianRequest(Guid CompanyId, Guid TechnicianUserId);
+
+public sealed record RecordSparePartUsageRequest(Guid CompanyId, Guid ProductId, Guid WarehouseId, decimal QuantityUsed, decimal UnitCost);

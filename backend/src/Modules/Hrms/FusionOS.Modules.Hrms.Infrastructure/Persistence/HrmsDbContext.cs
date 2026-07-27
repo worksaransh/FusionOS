@@ -1,7 +1,9 @@
 using FusionOS.BuildingBlocks.Infrastructure.Persistence;
 using FusionOS.Modules.Hrms.Domain.Attendance;
 using FusionOS.Modules.Hrms.Domain.Employees;
+using FusionOS.Modules.Hrms.Domain.LeaveBalances;
 using FusionOS.Modules.Hrms.Domain.LeaveRequests;
+using FusionOS.Modules.Hrms.Domain.Onboarding;
 using FusionOS.Modules.Hrms.Domain.Payroll;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
@@ -15,8 +17,11 @@ namespace FusionOS.Modules.Hrms.Infrastructure.Persistence;
 /// Second slice (2026-07-20): attendance (AttendanceRecord) and a
 /// deliberately minimal payroll skeleton (PayrollRecord) —
 /// 05_MODULE_ROADMAP.md's "Attendance" and "Payroll" line items (see
-/// PayrollRecord.cs's own doc comment for exactly how minimal). Recruitment/
-/// Performance/Training remain out of scope — separately-scoped follow-ups.
+/// PayrollRecord.cs's own doc comment for exactly how minimal). A later
+/// slice added onboarding/offboarding workflows (EmployeeWorkflow) and
+/// per-employee leave balances (LeaveBalance) — see EmployeeWorkflow.cs's
+/// own doc comment. Recruitment/Performance/Training remain out of scope —
+/// separately-scoped follow-ups.
 /// </summary>
 public sealed class HrmsDbContext : BaseDbContext
 {
@@ -27,6 +32,8 @@ public sealed class HrmsDbContext : BaseDbContext
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
     public DbSet<PayrollRecord> PayrollRecords => Set<PayrollRecord>();
+    public DbSet<LeaveBalance> LeaveBalances => Set<LeaveBalance>();
+    public DbSet<EmployeeWorkflow> EmployeeWorkflows => Set<EmployeeWorkflow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

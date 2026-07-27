@@ -25,7 +25,7 @@ public sealed class CreditNotesController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateCreditNoteRequest request, CancellationToken cancellationToken)
     {
         var lines = request.Lines.Select(l => new CreditNoteLineInput(l.ProductId, l.Quantity, l.UnitPrice)).ToList();
-        var command = new CreateCreditNoteCommand(request.CompanyId, request.InvoiceId, request.CustomerId, request.Reason, lines);
+        var command = new CreateCreditNoteCommand(request.CompanyId, request.InvoiceId, request.CustomerId, request.Reason, lines, request.SalesReturnId);
         var result = await _sender.Send(command, cancellationToken);
         return CreatedAtAction(nameof(List), new { companyId = request.CompanyId }, result);
     }
@@ -55,4 +55,4 @@ public sealed class CreditNotesController : ControllerBase
 
 public sealed record CreateCreditNoteLineRequest(Guid ProductId, decimal Quantity, decimal UnitPrice);
 
-public sealed record CreateCreditNoteRequest(Guid CompanyId, Guid InvoiceId, Guid CustomerId, string Reason, IReadOnlyList<CreateCreditNoteLineRequest> Lines);
+public sealed record CreateCreditNoteRequest(Guid CompanyId, Guid InvoiceId, Guid CustomerId, string Reason, IReadOnlyList<CreateCreditNoteLineRequest> Lines, Guid? SalesReturnId = null);

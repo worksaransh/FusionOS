@@ -10,4 +10,5 @@ public sealed record CreditNoteDto(
     string Status,
     DateTimeOffset CreditNoteDate,
     decimal TotalAmount,
-    IReadOnlyList<CreditNoteLineDto> Lines);
+    IReadOnlyList<CreditNoteLineDto> Lines,
+    Guid? SalesReturnId = null);

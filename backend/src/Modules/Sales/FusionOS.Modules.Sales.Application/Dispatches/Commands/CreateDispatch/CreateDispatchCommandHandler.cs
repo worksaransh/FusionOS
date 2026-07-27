@@ -46,6 +46,12 @@ public sealed class CreateDispatchCommandHandler : IRequestHandler<CreateDispatc
         // product split across several request lines cannot slip past the cap by
         // each line passing individually; the cap itself sums every order line
         // carrying the product, in case the order lists a product more than once.
+        // Batch-resolve every distinct product's already-dispatched quantity in one
+        // query (Phase 10 audit fix, 2026-07-27) instead of one round trip per
+        // GroupBy iteration - see IDispatchRepository.GetDispatchedQuantitiesAsync.
+        var distinctProductIds = request.Lines.Select(l => l.ProductId).Distinct().ToList();
+        var alreadyDispatchedByProduct = await _repository.GetDispatchedQuantitiesAsync(request.CompanyId, request.SalesOrderId, distinctProductIds, cancellationToken);
+
         var failures = new List<FluentValidation.Results.ValidationFailure>();
         foreach (var productLines in request.Lines.GroupBy(l => l.ProductId))
         {
@@ -58,7 +64,7 @@ public sealed class CreateDispatchCommandHandler : IRequestHandler<CreateDispatc
 
             var orderedQuantity = salesOrder.Lines.Where(l => l.ProductId == productLines.Key).Sum(l => l.Quantity);
             var requestedQuantity = productLines.Sum(l => l.QuantityDispatched);
-            var alreadyDispatched = await _repository.GetDispatchedQuantityAsync(request.CompanyId, request.SalesOrderId, productLines.Key, cancellationToken);
+            var alreadyDispatched = alreadyDispatchedByProduct.GetValueOrDefault(productLines.Key);
             if (alreadyDispatched + requestedQuantity > orderedQuantity)
             {
                 failures.Add(new FluentValidation.Results.ValidationFailure(
@@ -71,7 +77,7 @@ public sealed class CreateDispatchCommandHandler : IRequestHandler<CreateDispatc
         if (failures.Count > 0)
             throw new ValidationException(failures);
 
-        var dispatch = Domain.Dispatches.Dispatch.Create(request.CompanyId, request.SalesOrderId, request.WarehouseId, request.Lines);
+        var dispatch = Domain.Dispatches.Dispatch.Create(request.CompanyId, request.SalesOrderId, request.WarehouseId, request.Lines, request.PickListId);
 
         await _repository.AddAsync(dispatch, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -83,6 +89,7 @@ public sealed class CreateDispatchCommandHandler : IRequestHandler<CreateDispatc
         dispatch.Id,
         dispatch.SalesOrderId,
         dispatch.WarehouseId,
+        dispatch.PickListId,
         dispatch.DispatchDate,
         dispatch.Lines.Select(l => new DispatchLineDto(l.Id, l.ProductId, l.QuantityDispatched)).ToList());
 }

@@ -6,5 +6,6 @@ public sealed record DispatchDto(
     Guid Id,
     Guid SalesOrderId,
     Guid WarehouseId,
+    Guid? PickListId,
     DateTimeOffset DispatchDate,
     IReadOnlyList<DispatchLineDto> Lines);

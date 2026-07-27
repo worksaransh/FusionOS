@@ -106,11 +106,11 @@ export function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-surface-muted py-10">
       <div className="w-full max-w-lg rounded-lg border border-border bg-surface p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <div className="text-lg font-semibold">FusionOS</div>
+          <h1 className="text-lg font-semibold">FusionOS</h1>
           <p className="mt-1 text-sm text-text-muted">Create your company and get started</p>
         </div>
 
-        <form
+        <form noValidate
           onSubmit={handleSubmit((values) => registerCompanyAndOwner.mutate(values))}
           className="grid grid-cols-1 gap-4 sm:grid-cols-2"
         >

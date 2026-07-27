@@ -70,4 +70,15 @@ public interface IUserRepository
     /// they already hold only this role.
     /// </summary>
     Task AssignUserRoleAsync(Guid userId, Guid companyId, Guid roleId, CancellationToken ct);
+
+    /// <summary>
+    /// Every distinct user id linked to this company whose role grants the
+    /// given permission code (2026-07-22, added for
+    /// PurchaseOrderSubmittedForApprovalConsumer's auto-approver-selection —
+    /// the reverse join of GetRolePermissionCodesAsync above: role-holders by
+    /// permission rather than permissions-by-role). Order is unspecified;
+    /// callers that need a deterministic "first approver" should sort the
+    /// result themselves.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> ListUserIdsWithPermissionAsync(Guid companyId, string permissionCode, CancellationToken ct);
 }

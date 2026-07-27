@@ -19,6 +19,11 @@ public sealed class CrmDbContext : BaseDbContext
     public DbSet<FusionOS.Modules.Crm.Domain.Accounts.Account> Accounts => Set<FusionOS.Modules.Crm.Domain.Accounts.Account>();
     public DbSet<FusionOS.Modules.Crm.Domain.Contacts.Contact> Contacts => Set<FusionOS.Modules.Crm.Domain.Contacts.Contact>();
     public DbSet<FusionOS.Modules.Crm.Domain.Activities.Activity> Activities => Set<FusionOS.Modules.Crm.Domain.Activities.Activity>();
+    public DbSet<FusionOS.Modules.Crm.Domain.Tasks.FollowUpTask> FollowUpTasks => Set<FusionOS.Modules.Crm.Domain.Tasks.FollowUpTask>();
+    public DbSet<FusionOS.Modules.Crm.Domain.Campaigns.Campaign> Campaigns => Set<FusionOS.Modules.Crm.Domain.Campaigns.Campaign>();
+    public DbSet<FusionOS.Modules.Crm.Domain.Campaigns.CampaignMembership> CampaignMemberships => Set<FusionOS.Modules.Crm.Domain.Campaigns.CampaignMembership>();
+    public DbSet<FusionOS.Modules.Crm.Domain.Tags.Tag> Tags => Set<FusionOS.Modules.Crm.Domain.Tags.Tag>();
+    public DbSet<FusionOS.Modules.Crm.Domain.Tags.EntityTag> EntityTags => Set<FusionOS.Modules.Crm.Domain.Tags.EntityTag>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

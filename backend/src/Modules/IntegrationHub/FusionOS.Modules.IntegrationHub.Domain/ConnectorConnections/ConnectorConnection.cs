@@ -15,9 +15,20 @@ namespace FusionOS.Modules.IntegrationHub.Domain.ConnectorConnections;
 /// a genuinely security-sensitive concern (encrypted-at-rest secrets
 /// management, e.g. a vault integration) this slice does not attempt to
 /// half-wire; <see cref="Label"/> is a plain human-readable name for the
-/// connection ("Main Shopify Store"), not a place secrets live. There is
-/// also no real sync engine — this is connection bookkeeping only, same
-/// restraint as Marketplace's PluginInstallation not executing plugin code.
+/// connection ("Main Shopify Store"), not a place secrets live.
+///
+/// <b>Phase 8 — credential reference (2026-07-25):</b> <see cref="CredentialReference"/>
+/// is the one addition that touches secrets at all, and it deliberately never stores
+/// a secret value — only a STRING NAME for where the real secret lives externally
+/// (an environment variable / configuration key, e.g. "SHOPIFY_STORE_ACME_API_KEY", or
+/// a secrets-manager key path). The actual secret is read at call time from
+/// <c>IConfiguration</c> by whichever <c>IConnectorSyncAdapter</c> implementation
+/// needs it (Application/Infrastructure layer, not referenced from here) — this
+/// application still never persists a real credential value, honoring the restraint
+/// this class's doc comment always called for. There is also still no real sync
+/// engine wired into THIS aggregate — see ConnectorSyncRun for that (a sibling
+/// aggregate, not a change to this one), same restraint as Marketplace's
+/// PluginInstallation not executing plugin code.
 /// </summary>
 public sealed class ConnectorConnection : TenantAggregateRoot
 {
@@ -26,6 +37,9 @@ public sealed class ConnectorConnection : TenantAggregateRoot
     public ConnectionStatus Status { get; private set; }
     public DateTimeOffset ConnectedAt { get; private set; }
     public DateTimeOffset? DisconnectedAt { get; private set; }
+
+    /// <summary>Name of the external config/environment key or secrets-manager path where the real credential lives — never the secret value itself. Null until <see cref="ConfigureCredential"/> is called.</summary>
+    public string? CredentialReference { get; private set; }
 
     private ConnectorConnection() { }
 
@@ -66,5 +80,22 @@ public sealed class ConnectorConnection : TenantAggregateRoot
             throw new InvalidOperationException("A disconnected connection cannot be marked as errored — reconnect first.");
 
         Status = ConnectionStatus.Error;
+    }
+
+    /// <summary>
+    /// Sets (or replaces) the credential reference — settable any time while the
+    /// connection is Connected, so a rotated secret (new env var name) can be pointed
+    /// to without disconnecting/reconnecting. Never a secret value: validated here only
+    /// as a non-empty reference string, not as looking like a real key/token, since this
+    /// aggregate has no business knowing what a given provider's real credentials look like.
+    /// </summary>
+    public void ConfigureCredential(string credentialReference)
+    {
+        if (string.IsNullOrWhiteSpace(credentialReference))
+            throw new ArgumentException("A credential reference is required.", nameof(credentialReference));
+        if (Status != ConnectionStatus.Connected)
+            throw new InvalidOperationException("A credential reference can only be configured while the connection is Connected.");
+
+        CredentialReference = credentialReference.Trim();
     }
 }

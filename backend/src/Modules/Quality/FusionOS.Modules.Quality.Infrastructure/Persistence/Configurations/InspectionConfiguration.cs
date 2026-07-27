@@ -35,5 +35,11 @@ public sealed class InspectionItemConfiguration : IEntityTypeConfiguration<Inspe
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Characteristic).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Notes).HasMaxLength(1000);
+        // numeric(19,4) — same precision as every other plain decimal amount in this codebase
+        // (e.g. FixedAsset.AcquisitionCost); these are optional SPC fields (null for a
+        // pass/fail-only characteristic).
+        builder.Property(x => x.MeasuredValue).HasColumnType("numeric(19,4)");
+        builder.Property(x => x.LowerControlLimit).HasColumnType("numeric(19,4)");
+        builder.Property(x => x.UpperControlLimit).HasColumnType("numeric(19,4)");
     }
 }

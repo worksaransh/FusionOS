@@ -13,5 +13,20 @@ public static class WorkOrderMapper
         workOrder.Components.Select(c => new WorkOrderComponentDto(c.Id, c.ComponentProductId, c.QuantityRequired, c.QuantityIssued)).ToList(),
         workOrder.QuantityGoodProduced,
         workOrder.QuantityScrapped,
-        workOrder.YieldPercentage);
+        workOrder.YieldPercentage,
+        workOrder.Operations.Select(o => new WorkOrderOperationDto(
+            o.Id,
+            o.RoutingOperationId,
+            o.SequenceNumber,
+            o.OperationName,
+            o.WorkCenter,
+            o.StandardMinutes,
+            o.Status.ToString(),
+            o.MachineId,
+            o.ScheduledStart,
+            o.ScheduledEnd,
+            o.ActualStart,
+            o.ActualEnd)).ToList(),
+        workOrder.SourceWorkOrderId,
+        workOrder.QuantityReworked);
 }

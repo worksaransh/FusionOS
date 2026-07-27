@@ -8,7 +8,7 @@ import { Card } from '../../../shared/ui/Card';
 import { DataTable } from '../../../shared/ui/DataTable';
 import { EntityCombobox } from '../../../shared/ui/EntityCombobox';
 import { useActiveCompany } from '../../../shared/company/useActiveCompany';
-import { useSupplierOptions, usePurchaseOrderOptions } from '../../../shared/api/entityOptions';
+import { useSupplierOptions, usePurchaseOrderOptions, useBankAccountOptions } from '../../../shared/api/entityOptions';
 import type { PagedResult } from '../../../shared/api/types';
 
 const chargeSchema = z.object({
@@ -24,6 +24,7 @@ const paymentSchema = z.object({
   purchaseOrderId: z.string().refine((v) => v === '' || /^[0-9a-fA-F-]{36}$/.test(v), 'Must be blank or a valid Purchase Order'),
   amount: z.string().refine((v) => Number(v) > 0, 'Amount must be greater than zero'),
   reference: z.string().optional(),
+  bankAccountId: z.string().refine((v) => v === '' || /^[0-9a-fA-F-]{36}$/.test(v), 'Must be blank or a valid Bank Account'),
 });
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
@@ -39,6 +40,7 @@ interface ApLedgerEntryDto {
   amount: number;
   description: string;
   transactionDate: string;
+  bankAccountId: string | null;
 }
 
 /**
@@ -61,6 +63,7 @@ export function PayablesPanel() {
 
   const supplierOptions = useSupplierOptions(companyId);
   const purchaseOrderOptions = usePurchaseOrderOptions(companyId);
+  const bankAccountOptions = useBankAccountOptions(companyId);
 
   const {
     control: chargeControl,
@@ -79,7 +82,7 @@ export function PayablesPanel() {
     formState: { errors: paymentErrors, isSubmitting: isPaymentSubmitting },
   } = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema),
-    defaultValues: { supplierId: '', purchaseOrderId: '', amount: '', reference: '' },
+    defaultValues: { supplierId: '', purchaseOrderId: '', amount: '', reference: '', bankAccountId: '' },
   });
 
   const selectedChargeSupplierId = useWatch({ control: chargeControl, name: 'supplierId' });
@@ -126,9 +129,10 @@ export function PayablesPanel() {
         amount: Number(values.amount),
         paymentDate: null,
         reference: values.reference || null,
+        bankAccountId: values.bankAccountId || null,
       }),
     onSuccess: (_data, values) => {
-      resetPayment({ supplierId: values.supplierId, purchaseOrderId: '', amount: '', reference: '' });
+      resetPayment({ supplierId: values.supplierId, purchaseOrderId: '', amount: '', reference: '', bankAccountId: '' });
       queryClient.invalidateQueries({ queryKey: ['supplier-balance', companyId, values.supplierId] });
       queryClient.invalidateQueries({ queryKey: ['ap-ledger', companyId, values.supplierId] });
     },
@@ -147,7 +151,7 @@ export function PayablesPanel() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <h3 className="mb-3 text-sm font-semibold text-text">Record a bill charge</h3>
-          <form onSubmit={handleChargeSubmit((values) => recordCharge.mutate(values))} className="flex flex-col gap-4">
+          <form noValidate onSubmit={handleChargeSubmit((values) => recordCharge.mutate(values))} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1 text-sm">
               Supplier
               <Controller
@@ -216,7 +220,7 @@ export function PayablesPanel() {
 
         <Card>
           <h3 className="mb-3 text-sm font-semibold text-text">Record a payment</h3>
-          <form onSubmit={handlePaymentSubmit((values) => recordPayment.mutate(values))} className="flex flex-col gap-4">
+          <form noValidate onSubmit={handlePaymentSubmit((values) => recordPayment.mutate(values))} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1 text-sm">
               Supplier
               <Controller
@@ -272,6 +276,24 @@ export function PayablesPanel() {
                   <input className="rounded-md border border-border bg-surface px-2 py-1.5" placeholder="Wire / cheque no." {...field} />
                 )}
               />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Bank account (optional)
+              <Controller
+                control={paymentControl}
+                name="bankAccountId"
+                render={({ field }) => (
+                  <EntityCombobox
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={bankAccountOptions.options}
+                    isLoading={bankAccountOptions.isLoading}
+                    onSearchChange={bankAccountOptions.onSearchChange}
+                    placeholder="Search bank accounts…"
+                  />
+                )}
+              />
+              {paymentErrors.bankAccountId && <span className="text-xs text-danger">{paymentErrors.bankAccountId.message}</span>}
             </label>
 
             {selectedPaymentSupplierId && balanceQuery.data && (

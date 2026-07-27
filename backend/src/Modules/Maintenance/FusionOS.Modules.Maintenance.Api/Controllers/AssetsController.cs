@@ -1,7 +1,9 @@
 using FusionOS.Modules.Maintenance.Application.Assets.Commands.CreateAsset;
 using FusionOS.Modules.Maintenance.Application.Assets.Commands.DeactivateAsset;
+using FusionOS.Modules.Maintenance.Application.Assets.Commands.UpdateAsset;
 using FusionOS.Modules.Maintenance.Application.Assets.Queries.GetAssetById;
 using FusionOS.Modules.Maintenance.Application.Assets.Queries.ListAssets;
+using FusionOS.Modules.Maintenance.Application.Assets.Queries.ListAssetsWithExpiringWarranty;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -48,6 +50,27 @@ public sealed class AssetsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("expiring-warranty")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListExpiringWarranty([FromQuery] Guid companyId, [FromQuery] int withinDays = 30, CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(new ListAssetsWithExpiringWarrantyQuery(companyId, withinDays), cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAssetRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateAssetCommand(request.CompanyId, id, request.Name, request.Location, request.WarrantyExpirationDate, request.WarrantyProvider);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -60,5 +83,7 @@ public sealed class AssetsController : ControllerBase
 }
 
 public sealed record CreateAssetRequest(Guid CompanyId, string Code, string Name, string? Location);
+
+public sealed record UpdateAssetRequest(Guid CompanyId, string Name, string? Location, DateTimeOffset? WarrantyExpirationDate, string? WarrantyProvider);
 
 public sealed record DeactivateAssetRequest(Guid CompanyId);

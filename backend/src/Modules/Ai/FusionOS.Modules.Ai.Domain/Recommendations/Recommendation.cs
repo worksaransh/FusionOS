@@ -12,14 +12,22 @@ namespace FusionOS.Modules.Ai.Domain.Recommendations;
 /// this aggregate IS that orchestration-layer record: a durable,
 /// audit-tracked recommendation, Pending → Accepted/Dismissed.
 ///
-/// Deliberately does NOT include any real forecasting/OCR/ML model — the
+/// Originally shipped with no real forecasting/OCR/ML model behind it — the
 /// Python ML services §3.1 describes (time-series forecasting, OCR
-/// pipelines) are a separate workstream requiring real training data and
-/// external infrastructure this pass cannot stand up; building a fake one
-/// here would look done in a grep and not be. <see cref="Create"/> today is
-/// invoked manually via <c>RecordRecommendationCommand</c> as a stand-in
-/// producer, exactly the same "manual first, event-fed later" restraint
-/// Business Intelligence's KpiSnapshot documents for the same reason.
+/// pipelines) were called out as a separate workstream this first slice
+/// couldn't stand up. That gap has since been filled: demand forecasting is
+/// now a real, dedicated aggregate/pipeline (see
+/// <c>GetDemandForecastQuery</c> under Forecasting), and OCR has a real
+/// job-tracking pipeline (submit → Processing → Failed/Completed, see
+/// <c>OcrJob</c>) — though OCR still has no real extraction provider wired in
+/// (see <c>UnavailableOcrProvider</c>, which fails honestly rather than
+/// faking a result). This Recommendation aggregate remains the general
+/// human-confirmation record for any recommendation-class output, forecasting
+/// and OCR included; it is not superseded by either. <see cref="Create"/> can
+/// still be invoked manually via <c>RecordRecommendationCommand</c> as a
+/// stand-in producer for capabilities that don't yet have a real event-driven
+/// producer, the same "manual first, event-fed later" restraint Business
+/// Intelligence's KpiSnapshot documents for the same reason.
 ///
 /// <see cref="Type"/> is a free-form category (e.g. "ReorderSuggestion",
 /// "ProductionScheduleSuggestion") rather than an enum — §2 lists nine open

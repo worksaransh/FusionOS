@@ -1,4 +1,4 @@
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +21,16 @@ const schema = z.object({
   reason: z.string().max(1000).or(z.literal('')),
 });
 type FormValues = z.infer<typeof schema>;
+
+interface LeaveBalanceDto {
+  id: string;
+  employeeId: string;
+  leaveType: string;
+  year: number;
+  entitledDays: number;
+  usedDays: number;
+  remainingDays: number;
+}
 
 interface LeaveRequestDto {
   id: string;
@@ -54,6 +64,26 @@ export function LeaveRequestsPanel() {
     queryKey: ['leave-requests', companyId],
     queryFn: () => apiClient.get<PagedResult<LeaveRequestDto>>(`/hrms/leave-requests?companyId=${companyId}&page=1&pageSize=50`),
     enabled: Boolean(companyId),
+  });
+
+  // Nice-to-have "remaining balance" hint next to the submit button — purely
+  // informational, the real check happens server-side in
+  // ApproveLeaveRequestCommandHandler at approval time. Silently shows
+  // nothing when no balance is on record for this employee/type/year (same
+  // "no balance yet" case that handler treats as opt-in, not an error).
+  const watchedEmployeeId = useWatch({ control, name: 'employeeId' });
+  const watchedType = useWatch({ control, name: 'type' });
+  const watchedStartDate = useWatch({ control, name: 'startDate' });
+  const balanceYear = watchedStartDate ? new Date(watchedStartDate).getFullYear() : undefined;
+
+  const balanceHintQuery = useQuery({
+    queryKey: ['leave-balance-hint', companyId, watchedEmployeeId, watchedType, balanceYear],
+    queryFn: () =>
+      apiClient.get<LeaveBalanceDto>(
+        `/hrms/leave-balances?companyId=${companyId}&employeeId=${watchedEmployeeId}&leaveType=${watchedType}&year=${balanceYear}`,
+      ),
+    enabled: Boolean(companyId && watchedEmployeeId && watchedType && balanceYear),
+    retry: false,
   });
 
   const createRequest = useMutation({
@@ -96,7 +126,7 @@ export function LeaveRequestsPanel() {
       <h2 className="mb-3 text-lg font-semibold text-text">Leave Requests</h2>
 
       <Card className="mb-6">
-        <form onSubmit={handleSubmit((values) => createRequest.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <form noValidate onSubmit={handleSubmit((values) => createRequest.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="flex flex-col gap-1 text-sm">
             Employee
             <Controller
@@ -161,8 +191,13 @@ export function LeaveRequestsPanel() {
               )}
             />
           </label>
-          <div className="col-span-full">
+          <div className="col-span-full flex items-center gap-3">
             <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Submitting…' : 'Submit request'}</Button>
+            {balanceHintQuery.data && (
+              <span className="text-xs text-text-muted">
+                {balanceHintQuery.data.remainingDays} day(s) remaining of {balanceHintQuery.data.entitledDays} ({watchedType}, {balanceYear})
+              </span>
+            )}
           </div>
         </form>
         {createRequest.isError && createRequest.error instanceof ApiError && (

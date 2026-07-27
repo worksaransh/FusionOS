@@ -43,4 +43,52 @@ public sealed class DispatchRepository : IDispatchRepository
 
         return lines.SumAsync(l => l.QuantityDispatched, cancellationToken);
     }
+
+    // Batch counterpart of GetDispatchedQuantityAsync above (Phase 10 audit fix,
+    // 2026-07-27): groups by ProductId in a single SQL join+GROUP BY+SUM instead
+    // of one round trip per distinct product in the caller's GroupBy loop.
+    public async Task<IReadOnlyDictionary<Guid, decimal>> GetDispatchedQuantitiesAsync(Guid companyId, Guid salesOrderId, IReadOnlyCollection<Guid> productIds, CancellationToken cancellationToken = default)
+    {
+        var grouped = await (
+            from dispatch in _context.Dispatches
+            where dispatch.CompanyId == companyId && dispatch.SalesOrderId == salesOrderId
+            from line in dispatch.Lines
+            where productIds.Contains(line.ProductId)
+            group line by line.ProductId into g
+            select new { ProductId = g.Key, Quantity = g.Sum(l => l.QuantityDispatched) })
+            .ToListAsync(cancellationToken);
+
+        return grouped.ToDictionary(g => g.ProductId, g => g.Quantity);
+    }
+
+    // Dispatch has no CustomerId of its own (only SalesOrderId - see Dispatch's
+    // own doc comment), so Customer Portal scoping joins through SalesOrder
+    // here rather than filtering Dispatch directly - same no-cross-module-FK,
+    // same-DbContext join pattern GetDispatchedQuantityAsync above already uses.
+    public async Task<IReadOnlyList<Dispatch>> ListByCustomerAsync(Guid customerId, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var query =
+            from dispatch in _context.Dispatches
+            join order in _context.SalesOrders on dispatch.SalesOrderId equals order.Id
+            where order.CustomerId == customerId
+            orderby dispatch.DispatchDate descending
+            select dispatch;
+
+        return await query
+            .Include(d => d.Lines)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<int> CountByCustomerAsync(Guid customerId, CancellationToken cancellationToken = default)
+    {
+        var query =
+            from dispatch in _context.Dispatches
+            join order in _context.SalesOrders on dispatch.SalesOrderId equals order.Id
+            where order.CustomerId == customerId
+            select dispatch;
+
+        return query.CountAsync(cancellationToken);
+    }
 }

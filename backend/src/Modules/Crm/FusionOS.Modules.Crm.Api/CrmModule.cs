@@ -3,10 +3,13 @@ using FusionOS.BuildingBlocks.Application.Modularity;
 using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.Modules.Crm.Application.Accounts.Contracts;
 using FusionOS.Modules.Crm.Application.Activities.Contracts;
+using FusionOS.Modules.Crm.Application.Campaigns.Contracts;
 using FusionOS.Modules.Crm.Application.Contacts.Contracts;
 using FusionOS.Modules.Crm.Application.Leads.Commands.CreateLead;
 using FusionOS.Modules.Crm.Application.Leads.Contracts;
 using FusionOS.Modules.Crm.Application.Opportunities.Contracts;
+using FusionOS.Modules.Crm.Application.Tags.Contracts;
+using FusionOS.Modules.Crm.Application.Tasks.Contracts;
 using FusionOS.Modules.Crm.Infrastructure.Persistence;
 using FusionOS.Modules.Crm.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Routing;
@@ -38,6 +41,11 @@ public sealed class CrmModule : IModule
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<IContactRepository, ContactRepository>();
         services.AddScoped<IActivityRepository, ActivityRepository>();
+        services.AddScoped<IFollowUpTaskRepository, FollowUpTaskRepository>();
+        services.AddScoped<ICampaignRepository, CampaignRepository>();
+        services.AddScoped<ICampaignMembershipRepository, CampaignMembershipRepository>();
+        services.AddScoped<ITagRepository, TagRepository>();
+        services.AddScoped<IEntityTagRepository, EntityTagRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddModuleApplication(typeof(CreateLeadCommand).Assembly);

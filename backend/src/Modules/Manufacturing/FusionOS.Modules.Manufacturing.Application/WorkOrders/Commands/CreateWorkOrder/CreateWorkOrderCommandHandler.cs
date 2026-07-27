@@ -40,9 +40,15 @@ public sealed class CreateWorkOrderCommandHandler : IRequestHandler<CreateWorkOr
 
         // Snapshot the BOM's per-unit component quantities onto the work order so a later
         // BOM edit never retroactively changes what this order consumes.
-        var snapshot = bom.Lines.Select(l => new BomComponentSnapshot(l.ComponentProductId, l.Quantity)).ToList();
+        var snapshot = bom.Lines.Select(l => new BomComponentSnapshot(l.ComponentProductId, l.Quantity, l.UnitCost)).ToList();
 
-        var workOrder = WorkOrder.Create(request.CompanyId, bom.Id, bom.ProductId, request.WarehouseId, request.QuantityToProduce, snapshot);
+        // Snapshot the BOM's routing operations too (Phase 6, 2026-07-22) — same
+        // "capture at the point of the transaction" reasoning as the component snapshot.
+        var operations = bom.Operations
+            .Select(o => new RoutingOperationSnapshot(o.Id, o.SequenceNumber, o.OperationName, o.WorkCenter, o.StandardMinutes))
+            .ToList();
+
+        var workOrder = WorkOrder.Create(request.CompanyId, bom.Id, bom.ProductId, request.WarehouseId, request.QuantityToProduce, snapshot, operations);
 
         await _workOrderRepository.AddAsync(workOrder, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

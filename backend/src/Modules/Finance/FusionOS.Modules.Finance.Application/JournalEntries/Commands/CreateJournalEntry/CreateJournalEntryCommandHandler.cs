@@ -1,5 +1,6 @@
 using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Finance.Application.Accounts.Contracts;
+using FusionOS.Modules.Finance.Application.AccountingPeriods.Contracts;
 using FusionOS.Modules.Finance.Application.CostCenters.Contracts;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using FusionOS.Modules.Finance.Domain.JournalEntries;
@@ -12,18 +13,44 @@ public sealed class CreateJournalEntryCommandHandler : IRequestHandler<CreateJou
     private readonly IJournalEntryRepository _repository;
     private readonly IAccountRepository _accountRepository;
     private readonly ICostCenterRepository _costCenterRepository;
+    private readonly IAccountingPeriodRepository _accountingPeriodRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public CreateJournalEntryCommandHandler(IJournalEntryRepository repository, IAccountRepository accountRepository, ICostCenterRepository costCenterRepository, IUnitOfWork unitOfWork)
+    public CreateJournalEntryCommandHandler(
+        IJournalEntryRepository repository,
+        IAccountRepository accountRepository,
+        ICostCenterRepository costCenterRepository,
+        IAccountingPeriodRepository accountingPeriodRepository,
+        IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _accountRepository = accountRepository;
         _costCenterRepository = costCenterRepository;
+        _accountingPeriodRepository = accountingPeriodRepository;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<JournalEntryDto> Handle(CreateJournalEntryCommand request, CancellationToken cancellationToken)
     {
+        // Period-control guard (new, additive — see AccountingPeriod's own class doc comment).
+        // JournalEntry.Create always stamps EntryDate as DateTimeOffset.UtcNow (it does not
+        // accept a caller-supplied date), so "the date this entry posts on" is simply "now" —
+        // the same instant checked here is the one JournalEntry.Create is about to stamp.
+        // Only an explicitly Closed period covering that instant blocks creation; no period at
+        // all covering it (including a company that has never created one) is NOT a rejection —
+        // periods are opt-in, so behaviour for anyone not using them is byte-for-byte unchanged
+        // from before this feature existed.
+        var postingDate = DateTimeOffset.UtcNow;
+        var closedPeriod = await _accountingPeriodRepository.FindClosedPeriodCoveringDateAsync(request.CompanyId, postingDate, cancellationToken);
+        if (closedPeriod is not null)
+        {
+            throw new ValidationException(new[]
+            {
+                new FluentValidation.Results.ValidationFailure(nameof(Domain.JournalEntries.JournalEntry.EntryDate),
+                    $"Cannot post a journal entry: the accounting period {closedPeriod.PeriodStart:yyyy-MM-dd} to {closedPeriod.PeriodEnd:yyyy-MM-dd} is closed."),
+            });
+        }
+
         // Lines are grouped by AccountId (and separately by CostCenterId) before
         // checking, so the same account/cost center referenced by several request
         // lines is only looked up once instead of once per line.
