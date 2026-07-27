@@ -368,13 +368,23 @@ FusionOS/
 
 ## 🚀 Installation Guide
 
-### Prerequisite Check
-Ensure your environment meets the minimum requirements:
-- **Node.js**: v20.0.0 or higher
-- **npm** or **pnpm**: npm 10+ / pnpm 9+
-- **.NET SDK**: 8.0.x (For backend development)
-- **Docker Desktop**: v24.0+ (For containerized services)
-- **PostgreSQL**: 16.x (If running without Docker)
+### ⬇️ External Software & Tool Download Links
+
+Before setting up FusionOS, ensure you have installed the necessary runtime engines, container platforms, and database clients. Click the official links below to download installers for your operating system:
+
+| External Software / Tool | Required Version | Official Download Link | Purpose & Usage in FusionOS |
+| :--- | :--- | :--- | :--- |
+| ⚡ **.NET 8.0 SDK** | `v8.0.x LTS` | [👉 Download .NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) | Backend C# compilation, MediatR pipeline, & API execution |
+| 💚 **Node.js (LTS)** | `v20.x LTS` | [👉 Download Node.js](https://nodejs.org/en/download/) | Frontend React 18 SPA runtime & npm package ecosystem |
+| 🐳 **Docker Desktop** | `v24.0+` | [👉 Download Docker Desktop](https://www.docker.com/products/docker-desktop/) | Containerized PostgreSQL, Redis, Kafka, OTel & Grafana stack |
+| 🐙 **Git** | `v2.40+` | [👉 Download Git](https://git-scm.com/downloads) | Source control, repository management, & version control |
+| 🐘 **PostgreSQL** | `v16.x` | [👉 Download PostgreSQL](https://www.postgresql.org/download/) | Relational database engine (Standalone setup without Docker) |
+| 🔴 **Redis** | `v7.x` | [👉 Download Redis](https://redis.io/download/) • [Windows Build](https://github.com/tporadowski/redis/releases) | In-memory distributed caching & distributed locking |
+| 📦 **pnpm Package Manager**| `v9.x` | [👉 Download pnpm](https://pnpm.io/installation) | Fast, disk-space efficient Node package manager |
+| 🐘 **pgAdmin 4** | `v8.x` | [👉 Download pgAdmin](https://www.pgadmin.org/download/) | Visual GUI management client for PostgreSQL database |
+| 🛠 **DBeaver Community** | `v24.x` | [👉 Download DBeaver](https://dbeaver.io/download/) | Multi-platform database management tool for Postgres & Redis |
+| 📝 **Visual Studio Code** | `Latest` | [👉 Download VS Code](https://code.visualstudio.com/Download) | Recommended code editor for TypeScript, React, and Markdown |
+| 💻 **Visual Studio 2022** | `v17.8+` | [👉 Download Visual Studio](https://visualstudio.microsoft.com/downloads/) | IDE for C# .NET 8 backend debugging & solution development |
 
 ---
 
