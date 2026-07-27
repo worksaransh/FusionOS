@@ -386,71 +386,150 @@ Before setting up FusionOS, ensure you have installed the necessary runtime engi
 | 📝 **Visual Studio Code** | `Latest` | [👉 Download VS Code](https://code.visualstudio.com/Download) | Recommended code editor for TypeScript, React, and Markdown |
 | 💻 **Visual Studio 2022** | `v17.8+` | [👉 Download Visual Studio](https://visualstudio.microsoft.com/downloads/) | IDE for C# .NET 8 backend debugging & solution development |
 
+### 📌 What to Download First (Mandatory Download Sequence)
+
+Follow this exact sequence to prepare your development environment before cloning the project:
+
+1. **Step 1 — Download Git** ([Download Link](https://git-scm.com/downloads)): Required to clone the repository and manage code versions.
+2. **Step 2 — Download .NET 8.0 SDK** ([Download Link](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)): Required to compile and run the backend C# API service.
+3. **Step 3 — Download Node.js v20 LTS** ([Download Link](https://nodejs.org/en/download/)): Required to run the React 18 single page application and npm package tools.
+4. **Step 4 — Download Docker Desktop** ([Download Link](https://www.docker.com/products/docker-desktop/)): Required to spin up PostgreSQL 16, Redis, Kafka, and Grafana in containerized isolation.
+5. **Step 5 — (Optional) Download Database Client**: [pgAdmin 4](https://www.pgadmin.org/download/) or [DBeaver Community](https://dbeaver.io/download/) to visually inspect PostgreSQL tables.
+
 ---
 
-### 1. Windows Installation
+### 🪟 1. Windows Full Installation Process (Step-by-Step)
 
-#### Step 1: Install Required Tools
-Open PowerShell as Administrator and run:
-```powershell
-# Install Node.js, Git, and Docker Desktop via winget (or download installers directly)
-winget install --id Git.Git -e --source winget
-winget install --id OpenJS.NodeJS.LTS -e --source winget
-winget install --id Microsoft.DotNet.SDK.8 -e --source winget
-winget install --id Docker.DockerDesktop -e --source winget
-```
+#### Step 1: Download & Install Git
+- **Manual Installer**: Download [Git for Windows](https://git-scm.com/download/win) and run the `.exe`.
+- **PowerShell (Winget)**:
+  ```powershell
+  winget install --id Git.Git -e --source winget
+  ```
 
-#### Step 2: Clone the Repository
+#### Step 2: Download & Install .NET 8.0 SDK
+- **Manual Installer**: Download [.NET 8.0 SDK (x64)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) and run installer.
+- **PowerShell (Winget)**:
+  ```powershell
+  winget install --id Microsoft.DotNet.SDK.8 -e --source winget
+  ```
+- **Verify**: `dotnet --version` *(Should return 8.0.x)*
+
+#### Step 3: Download & Install Node.js LTS
+- **Manual Installer**: Download [Node.js v20.x LTS](https://nodejs.org/en/download/).
+- **PowerShell (Winget)**:
+  ```powershell
+  winget install --id OpenJS.NodeJS.LTS -e --source winget
+  ```
+- **Verify**: `node -v` and `npm -v`
+
+#### Step 4: Download & Install Docker Desktop
+- **Manual Installer**: Download [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/).
+- **PowerShell (Winget)**:
+  ```powershell
+  winget install --id Docker.DockerDesktop -e --source winget
+  ```
+- *Note: Restart your PC if prompted to enable WSL2 backend.*
+
+#### Step 5: Clone the FusionOS Repository
+Open PowerShell or Command Prompt and clone the repository:
 ```powershell
 git clone https://github.com/worksaransh/FusionOS.git
 cd FusionOS
 ```
 
-#### Step 3: Configure Environment
+#### Step 6: Create & Configure Environment File
 ```powershell
 Copy-Item .env.example .env
 ```
 
-#### Step 4: Launch Frontend Development Server
+#### Step 7: Launch Infrastructure Stack via Docker Compose
+Start PostgreSQL, Redis, Kafka, Prometheus, and Grafana in background containers:
+```powershell
+docker compose up -d postgres redis kafka otel-collector
+```
+
+#### Step 8: Build Backend (.NET 8)
+```powershell
+cd backend
+dotnet restore FusionOS.sln
+dotnet build FusionOS.sln
+cd ..
+```
+
+#### Step 9: Install Dependencies & Run Frontend (React 18)
 ```powershell
 cd frontend
 npm install
 npm run dev
 ```
-*The web interface will open at `http://localhost:5173`.*
+
+#### Step 10: Access Local FusionOS Services
+Open your browser and navigate to:
+- 🌐 **FusionOS Web App**: `http://localhost:5173`
+- 📡 **Backend REST API**: `http://localhost:5000`
+- 📑 **Swagger API Manual**: `http://localhost:5000/swagger`
 
 ---
 
-### 2. macOS Installation
+### 🍎 2. macOS Full Setup Process (Step-by-Step)
 
-#### Step 1: Install Tools via Homebrew
+#### Step 1: Install Homebrew Package Manager
+Open Terminal (`Cmd + Space` -> type `Terminal`) and install Homebrew if not present:
 ```bash
-brew update
-brew install git node dotnet-sdk docker postgresql@16 redis kafka
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-#### Step 2: Clone & Configure
+#### Step 2: Download & Install Git
+```bash
+brew install git
+```
+
+#### Step 3: Download & Install .NET 8.0 SDK
+- **Homebrew**: `brew install dotnet-sdk`
+- **Official Installer**: Or download the Apple Silicon (M1/M2/M3) / Intel installer from [.NET 8 macOS Downloads](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).
+
+#### Step 4: Download & Install Node.js LTS
+```bash
+brew install node@20
+```
+
+#### Step 5: Download & Install Docker Desktop for Mac
+- Download [Docker Desktop for Mac (Apple Silicon / Intel)](https://www.docker.com/products/docker-desktop/) or install via Homebrew:
+  ```bash
+  brew install --cask docker
+  ```
+- Launch Docker Desktop from Applications and grant system permissions.
+
+#### Step 6: Clone the FusionOS Repository
 ```bash
 git clone https://github.com/worksaransh/FusionOS.git
 cd FusionOS
+```
+
+#### Step 7: Configure Environment File
+```bash
 cp .env.example .env
 ```
 
-#### Step 3: Run Infrastructure Services via Docker Compose
+#### Step 8: Start Background Infrastructure Containers
 ```bash
 docker compose up -d postgres redis kafka otel-collector
 ```
 
-#### Step 4: Launch Web Frontend
+#### Step 9: Build & Run Web Client
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
+#### Step 10: Verify Installation
+- Open `http://localhost:5173` in Safari or Chrome.
+
 ---
 
-### 3. Ubuntu / Linux Installation
+### 🐧 3. Ubuntu / Linux Installation
 
 ```bash
 # Update APT and install dependencies
