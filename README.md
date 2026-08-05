@@ -17,28 +17,20 @@
     <a href="#architecture">Architecture</a> •
     <a href="#module-overview">Modules</a> •
     <a href="#installation-guide">Installation</a> •
+    <a href="#download-fusionos">Downloads</a> •
     <a href="#tech-stack">Tech Stack</a> •
     <a href="#api-documentation">API Docs</a> •
-    <a href="#deployment-guide">Deployment</a>
+    <a href="#security--compliance">Security</a>
   </p>
 
   <p align="center">
-    <!-- Version -->
     <a href="https://github.com/worksaransh/FusionOS/releases"><img src="https://img.shields.io/badge/version-v1.0.0-blue.svg?style=for-the-badge&logo=git" alt="Version 1.0.0" /></a>
-    <!-- License -->
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge&logo=open-source-initiative" alt="MIT License" /></a>
-    <!-- Build Status -->
-    <a href="https://github.com/worksaransh/FusionOS/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg?style=for-the-badge&logo=github-actions" alt="Build Status" /></a>
-    <!-- Framework -->
     <img src="https://img.shields.io/badge/.NET-8.0-512BD4.svg?style=for-the-badge&logo=dotnet" alt=".NET 8" />
-    <!-- Frontend -->
     <img src="https://img.shields.io/badge/React-18.3-61DAFB.svg?style=for-the-badge&logo=react" alt="React 18" />
-    <!-- DB -->
     <img src="https://img.shields.io/badge/PostgreSQL-16.0-4169E1.svg?style=for-the-badge&logo=postgresql" alt="PostgreSQL" />
-    <!-- Docker -->
     <img src="https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=for-the-badge&logo=docker" alt="Docker" />
-    <!-- Platform -->
-    <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg?style=for-the-badge" alt="Platforms" />
+    <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20PWA-lightgrey.svg?style=for-the-badge" alt="Platforms" />
   </p>
 
 </div>
@@ -48,26 +40,18 @@
 ## 📋 Table of Contents
 
 - [Executive Summary](#-executive-summary)
-  - [What is FusionOS?](#what-is-fusionos)
-  - [The Problem FusionOS Solves](#the-problem-fusionos-solves)
-  - [Why FusionOS Exists](#why-fusionos-exists)
-  - [Core Philosophy](#core-philosophy)
-  - [Business Value](#business-value)
-- [🖼 Visual Gallery & Screen Tours](#-visual-gallery--screen-tours)
-- [🎬 Animated Workflow Demonstrations](#-animated-workflow-demonstrations)
+- [🖼 Screenshots](#-screenshots)
 - [🏗 Architecture & Design Principles](#-architecture--design-principles)
-- [📦 Enterprise Module Overview (15 Modules)](#-enterprise-module-overview-15-modules)
+- [📦 Enterprise Module Overview (16 Modules)](#-enterprise-module-overview-16-modules)
 - [⚙️ Tech Stack Matrix](#%EF%B8%8F-tech-stack-matrix)
 - [📂 Directory Structure](#-directory-structure)
 - [🚀 Installation Guide](#-installation-guide)
-  - [Windows Installation](#1-windows-installation)
-  - [macOS Installation](#2-macos-installation)
-  - [Ubuntu / Linux Installation](#3-ubuntu--linux-installation)
-  - [Docker Compose Installation](#4-docker-compose-installation)
+- [⬇️ Download FusionOS](#%EF%B8%8F-download-fusionos)
 - [🔑 Environment Variables Reference](#-environment-variables-reference)
 - [📡 API Documentation](#-api-documentation)
 - [🗄 Database & Data Architecture](#-database--data-architecture)
 - [🚀 Deployment Guide](#-deployment-guide)
+- [🔐 Security & Compliance](#-security--compliance)
 - [🔧 Troubleshooting & FAQ](#-troubleshooting--faq)
 - [🤝 Contributing & Community](#-contributing--community)
 - [📄 License](#-license)
@@ -78,106 +62,56 @@
 
 ### What is FusionOS?
 
-**FusionOS** is a next-generation, open-source Enterprise Resource Planning (ERP) platform and business operating system designed for mid-market and enterprise organizations. FusionOS unifies every core business function—from **Financial Accounting**, **Supply Chain**, and **Manufacturing (MRP)** to **CRM**, **HRMS**, **Quality Assurance**, and **Predictive AI Operations**—into a cohesive, high-performance web platform.
+**FusionOS** is an open-source Enterprise Resource Planning (ERP) platform and business operating system for mid-market and enterprise organizations. It unifies core business functions — **Financial Accounting**, **Supply Chain**, **Manufacturing (MRP)**, **CRM**, **HRMS**, **Quality Assurance**, **Billing/Subscriptions**, and **AI-assisted operations** — into a single, cohesive platform.
 
-Engineered as a clean **.NET 8 Modular Monolith** coupled with a modern **React 18 Single Page Application**, FusionOS eliminates the fragmentation, licensing bloat, and operational complexity of legacy systems like SAP, Oracle NetSuite, and Dynamics 365.
+Built as a **.NET 8 Modular Monolith** paired with a **React 18 SPA**, FusionOS aims to reduce the fragmentation, licensing overhead, and operational complexity of legacy systems like SAP, Oracle NetSuite, and Dynamics 365.
 
 ### The Problem FusionOS Solves
 
-Traditional enterprise software suffers from severe systemic issues:
-1. **Siloed Data & Fragmented Systems**: Accounting, inventory, and sales exist in separate software packages connected by fragile batch scripts.
-2. **Exorbitant License & Implementation Fees**: Legacy ERP vendors charge millions in per-user licenses, lock-in support fees, and mandatory upgrade consultants.
-3. **Outdated User Interfaces**: Clunky, slow desktop UIs built in the 2000s that hinder employee productivity and require extensive training.
-4. **Weak Multi-Tenant Isolation**: Vulnerable SaaS backends that leak sensitive cross-tenant data due to improper database filtering.
-
-### Why FusionOS Exists
-
-FusionOS was built from the ground up to offer an **open, transparent, enterprise-grade alternative**. It provides:
-- **Zero License Lock-in**: 100% open-source under the permissive MIT License.
-- **Unified Clean Architecture**: Every module strictly obeys CQRS patterns, tenant-isolation pipeline behaviors, and transactional outbox event streams.
-- **Sub-Second Performance**: Optimized PostgreSQL queries with `xmin` concurrency controls, Redis distributed caching, and Vite-bundled frontend assets.
-- **Embedded AI & Automation**: Native AI Copilot, predictive demand forecasting, automated OCR invoice ingestion, and automated MRP explosion engines.
+1. **Siloed Data & Fragmented Systems** — accounting, inventory, and sales often live in separate tools stitched together with fragile batch scripts.
+2. **High License & Implementation Cost** — legacy ERP vendors charge heavily for per-user licenses and mandatory implementation consultants.
+3. **Dated User Interfaces** — many incumbent ERPs still run 2000s-era desktop UIs.
+4. **Multi-Tenant Isolation Risk** — SaaS backends that get tenant-scoping wrong leak cross-customer data.
 
 ### Core Philosophy
 
-* **Security & Tenant Isolation by Default**: Every incoming request passes through automated tenant verification behaviors (`TenantIsolationBehavior`) and global JWT authorization policies.
-* **Modular Monolith First**: Clean domain separation without the operational chaos of premature microservices. Modules communicate via strongly-typed MediatR commands and Kafka integration events.
-* **Developer Experience First**: Instant Docker environment setup, complete TypeScript signatures, OpenAPI / Swagger documentation, and automated CI pipelines.
-
-### Business Value
-
-| Business Area | Legacy ERP Benchmark | FusionOS Advantage | Impact |
-| :--- | :--- | :--- | :--- |
-| **Total Cost of Ownership (TCO)** | $100k - $1M+ / year | **$0 License Fees** | 90% Cost Reduction |
-| **Order Processing Cycle** | 24 - 48 hours | **Real-Time Automated** | 10x Faster Execution |
-| **Multi-Tenant Deployment** | Custom database per tenant | **Isolated Unified Engine** | Instant Tenant Onboarding |
-| **Manufacturing MRP** | Nightly batch runs | **Sub-Second Explosion Engine** | Immediate Inventory Insight |
+- **Tenant isolation and RBAC by default** — every request passes through pipeline behaviors (`AuthorizationBehavior`, `TenantIsolationBehavior`) before it reaches a handler; permission checks fail closed rather than silently passing unmarked requests through.
+- **Modular Monolith first** — clean domain separation without premature microservice overhead. Modules communicate via strongly-typed MediatR commands and Kafka integration events.
+- **Honest about where it stands** — this README and the linked docs describe what's actually implemented today, not just what's designed. See [Security & Compliance](#-security--compliance) for a concrete example of that distinction.
 
 ---
 
-## 🖼 Visual Gallery & Screen Tours
+## 🖼 Screenshots
 
-Here are representative visual captures and interface layouts for key FusionOS operational screens.
+Real captures from a running instance (Luxor, the platform's own demo/audit tenant) — not mockups.
 
-### Executive Dashboard
-> *Real-time financial analytics, revenue trajectories, inventory throughput, and AI narrative summaries.*
-
-![Executive Dashboard](assets/screenshots/dashboard.png)
-*(Fallback view: Default executive dashboard renders at `/app/dashboard`)*
-
-### Inventory & Stock Ledger
-> *Multi-warehouse stock visibility, batch tracking, serial number histories, and bin transfer ledgers.*
-
-![Inventory Management](assets/screenshots/inventory.png)
-
-### Manufacturing & Bill of Materials (BOM)
-> *Multi-level BOM tree explosions, work center capacity planning, machine state tracking, and MRP runs.*
-
-![Manufacturing Operations](assets/screenshots/manufacturing.png)
-
-### Warehouse & Logistics
-> *3D-mapped warehouse zones, bin/rack/shelf layouts, package consolidation, and goods receipts.*
-
-![Warehouse Management](assets/screenshots/warehouse.png)
-
-### Procurement & Supplier Rating
-> *RFQ quotes comparison, automated purchase orders, supplier performance ratings, and vendor portals.*
-
-![Procurement Operations](assets/screenshots/procurement.png)
-
-### Financial Ledger & Accounting
-> *Double-entry journal entries, chart of accounts, GST tax return summaries, and cash flow statements.*
-
-![Financial Accounting](assets/screenshots/finance.png)
-
----
-
-## 🎬 Animated Workflow Demonstrations
-
-Placeholders and workflow walkthroughs for interactive video animations:
-
-| Workflow Demonstration | Visual Preview & Description | Demo Path |
-| :--- | :--- | :--- |
-| 🔐 **Authentication & Onboarding** | *Zero-friction company creation, admin registration, and JWT token issuance.* | `assets/gifs/auth_flow.gif` |
-| 📊 **Real-Time Analytics** | *Live KPI tile stream, interactive chart drilldowns, and OTel metric graphs.* | `assets/gifs/dashboard_analytics.gif` |
-| 📦 **Stock Adjustment & Batch Audit** | *Adding stock ledger entries with serial tracking and instant stock updates.* | `assets/gifs/inventory_adjustment.gif` |
-| ⚙️ **BOM Explosion & Work Order** | *Multi-level material explosion and automatic work center job scheduling.* | `assets/gifs/manufacturing_mrp.gif` |
-| 📑 **GST & Financial Statements** | *Generating automated Balance Sheet, P&L, and GST return tax ledgers.* | `assets/gifs/finance_reports.gif` |
-| 🚚 **Goods Receipt & Bin Putaway** | *Receiving purchase order items directly into warehouse storage bins.* | `assets/gifs/warehouse_putaway.gif` |
-| 🛒 **RFQ & Purchase Order Approval** | *Vendor quote matrix evaluation and multi-level manager approval.* | `assets/gifs/purchase_orders.gif` |
-| 🏷️ **Sales Quotation to Dispatch** | *Converting customer quotes into sales orders, dispatches, and invoices.* | `assets/gifs/sales_dispatch.gif` |
+<table>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/dashboard.png" alt="Executive Operating Dashboard" /><p align="center"><b>Executive Operating Dashboard</b></p></td>
+    <td width="50%"><img src="assets/screenshots/finance.png" alt="Finance — Chart of Accounts" /><p align="center"><b>Finance — Chart of Accounts</b></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/inventory.png" alt="Inventory — Product Catalog" /><p align="center"><b>Inventory — Product Catalog</b></p></td>
+    <td width="50%"><img src="assets/screenshots/manufacturing.png" alt="Manufacturing — BOM & Work Centers" /><p align="center"><b>Manufacturing — BOM & Work Centers</b></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/warehouse.png" alt="Warehouse Operations" /><p align="center"><b>Warehouse Operations</b></p></td>
+    <td width="50%"><img src="assets/screenshots/procurement.png" alt="Procurement — Suppliers & Purchase Orders" /><p align="center"><b>Procurement — Suppliers & Purchase Orders</b></p></td>
+  </tr>
+</table>
 
 ---
 
 ## 🏗 Architecture & Design Principles
 
-FusionOS is structured as a **Modular Monolith** using **Clean Architecture** patterns within each domain module.
+FusionOS is structured as a **Modular Monolith** using Clean Architecture patterns within each domain module.
 
 ```
                                   ┌───────────────────────────────────────────┐
                                   │           React 18 SPA (Vite Web)         │
+                                  │        + installable PWA (offline shell)  │
                                   └─────────────────────┬─────────────────────┘
-                                                        │ HTTP / REST / WebSockets
+                                                        │ HTTP / REST
                                                         ▼
                                   ┌───────────────────────────────────────────┐
                                   │             FusionOS.Api.Host             │
@@ -191,7 +125,7 @@ FusionOS is structured as a **Modular Monolith** using **Clean Architecture** pa
    └───────────┬───────────┘                └───────────┬───────────┘                └───────────┬───────────┘
                │                                        │                                        │
                └────────────────────────────────────────┼────────────────────────────────────────┘
-                                                        │ EF Core / IDbContext
+                                                        │ EF Core / IDbContext (one per module)
                                                         ▼
                                   ┌───────────────────────────────────────────┐
                                   │          PostgreSQL 16 Database           │
@@ -205,93 +139,69 @@ FusionOS is structured as a **Modular Monolith** using **Clean Architecture** pa
 ```
 
 ### Key Architectural Highlights
-1. **MediatR Pipeline Behaviors**:
-   - `LoggingBehavior`: Logs incoming request payloads and execution time.
-   - `ValidationBehavior`: Executes FluentValidation rules before domain processing.
-   - `AuthorizationBehavior`: Enforces fine-grained permission claims (`Permissions.Inventory.Write`, etc.).
-   - `TenantIsolationBehavior`: Reflectively validates that the request's `CompanyId` matches the caller's JWT claim, enforcing strict tenant isolation.
-   - `AuditBehavior`: Automatically records domain state mutations in `AuditLogs` with true entity IDs.
-2. **PostgreSQL Optimistic Concurrency**: Uses Postgres `xmin` system column (`UseXminAsConcurrencyToken()`) for robust multi-user concurrency control.
-3. **Kafka Event Streaming**: Cross-module integration events (e.g., `GoodsReceiptLineReceivedEvent`) are published asynchronously to Kafka topics for eventual consistency across domains.
+
+1. **MediatR Pipeline Behaviors** (`backend/src/Shared/FusionOS.BuildingBlocks.Application/Behaviors/`):
+   - `LoggingBehavior` — logs incoming requests and execution time.
+   - `ValidationBehavior` — runs FluentValidation rules before domain processing.
+   - `AuthorizationBehavior` — RBAC permission checks; fails closed on any request that doesn't declare itself either permission-gated or explicitly public.
+   - `TenantIsolationBehavior` — validates a request's `CompanyId` against the caller's JWT claim.
+   - `AuditBehavior` — records mutations to an audit trail.
+   - `PlanEntitlementBehavior` — gates module access by the company's Billing subscription tier.
+2. **PostgreSQL Optimistic Concurrency** — every entity uses the Postgres `xmin` system column (`UseXminAsConcurrencyToken()`) for concurrency control.
+3. **Kafka Event Streaming** — cross-module integration events (e.g., a goods receipt confirming a purchase order) are published asynchronously for eventual consistency across domains.
+4. **Real EF Core migrations** for every module (not `EnsureCreated`), so the schema is versioned and upgradeable in place.
 
 ---
 
-## 📦 Enterprise Module Overview (15 Modules)
+## 📦 Enterprise Module Overview (16 Modules)
 
-FusionOS includes 15 fully-featured enterprise modules:
+### 1. 🛡️ Core & Tenant Administration
+Multi-tenant bootstrap, RBAC (roles/permissions/segregation-of-duties conflict rules), branches/departments, document management, global search, feature flags, audit logging.
 
-### 1. 🛡️ Core & Tenant Administration (`FusionOS.Modules.Core`)
-- **Multi-Tenant Bootstrap**: Anonymous company initialization with automatic Owner user creation.
-- **Role-Based Access Control (RBAC)**: Fine-grained permissions, custom role creation, and user assignment.
-- **Audit Logging**: Immutable tracking of all user actions, system modifications, and access logs.
+### 2. 💰 Finance & General Ledger
+Chart of accounts, journal entries, recurring vouchers, fiscal period close, financial statements (Balance Sheet, P&L, Cash Flow), GST/e-invoicing/e-way-bill/TDS-TCS compliance, FX revaluation, multi-entity consolidation with intercompany elimination.
 
-### 2. 💰 Finance & General Ledger (`FusionOS.Modules.Finance`)
-- **Chart of Accounts & GL**: Flexible multi-level account trees with automated debit/credit balancing.
-- **Journal Entries & Recurring Vouchers**: Template-based recurring transactions and auto-reversals.
-- **Financial Statements**: Real-time Balance Sheets, Profit & Loss statements, and Cash Flow reports.
-- **Tax & GST Management**: Tax period summaries, GST return calculations, and compliance audit reports.
+### 3. 📦 Inventory & Stock Ledger
+Product master with generic attributes, immutable stock ledger, batch & serial tracking, barcode/QR generation, unit-of-measure conversions.
 
-### 3. 📦 Inventory & Stock Ledger (`FusionOS.Modules.Inventory`)
-- **Product Master & SKUs**: Variable product attributes, unit-of-measure conversions, and pricing tiers.
-- **Stock Ledger**: Immutable transaction history for all stock movements (receipts, issues, adjustments).
-- **Serial & Batch Tracking**: Full lineage tracing for serialized assets and perishable batch lots.
+### 4. 🏬 Warehouse Operations
+Warehouse → Zone → Rack → Shelf → Bin hierarchy, goods receipt & putaway, pick-list assignment/packing, cycle counts.
 
-### 4. 🏬 Warehouse Operations (`FusionOS.Modules.Warehouse`)
-- **Multi-Warehouse Topology**: Hierarchical layout management down to Warehouse → Zone → Rack → Shelf → Bin.
-- **Goods Receipts & Putaway**: Direct integration with Procurement purchase orders for physical stock receiving.
-- **Package Picking & Packing**: Consolidation of picking lists and shipment package verification.
+### 5. ⚙️ Manufacturing & MRP
+Multi-level, versioned BOMs; work center & machine capacity planning; multi-level MRP explosion; work order operations, rework, and WIP reporting.
 
-### 5. ⚙️ Manufacturing & MRP (`FusionOS.Modules.Manufacturing`)
-- **Bill of Materials (BOM)**: Multi-level BOM trees with scrap percentages and routing steps.
-- **Work Center & Machine Management**: Work center capacity tracking, hourly cost metrics, and maintenance states.
-- **Material Requirements Planning (MRP)**: Sub-second explosion engine calculating net material requirements based on active sales orders.
+### 6. 🛒 Procurement & Purchasing
+Supplier directory & scorecards, RFQ/quote comparison, multi-tier PO approval workflow, three-way match (PO ↔ GRN ↔ AP), vendor returns.
 
-### 6. 🛒 Procurement & Purchasing (`FusionOS.Modules.Procurement`)
-- **Supplier Directory**: Vendor profiles, contact details, payment terms, and performance scorecard ratings.
-- **Requests for Quotation (RFQ)**: Multi-vendor quote comparisons and bidding analysis.
-- **Purchase Orders (PO)**: Multi-tier approval workflows, PO issuance, and automated receipt matching.
+### 7. 🤝 CRM & Sales Pipeline
+Leads/opportunities with scoring and Kanban pipeline, campaigns, territory/owner assignment, duplicate detection, activity timeline.
 
-### 7. 🤝 CRM & Sales Pipeline (`FusionOS.Modules.Crm`)
-- **Lead & Opportunity Tracking**: Visual Kanban sales pipelines, lead scoring, and stage transitions.
-- **Customer Directory**: Comprehensive customer histories, communication logs, and credit limits.
-- **Follow-up Tasks & Campaigns**: Automated reminder tasks and marketing campaign tracking.
+### 8. 🏷️ Sales & Customer Portal
+Quotations → sales orders → dispatch → invoice, discount rules, credit notes, returns/RMA, a self-service customer portal.
 
-### 8. 🏷️ Sales & Customer Portal (`FusionOS.Modules.Sales`)
-- **Quotations & Sales Orders**: Discount matrix enforcement, quotation conversion, and order locking.
-- **Dispatch Management**: Delivery note generation, carrier tracking integration, and partial dispatches.
-- **Returns & Credit Notes**: Customer return authorization (RMA) processing linked directly to finance credit notes.
+### 9. 👥 HRMS & Payroll
+Employee directory, leave management with balances/carry-forward, onboarding/offboarding workflows, payroll → Finance GL posting.
 
-### 9. 👥 HRMS & Payroll (`FusionOS.Modules.Hrms`)
-- **Employee Directory**: Complete employee master files, department structures, and designation trees.
-- **Leave Management**: Custom leave types, balance tracking, approval workflows, and carry-forward rules.
-- **Onboarding & Offboarding**: Task checklists for new hires and employee exit clearing processes.
+### 10. 🔬 Quality Control
+Inspection plans (incoming/in-process/final), non-conformance reports, CAPA, quality holds, Certificates of Analysis, SPC and calibration tracking.
 
-### 10. 🔬 Quality Control (`FusionOS.Modules.Quality`)
-- **Inspection Plans**: Quality criteria specifications for incoming goods, in-process assembly, and final delivery.
-- **Quality Audits & Deviations**: Non-conformance reporting (NCR), deviation request approvals, and corrective actions (CAPA).
-- **Quality Holds & Certificates**: Quarantining defective stock and issuing Certificates of Analysis (COA).
+### 11. 🔧 Maintenance & Asset Operations
+Asset registry, preventive maintenance scheduling, meter-reading triggers, spare-parts usage, MTBF/MTTR downtime analytics.
 
-### 11. 🔧 Maintenance & Asset Operations (`FusionOS.Modules.Maintenance`)
-- **Asset Registry**: Equipment master records, depreciation tracking, and location histories.
-- **Preventive Maintenance**: Scheduled maintenance templates, meter-reading triggers, and work order generation.
-- **Downtime Analytics**: Tracking Mean Time Between Failures (MTBF) and Mean Time to Repair (MTTR).
+### 12. 📊 Business Intelligence & Reporting
+Live-query executive dashboards and KPI definitions computed directly against operational data (not manual snapshots).
 
-### 12. 📊 Business Intelligence & Reporting (`FusionOS.Modules.BusinessIntelligence`)
-- **Executive Dashboards**: Configurable metric widgets, real-time KPI tiles, and trend visualizations.
-- **KPI Engine**: Custom formula builder for calculating enterprise efficiency and operational margins.
-- **Export Pipelines**: Scheduled CSV, PDF, and Excel report delivery engine.
+### 13. 🤖 AI Platform & Copilot
+Natural-language search, demand forecasting, invoice OCR ingestion, and an AI copilot grounded in RBAC-scoped retrieval.
 
-### 13. 🤖 AI Platform & Copilot (`FusionOS.Modules.Ai`)
-- **Natural Language Search**: Vector-assisted universal search across sales orders, products, and customer records.
-- **Demand Forecasting**: Predictive machine learning models predicting stock requirements based on seasonal sales histories.
-- **Invoice OCR Processing**: Automated extraction of invoice line items from PDF uploads using OCR.
+### 14. 🔌 Integration Hub
+Connector framework for Shopify/ONDC/payment gateways/shipping providers with signature-verified inbound webhooks; ETL migration tooling for Tally/SAP/legacy data.
 
-### 14. 🔌 Integration Hub (`FusionOS.Modules.IntegrationHub`)
-- **Webhook Subscriptions**: Event-driven HTTP webhooks for third-party system integration.
-- **ETL Data Migration Jobs**: Batch import/export tools supporting legacy SAP, Tally, and QuickBooks data migration.
+### 15. 🏪 Plugin Marketplace
+Third-party extension framework with installable/toggleable plugin listings.
 
-### 15. 🏪 Plugin Marketplace (`FusionOS.Modules.Marketplace`)
-- **Third-Party Extensions**: Modular extension framework allowing custom third-party integrations and custom UI panels to be toggled dynamically.
+### 16. 💳 Billing & Subscriptions
+Plan catalog, per-company subscriptions with trial/active/past-due status, usage records, and plan-tier module entitlement enforcement.
 
 ---
 
@@ -300,15 +210,16 @@ FusionOS includes 15 fully-featured enterprise modules:
 | Layer | Technologies Used | Details & Highlights |
 | :--- | :--- | :--- |
 | **Backend Framework** | .NET 8 (C#) | Clean Architecture, CQRS, MediatR, FluentValidation |
-| **Frontend Framework** | React 18, TypeScript | Single Page Application (SPA), Vite 5, React Router v6 |
-| **Styling & UI** | TailwindCSS, Lucide Icons | Responsive modern design, custom dark mode, accessible widgets |
-| **Database** | PostgreSQL 16 | Multi-DbContext architecture, Entity Framework Core 8, `xmin` concurrency |
-| **Caching & Locking** | Redis 7 | Distributed cache, Distributed locks (`RedLock`) |
-| **Event Bus / Messaging**| Apache Kafka | Cross-module integration events, eventual consistency |
-| **Authentication** | JWT + BCrypt + Refresh Tokens| SHA-256 hashed refresh tokens, claims-based authorization |
-| **Observability** | OpenTelemetry, Prometheus, Grafana | Distributed tracing, application metrics, Loki log aggregation |
-| **DevOps & Containers** | Docker, Docker Compose, Nginx | Multi-stage production container builds, reverse proxy |
-| **Testing** | Vitest, React Testing Library, Playwright | Unit testing, integration tests, E2E browser automation |
+| **Frontend Framework** | React 18, TypeScript | SPA, Vite 5, React Router v6, installable PWA |
+| **Styling & UI** | TailwindCSS, Lucide Icons | Responsive design, dark mode |
+| **Database** | PostgreSQL 16 | Multi-DbContext-per-module, EF Core 8, `xmin` concurrency, real versioned migrations |
+| **Caching & Locking** | Redis 7 | Distributed cache, distributed locks |
+| **Event Bus / Messaging**| Apache Kafka | Cross-module integration events |
+| **Authentication** | JWT (HS256) + BCrypt + rotating refresh tokens | See [Security & Compliance](#-security--compliance) for what this does and doesn't cover today |
+| **Observability** | OpenTelemetry, Prometheus, Grafana, Loki | Distributed tracing, metrics, log aggregation |
+| **DevOps & Containers** | Docker, Docker Compose, Nginx | Multi-stage production builds, reverse proxy |
+| **Distribution** | Inno Setup (Windows), self-contained package (macOS), PWA (any platform) | See [Download FusionOS](#%EF%B8%8F-download-fusionos) |
+| **Testing** | xUnit, Vitest, React Testing Library, Playwright | Unit, integration, and E2E coverage |
 
 ---
 
@@ -316,52 +227,35 @@ FusionOS includes 15 fully-featured enterprise modules:
 
 ```
 FusionOS/
-├── .github/                      # GitHub Actions CI/CD workflows and issue templates
-│   ├── ISSUE_TEMPLATE/           # Bug report and feature request templates
-│   ├── workflows/                # CI, CD, and security audit workflows
-│   └── PULL_REQUEST_TEMPLATE.md  # PR standards checklist
-├── assets/                       # SVG branding, hero banners, screenshots, and visual media
-│   ├── banner/                   # High-res hero banner SVG
-│   ├── logo/                     # FusionOS brand mark and wordmark SVG
-│   └── screenshots/              # High-resolution UI module captures
+├── .github/                      # CI/CD workflows, Dependabot config, issue templates
+├── assets/                       # SVG branding, hero banner, architecture diagrams
 ├── backend/                      # .NET 8 Modular Monolith Solution
-│   ├── FusionOS.sln              # Master C# solution manifest
+│   ├── FusionOS.sln
 │   ├── src/
-│   │   ├── Host/                 # FusionOS.Api (Web API Host application & entrypoint)
-│   │   ├── Modules/              # 15 Independent Enterprise Domain Modules
-│   │   │   ├── Ai/               # Predictive forecasting & OCR
-│   │   │   ├── Core/             # Auth, Users, Roles, Tenant isolation
-│   │   │   ├── Finance/          # General Ledger & Tax
-│   │   │   ├── Inventory/        # Products & Stock Ledger
-│   │   │   ├── Manufacturing/    # BOM & MRP explosion
-│   │   │   └── ... (Procurement, Sales, HRMS, Quality, Maintenance, BI, etc.)
-│   │   └── Shared/               # BuildingBlocks (MediatR pipeline behaviors, Base Entities)
+│   │   ├── Host/                 # FusionOS.Api.Host — Web API entrypoint, serves the SPA in single-EXE builds
+│   │   ├── Modules/               # 16 independent enterprise domain modules
+│   │   │   ├── Ai/ Billing/ BusinessIntelligence/ Core/ Crm/ Finance/
+│   │   │   ├── Hrms/ IntegrationHub/ Inventory/ Maintenance/ Manufacturing/
+│   │   │   └── Marketplace/ Procurement/ Quality/ Sales/ Warehouse/
+│   │   └── Shared/                # BuildingBlocks — MediatR pipeline behaviors, base entities
 │   └── tests/                    # xUnit unit and integration test projects
-├── docs/                         # Architecture blueprints, database schema, and deployment specs
-│   ├── api/                      # OpenAPI specification & endpoint guides
-│   ├── architecture/             # SVG diagrams and system flow specs
-│   ├── audit/                    # Enterprise completion and sprint audit reports
-│   ├── blueprint/                # 14 Master architecture blueprint documents
-│   ├── database/                 # ERD and migration guide documentation
-│   └── deployment/               # Enterprise production deployment manuals
-├── docker/                       # Docker Compose configs & overrides
-├── frontend/                     # React 18 + Vite + TypeScript Web Application
-│   ├── src/
-│   │   ├── app/                  # Application providers and root router
-│   │   ├── modules/              # 15 React module panel applications
-│   │   ├── public/               # Landing page, solution tours, and public portal
-│   │   ├── shared/               # Reusable UI primitives, API client, and Zustand stores
-│   │   └── index.css             # TailwindCSS token directives
-│   ├── package.json              # Frontend dependency manifest
-│   └── vite.config.ts            # Vite build configuration
-├── observability/                # Prometheus, Grafana, and OTel Collector configurations
-├── scripts/                      # PowerShell & Bash automation scripts (Postgres backup, migrations)
-├── docker-compose.yml            # Full-stack local development Docker orchestration
-├── README.md                     # Repository Master Documentation
-├── LICENSE                       # MIT Open Source License
-├── CHANGELOG.md                  # Release version history
-├── SECURITY.md                   # Vulnerability reporting guidelines
-└── CONTRIBUTING.md               # Developer contribution guidelines
+├── docs/
+│   ├── api/                      # OpenAPI spec & endpoint guides
+│   ├── architecture/             # Diagrams and system flow specs
+│   ├── blueprint/                # Master architecture/design blueprint documents
+│   ├── compliance/iso27001/       # ISO 27001 gap analysis, SoA, ISMS policies, remediation roadmap
+│   ├── database/                 # ERD and migration guides
+│   └── deployment/               # Production/on-prem deployment runbooks
+├── installer/                    # Windows Inno Setup script + launcher scripts; macOS setup/launch scripts
+├── frontend/                     # React 18 + Vite + TypeScript SPA
+│   ├── public/                   # manifest.json, service worker, downloadable installers
+│   └── src/
+├── observability/                # Prometheus, Grafana, OTel Collector configs
+├── scripts/                      # Backup/restore, migration, and installer-build automation
+├── docker-compose.yml
+├── README.md
+├── LICENSE
+└── CONTRIBUTING.md
 ```
 
 ---
@@ -370,285 +264,128 @@ FusionOS/
 
 ### ⬇️ External Software & Tool Download Links
 
-Before setting up FusionOS, ensure you have installed the necessary runtime engines, container platforms, and database clients. Click the official links below to download installers for your operating system:
-
-| External Software / Tool | Required Version | Official Download Link | Purpose & Usage in FusionOS |
+| External Software / Tool | Required Version | Official Download Link | Purpose |
 | :--- | :--- | :--- | :--- |
-| ⚡ **.NET 8.0 SDK** | `v8.0.x LTS` | [👉 Download .NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) | Backend C# compilation, MediatR pipeline, & API execution |
-| 💚 **Node.js (LTS)** | `v20.x LTS` | [👉 Download Node.js](https://nodejs.org/en/download/) | Frontend React 18 SPA runtime & npm package ecosystem |
-| 🐳 **Docker Desktop** | `v24.0+` | [👉 Download Docker Desktop](https://www.docker.com/products/docker-desktop/) | Containerized PostgreSQL, Redis, Kafka, OTel & Grafana stack |
-| 🐙 **Git** | `v2.40+` | [👉 Download Git](https://git-scm.com/downloads) | Source control, repository management, & version control |
-| 🐘 **PostgreSQL** | `v16.x` | [👉 Download PostgreSQL](https://www.postgresql.org/download/) | Relational database engine (Standalone setup without Docker) |
-| 🔴 **Redis** | `v7.x` | [👉 Download Redis](https://redis.io/download/) • [Windows Build](https://github.com/tporadowski/redis/releases) | In-memory distributed caching & distributed locking |
-| 📦 **pnpm Package Manager**| `v9.x` | [👉 Download pnpm](https://pnpm.io/installation) | Fast, disk-space efficient Node package manager |
-| 🐘 **pgAdmin 4** | `v8.x` | [👉 Download pgAdmin](https://www.pgadmin.org/download/) | Visual GUI management client for PostgreSQL database |
-| 🛠 **DBeaver Community** | `v24.x` | [👉 Download DBeaver](https://dbeaver.io/download/) | Multi-platform database management tool for Postgres & Redis |
-| 📝 **Visual Studio Code** | `Latest` | [👉 Download VS Code](https://code.visualstudio.com/Download) | Recommended code editor for TypeScript, React, and Markdown |
-| 💻 **Visual Studio 2022** | `v17.8+` | [👉 Download Visual Studio](https://visualstudio.microsoft.com/downloads/) | IDE for C# .NET 8 backend debugging & solution development |
+| ⚡ **.NET 8.0 SDK** | `v8.0.x LTS` | [Download](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) | Backend compilation & API execution |
+| 💚 **Node.js (LTS)** | `v20.x LTS` | [Download](https://nodejs.org/en/download/) | Frontend SPA runtime & npm |
+| 🐳 **Docker Desktop** | `v24.0+` | [Download](https://www.docker.com/products/docker-desktop/) | Containerized Postgres/Redis/Kafka/OTel stack |
+| 🐙 **Git** | `v2.40+` | [Download](https://git-scm.com/downloads) | Source control |
+| 🐘 **PostgreSQL** | `v16.x` | [Download](https://www.postgresql.org/download/) | Standalone DB setup without Docker |
+| 🔴 **Redis** | `v7.x` | [Download](https://redis.io/download/) | Distributed cache/locking |
 
-### 📌 What to Download First (Mandatory Download Sequence)
+### 🪟 Windows (from source)
 
-Follow this exact sequence to prepare your development environment before cloning the project:
-
-1. **Step 1 — Download Git** ([Download Link](https://git-scm.com/downloads)): Required to clone the repository and manage code versions.
-2. **Step 2 — Download .NET 8.0 SDK** ([Download Link](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)): Required to compile and run the backend C# API service.
-3. **Step 3 — Download Node.js v20 LTS** ([Download Link](https://nodejs.org/en/download/)): Required to run the React 18 single page application and npm package tools.
-4. **Step 4 — Download Docker Desktop** ([Download Link](https://www.docker.com/products/docker-desktop/)): Required to spin up PostgreSQL 16, Redis, Kafka, and Grafana in containerized isolation.
-5. **Step 5 — (Optional) Download Database Client**: [pgAdmin 4](https://www.pgadmin.org/download/) or [DBeaver Community](https://dbeaver.io/download/) to visually inspect PostgreSQL tables.
-
----
-
-### 🪟 1. Windows Full Installation Process (Step-by-Step)
-
-#### Step 1: Download & Install Git
-- **Manual Installer**: Download [Git for Windows](https://git-scm.com/download/win) and run the `.exe`.
-- **PowerShell (Winget)**:
-  ```powershell
-  winget install --id Git.Git -e --source winget
-  ```
-
-#### Step 2: Download & Install .NET 8.0 SDK
-- **Manual Installer**: Download [.NET 8.0 SDK (x64)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) and run installer.
-- **PowerShell (Winget)**:
-  ```powershell
-  winget install --id Microsoft.DotNet.SDK.8 -e --source winget
-  ```
-- **Verify**: `dotnet --version` *(Should return 8.0.x)*
-
-#### Step 3: Download & Install Node.js LTS
-- **Manual Installer**: Download [Node.js v20.x LTS](https://nodejs.org/en/download/).
-- **PowerShell (Winget)**:
-  ```powershell
-  winget install --id OpenJS.NodeJS.LTS -e --source winget
-  ```
-- **Verify**: `node -v` and `npm -v`
-
-#### Step 4: Download & Install Docker Desktop
-- **Manual Installer**: Download [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/).
-- **PowerShell (Winget)**:
-  ```powershell
-  winget install --id Docker.DockerDesktop -e --source winget
-  ```
-- *Note: Restart your PC if prompted to enable WSL2 backend.*
-
-#### Step 5: Clone the FusionOS Repository
-Open PowerShell or Command Prompt and clone the repository:
 ```powershell
 git clone https://github.com/worksaransh/FusionOS.git
 cd FusionOS
-```
-
-#### Step 6: Create & Configure Environment File
-```powershell
-Copy-Item .env.example .env
-```
-
-#### Step 7: Launch Infrastructure Stack via Docker Compose
-Start PostgreSQL, Redis, Kafka, Prometheus, and Grafana in background containers:
-```powershell
 docker compose up -d postgres redis kafka otel-collector
-```
 
-#### Step 8: Build Backend (.NET 8)
-```powershell
 cd backend
 dotnet restore FusionOS.sln
 dotnet build FusionOS.sln
 cd ..
-```
 
-#### Step 9: Install Dependencies & Run Frontend (React 18)
-```powershell
 cd frontend
 npm install
 npm run dev
 ```
+Then open `http://localhost:5173` (web app), `http://localhost:5000` (API), `http://localhost:5000/swagger` (API docs).
 
-#### Step 10: Access Local FusionOS Services
-Open your browser and navigate to:
-- 🌐 **FusionOS Web App**: `http://localhost:5173`
-- 📡 **Backend REST API**: `http://localhost:5000`
-- 📑 **Swagger API Manual**: `http://localhost:5000/swagger`
+### 🍎 macOS (from source)
 
----
-
-### 🍎 2. macOS Full Setup Process (Step-by-Step)
-
-#### Step 1: Install Homebrew Package Manager
-Open Terminal (`Cmd + Space` -> type `Terminal`) and install Homebrew if not present:
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
+brew install git node@20
+brew install --cask docker
+brew install dotnet-sdk   # or the official .NET 8 installer
 
-#### Step 2: Download & Install Git
-```bash
-brew install git
-```
-
-#### Step 3: Download & Install .NET 8.0 SDK
-- **Homebrew**: `brew install dotnet-sdk`
-- **Official Installer**: Or download the Apple Silicon (M1/M2/M3) / Intel installer from [.NET 8 macOS Downloads](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).
-
-#### Step 4: Download & Install Node.js LTS
-```bash
-brew install node@20
-```
-
-#### Step 5: Download & Install Docker Desktop for Mac
-- Download [Docker Desktop for Mac (Apple Silicon / Intel)](https://www.docker.com/products/docker-desktop/) or install via Homebrew:
-  ```bash
-  brew install --cask docker
-  ```
-- Launch Docker Desktop from Applications and grant system permissions.
-
-#### Step 6: Clone the FusionOS Repository
-```bash
 git clone https://github.com/worksaransh/FusionOS.git
 cd FusionOS
-```
-
-#### Step 7: Configure Environment File
-```bash
-cp .env.example .env
-```
-
-#### Step 8: Start Background Infrastructure Containers
-```bash
 docker compose up -d postgres redis kafka otel-collector
+
+cd frontend && npm install && npm run dev
 ```
 
-#### Step 9: Build & Run Web Client
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-#### Step 10: Verify Installation
-- Open `http://localhost:5173` in Safari or Chrome.
-
----
-
-### 🐧 3. Ubuntu / Linux Installation
+### 🐧 Ubuntu / Linux
 
 ```bash
-# Update APT and install dependencies
 sudo apt update && sudo apt install -y git curl build-essential
-
-# Install Node.js 20
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
+sudo apt install -y nodejs dotnet-sdk-8.0
 
-# Install .NET 8 SDK
-sudo apt install -y dotnet-sdk-8.0
-
-# Clone Repository
 git clone https://github.com/worksaransh/FusionOS.git
 cd FusionOS
-cp .env.example .env
-
-# Start with Docker Compose
 docker compose up --build -d
 ```
+
+### 🐳 Docker Compose (all platforms, full stack)
+
+```bash
+docker compose up --build -d   # start everything
+docker compose logs -f          # follow logs
+docker compose down             # stop
+```
+Access: Web `http://localhost:3000` • API `http://localhost:5000` • Swagger `http://localhost:5000/swagger` • Grafana `http://localhost:3001` • Prometheus `http://localhost:9090`.
 
 ---
 
-### 4. Docker Compose Installation (All Platforms)
+## ⬇️ Download FusionOS
 
-The fastest way to spin up the entire production stack (PostgreSQL, Redis, Kafka, OTel Collector, Prometheus, Grafana, API Backend, and React Frontend):
+FusionOS ships in four forms, in addition to running from source:
 
-```bash
-# Spin up all services in background
-docker compose up --build -d
+| Platform | What it is | Where to get it |
+| :--- | :--- | :--- |
+| 🪟 **Windows installer** | A single Inno Setup `.exe` that installs a self-contained FusionOS build (API + bundled SPA in one process) and walks you through Postgres connection setup on first run. | Built via [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1); the Download button on the marketing landing page serves the built artifact. Full steps: [`docs/INSTALL_WINDOWS.md`](docs/INSTALL_WINDOWS.md). |
+| 🍎 **macOS package** | A self-contained `osx-arm64`/`osx-x64` build with setup/launch/stop shell scripts. Unsigned/unnotarized — see the README inside the package for the Gatekeeper first-run step. | Built via [`scripts/build-mac-package.ps1`](scripts/build-mac-package.ps1). Full steps: [`docs/INSTALL_MACOS.md`](docs/INSTALL_MACOS.md). |
+| 📱 **PWA (iOS / Android / desktop)** | The web app is an installable Progressive Web App — "Add to Home Screen" on iOS/Android, or install from the browser's address bar on desktop. Caches the app shell for fast loads; never caches API data offline (financial data is always fetched live). | Open the deployed web app and use your browser's install/Add-to-Home-Screen action. |
+| 🐳 **Docker Compose** | The full production-shaped stack (API, SPA, Postgres, Redis, Kafka, observability) as one command. | See [Docker Compose](#-docker-compose-all-platforms-full-stack) above. |
 
-# View live cluster logs
-docker compose logs -f
-
-# Stop all services
-docker compose down
-```
-
-#### Access Endpoints:
-- 🌐 **Web Application**: `http://localhost:3000`
-- 📡 **REST API Host**: `http://localhost:5000`
-- 📑 **Swagger API Docs**: `http://localhost:5000/swagger`
-- 📊 **Grafana Dashboard**: `http://localhost:3001` (admin/admin)
-- 📈 **Prometheus Metrics**: `http://localhost:9090`
+Both the Windows installer and the on-prem Docker Compose profile are self-hosted — you bring your own PostgreSQL and your own domain/reverse-proxy. See [`docs/deployment/ONPREM_RUNBOOK.md`](docs/deployment/ONPREM_RUNBOOK.md) for the full on-prem operations guide, including the backup/restore drill and known limitations of the current single-machine deployment shape.
 
 ---
 
 ## 🔑 Environment Variables Reference
 
-Below is a detailed breakdown of all environment variables configured in `.env.example`:
-
-| Variable | Required | Default Value | Description / Security Notes |
+| Variable | Required | Default | Description |
 | :--- | :---: | :--- | :--- |
-| `ASPNETCORE_ENVIRONMENT` | Yes | `Development` | ASP.NET Core environment mode (`Development`, `Staging`, `Production`). |
-| `PORT` | Yes | `5000` | Port for the backend API host. |
-| `ConnectionStrings__Postgres`| Yes | `Host=localhost;...` | PostgreSQL connection string. Must be set securely in production. |
-| `Jwt__SigningKey` | **YES** | *(Dev Secret)* | Secret key for signing JWTs. **MUST BE AT LEAST 256 BITS IN PROD**. |
-| `Jwt__Issuer` | Yes | `FusionOS.Host` | JWT token issuer header value. |
-| `Jwt__Audience` | Yes | `FusionOS.App` | JWT token target audience header value. |
-| `Jwt__AccessTokenExpirationMinutes` | No | `15` | Expiration time for access tokens in minutes. |
-| `REDIS_HOST` | Yes | `localhost` | Hostname for Redis cache instance. |
-| `KAFKA_BOOTSTRAP_SERVERS` | Yes | `localhost:9092` | Kafka broker bootstrap addresses. |
-| `VITE_API_BASE_URL` | Yes | `http://localhost:5000/api/v1` | Base URL used by React frontend to call the API. |
+| `ASPNETCORE_ENVIRONMENT` | Yes | `Development` | `Development` / `Staging` / `Production` |
+| `ConnectionStrings__Postgres` | Yes | — | PostgreSQL connection string |
+| `Jwt__SigningKey` | Yes | — | JWT signing secret — required outside Development, app fails fast if unset |
+| `Jwt__Issuer` / `Jwt__Audience` | Yes | `FusionOS.Host` / `FusionOS.App` | JWT claims |
+| `Deployment__AutoMigrate` | No | `false` | Opt-in flag allowing migration-on-boot outside Development (used by the Windows installer's single-EXE build) |
+| `REDIS_HOST` | Yes | `localhost` | Redis hostname |
+| `KAFKA_BOOTSTRAP_SERVERS` | Yes | `localhost:9092` | Kafka broker address |
+| `VITE_API_BASE_URL` | Yes | `http://localhost:5000/api/v1` | Frontend API base URL |
+
+None of these should be committed with real production values — see [Security & Compliance](#-security--compliance) for the current state of secrets handling and where it falls short of that goal.
 
 ---
 
 ## 📡 API Documentation
 
-FusionOS provides a unified RESTful API conforming to RFC 7807 `ProblemDetails` error formats.
-
-### Authentication Headers
-All protected API endpoints require a valid Bearer token in the HTTP Authorization header:
+All protected endpoints require a Bearer token:
 ```http
 Authorization: Bearer <your_jwt_access_token>
 ```
 
-### Core API Endpoints Reference
+| Module | Method | Endpoint | Description |
+| :--- | :---: | :--- | :--- |
+| Auth | `POST` | `/api/v1/core/auth/login` | Login & JWT issuance (rate-limited: 5/min) |
+| Auth | `POST` | `/api/v1/core/auth/refresh` | Rotate an opaque refresh token for a new access token |
+| Company | `POST` | `/api/v1/core/companies` | Bootstrap a new tenant company |
+| Inventory | `GET/POST` | `/api/v1/inventory/products` | Product catalog |
+| Manufacturing | `POST` | `/api/v1/manufacturing/mrp/run` | Run MRP explosion |
+| Finance | `GET` | `/api/v1/finance/accounts` | Chart of accounts |
+| Finance | `GET` | `/api/v1/finance/reports/consolidated-trial-balance` | Multi-entity consolidated trial balance |
+| Billing | `GET` | `/api/v1/billing/plans` | Plan catalog |
 
-| Module | Method | Endpoint | Description | Auth Required |
-| :--- | :---: | :--- | :--- | :---: |
-| **Auth** | `POST` | `/api/v1/core/auth/login` | User login & JWT issuance | ❌ No |
-| **Auth** | `POST` | `/api/v1/core/auth/refresh` | Refresh access token using opaque refresh token | ❌ No |
-| **Company** | `POST` | `/api/v1/core/companies` | Bootstrap a new tenant company anonymously | ❌ No |
-| **Inventory**| `GET` | `/api/v1/inventory/products` | Query paginated product master catalog | ✅ Yes |
-| **Inventory**| `POST` | `/api/v1/inventory/products` | Create a new SKU product | ✅ Yes |
-| **Manufacturing**| `POST` | `/api/v1/manufacturing/mrp/explode` | Run sub-second MRP explosion for sales order | ✅ Yes |
-| **Finance** | `GET` | `/api/v1/finance/accounts` | Fetch Chart of Accounts tree | ✅ Yes |
-| **Procurement**| `GET` | `/api/v1/procurement/purchase-orders` | List purchase orders with status filtering | ✅ Yes |
-
-### Example API Request (Login)
-```bash
-curl -X POST http://localhost:5000/api/v1/core/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@fusionos.org",
-    "password": "SecurePassword123!"
-  }'
-```
-
-### Example API Response
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "7f8b9c1d2e3f4a5b6c7d8e9f...",
-  "expiresIn": 900,
-  "user": {
-    "id": "c3a1b2c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
-    "email": "admin@fusionos.org",
-    "fullName": "Enterprise Administrator",
-    "companyId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
-  }
-}
-```
+Full interactive documentation: `http://localhost:5000/swagger` once the API is running.
 
 ---
 
 ## 🗄 Database & Data Architecture
 
-FusionOS uses **PostgreSQL 16** with a DbContext-per-module layout ensuring clean database separation.
+PostgreSQL 16 with one `DbContext` per module for clean schema separation, and real, versioned EF Core migrations for every module (applied via `dotnet ef database update`, not `EnsureCreated`).
 
 ```
                           ┌─────────────────────────────────────────┐
@@ -660,26 +397,22 @@ FusionOS uses **PostgreSQL 16** with a DbContext-per-module layout ensuring clea
 ┌──────────────┐ ┌──────────────┐     ┌──────────────────┐  ┌──────────────────┐ ┌──────────────┐
 │ CoreDbContext│ │FinanceDbCtx  │     │InventoryDbContext│  │ManufactureDbCtx  │ │ SalesDbContext│
 └──────────────┘ └──────────────┘     └──────────────────┘  └──────────────────┘ └──────────────┘
+                          … one DbContext per remaining module (Billing, HRMS, Quality, etc.)
 ```
 
-### Database Backup & Restore Automation
-
-Automation scripts are included in `scripts/`:
+### Backup & Restore
 
 ```bash
-# Take a complete database backup
-./scripts/backup-postgres.sh
-
-# Restore a database snapshot
-./scripts/restore-postgres.sh backups/fusionos_backup_2026-07-27.sql.gz
+./scripts/backup-postgres.sh                                    # pg_dump, custom format, local retention
+./scripts/restore-postgres.sh backups/fusionos_backup_....dump   # interactive, confirms before restoring
 ```
+**Current limitation, stated plainly:** these scripts work and have been exercised in a restore drill, but nothing in this repo schedules them automatically yet, and the backup output isn't encrypted. See [`docs/compliance/iso27001/REMEDIATION_ROADMAP.md`](docs/compliance/iso27001/REMEDIATION_ROADMAP.md) for the plan to close that.
 
 ---
 
 ## 🚀 Deployment Guide
 
-### Production Nginx Reverse Proxy Configuration
-Place the following in `/etc/nginx/sites-available/fusionos`:
+### Production Nginx Reverse Proxy
 
 ```nginx
 server {
@@ -694,36 +427,52 @@ server {
     location /api/ {
         proxy_pass http://localhost:5000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'keep-alive';
         proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
+For a full on-prem, no-Docker deployment (the same shape the Windows installer produces), see [`docs/deployment/ONPREM_RUNBOOK.md`](docs/deployment/ONPREM_RUNBOOK.md).
+
+---
+
+## 🔐 Security & Compliance
+
+FusionOS enforces RBAC and tenant isolation centrally via MediatR pipeline behaviors, hashes passwords with BCrypt, rotates refresh tokens on use, rate-limits authentication endpoints specifically, and verifies inbound webhook signatures for its payment/commerce connectors.
+
+It also has real, specific gaps — no field-level encryption for sensitive data yet, no secrets manager (config-based secrets today), no second authentication factor, and tenant isolation currently lives only in the application layer rather than also at the database level. We'd rather state that plainly than let a badge or a marketing paragraph imply otherwise.
+
+A full, evidence-based security posture — control-by-control against ISO/IEC 27001:2022 Annex A, with file:line citations for every claim — lives in [`docs/compliance/iso27001/`](docs/compliance/iso27001/):
+
+- [`GAP_ANALYSIS.md`](docs/compliance/iso27001/GAP_ANALYSIS.md) — what's actually implemented today, control by control.
+- [`STATEMENT_OF_APPLICABILITY.md`](docs/compliance/iso27001/STATEMENT_OF_APPLICABILITY.md) — the formal SoA an auditor requests first.
+- [`ISMS_POLICIES.md`](docs/compliance/iso27001/ISMS_POLICIES.md) — the core policy set (access control, cryptography, secure development, backup/DR, incident response, and more).
+- [`REMEDIATION_ROADMAP.md`](docs/compliance/iso27001/REMEDIATION_ROADMAP.md) — every gap, prioritized and sequenced.
+
+To report a security issue, see [`SECURITY.md`](SECURITY.md).
+
 ---
 
 ## 🔧 Troubleshooting & FAQ
 
-### FAQ & Common Solutions
+**`dotnet build` fails with "No .NET SDKs were found"?**
+Ensure .NET 8 SDK is installed and on PATH — verify with `dotnet --info`.
 
-#### Q1: `dotnet build` fails with "No .NET SDKs were found"?
-> **Solution**: Ensure .NET 8 SDK is installed and added to your system PATH. Verify by running `dotnet --info`.
+**Frontend shows 401 Unauthorized on API calls?**
+Confirm `Jwt__SigningKey` matches between your `.env` and the backend, and is at least 32 characters.
 
-#### Q2: Frontend shows 401 Unauthorized errors on API calls?
-> **Solution**: Check that your `Jwt__SigningKey` in `.env` matches the backend setting and is at least 32 characters long.
+**Database connection fails on `docker compose up`?**
+Ensure the Postgres container's health check passes before the backend starts — check with `docker compose ps`.
 
-#### Q3: Database connection fails on `docker compose up`?
-> **Solution**: Ensure PostgreSQL container health check passes before backend starts. Verify container status with `docker compose ps`.
+**Windows installer shows an "unknown publisher" warning?**
+Expected today — the installer isn't code-signed yet (tracked in the ISO 27001 remediation roadmap). Choose "More info → Run anyway" if you trust the source you downloaded it from.
 
 ---
 
 ## 🤝 Contributing & Community
 
-We welcome open-source contributions! Please review our guidelines:
 - 📖 [Contributing Guidelines](CONTRIBUTING.md)
 - 📜 [Code of Conduct](CODE_OF_CONDUCT.md)
 - 🔒 [Security Policy](SECURITY.md)
@@ -736,5 +485,5 @@ We welcome open-source contributions! Please review our guidelines:
 FusionOS is open-source software licensed under the **[MIT License](LICENSE)**.
 
 <div align="center">
-  <sub>Built with ❤️ by Saransh Gulati and the global FusionOS Open Source Community.</sub>
+  <sub>Built with ❤️ by Saransh Gulati and the FusionOS open-source community.</sub>
 </div>
