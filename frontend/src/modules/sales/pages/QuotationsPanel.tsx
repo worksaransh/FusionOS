@@ -96,6 +96,11 @@ export function QuotationsPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotations', companyId] });
       queryClient.invalidateQueries({ queryKey: ['sales-orders', companyId] });
+      // See SalesOrdersPanel's createOrder/confirmOrder for why this second cache
+      // key also needs invalidating: the sales order this just created is otherwise
+      // invisible to every other panel's Sales Order picker (Invoices, Dispatches)
+      // until a full page reload.
+      queryClient.invalidateQueries({ queryKey: ['sales-order-options', companyId] });
     },
   });
 

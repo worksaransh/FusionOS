@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FusionOS.Modules.Maintenance.Application.Assets.Contracts;
+using FusionOS.Modules.Maintenance.Application.ChecklistTemplates.Contracts;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.AssignMaintenanceRequestTechnician;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.CompleteMaintenanceRequest;
 using FusionOS.Modules.Maintenance.Application.MaintenanceRequests.Commands.CreateMaintenanceRequest;
@@ -21,8 +22,9 @@ public class MaintenanceRequestCommandHandlerTests
         var repository = Substitute.For<IMaintenanceRequestRepository>();
         var assetRepository = Substitute.For<IAssetRepository>();
         assetRepository.ExistsAsync(companyId, assetId, Arg.Any<CancellationToken>()).Returns(true);
+        var checklistTemplateRepository = Substitute.For<IChecklistTemplateRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var handler = new CreateMaintenanceRequestCommandHandler(repository, assetRepository, unitOfWork);
+        var handler = new CreateMaintenanceRequestCommandHandler(repository, assetRepository, checklistTemplateRepository, unitOfWork);
 
         var result = await handler.Handle(
             new CreateMaintenanceRequestCommand(companyId, assetId, MaintenanceRequestType.Breakdown, "Motor overheating"),
@@ -39,7 +41,7 @@ public class MaintenanceRequestCommandHandlerTests
         var repository = Substitute.For<IMaintenanceRequestRepository>();
         var assetRepository = Substitute.For<IAssetRepository>();
         assetRepository.ExistsAsync(companyId, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
-        var handler = new CreateMaintenanceRequestCommandHandler(repository, assetRepository, Substitute.For<IUnitOfWork>());
+        var handler = new CreateMaintenanceRequestCommandHandler(repository, assetRepository, Substitute.For<IChecklistTemplateRepository>(), Substitute.For<IUnitOfWork>());
 
         var act = () => handler.Handle(
             new CreateMaintenanceRequestCommand(companyId, Guid.NewGuid(), MaintenanceRequestType.Preventive, "Scheduled service"),

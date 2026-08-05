@@ -1,6 +1,7 @@
 using System.Text;
 using FusionOS.BuildingBlocks.Application.Csv;
 using FusionOS.Modules.Sales.Application.Invoices.Commands.CreateInvoice;
+using FusionOS.Modules.Sales.Application.Invoices.Commands.GenerateEInvoice;
 using FusionOS.Modules.Sales.Application.Invoices.Commands.IssueInvoice;
 using FusionOS.Modules.Sales.Application.Invoices.Queries.ListInvoices;
 using FusionOS.Modules.Sales.Domain.Invoices;
@@ -49,6 +50,18 @@ public sealed class InvoicesController : ControllerBase
     public async Task<IActionResult> Issue(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new IssueInvoiceCommand(companyId, id), cancellationToken);
+        return Ok(result);
+    }
+
+    // GST e-invoicing (IRN/QR) — see GenerateEInvoiceCommandHandler's doc comment for the
+    // 30-day submission window and EInvoicingRequired gating this enforces.
+    [HttpPost("{id:guid}/generate-e-invoice")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GenerateEInvoice(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GenerateEInvoiceCommand(companyId, id), cancellationToken);
         return Ok(result);
     }
 }

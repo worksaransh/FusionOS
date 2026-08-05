@@ -14,6 +14,9 @@ public sealed class DepartmentRepository : IDepartmentRepository
     public Task<Department?> GetByIdAsync(Guid companyId, Guid departmentId, CancellationToken cancellationToken = default) =>
         _context.Departments.FirstOrDefaultAsync(d => d.CompanyId == companyId && d.Id == departmentId, cancellationToken);
 
+    public Task<bool> CodeExistsAsync(Guid companyId, string code, CancellationToken cancellationToken = default) =>
+        _context.Departments.AnyAsync(d => d.CompanyId == companyId && d.Code == code.Trim().ToUpper(), cancellationToken);
+
     public async Task AddAsync(Department department, CancellationToken cancellationToken = default) =>
         await _context.Departments.AddAsync(department, cancellationToken);
 

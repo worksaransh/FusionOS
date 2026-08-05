@@ -1,3 +1,4 @@
+using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Maintenance.Application.Assets.Contracts;
 using MediatR;
 
@@ -16,6 +17,14 @@ public sealed class CreateAssetCommandHandler : IRequestHandler<CreateAssetComma
 
     public async Task<AssetDto> Handle(CreateAssetCommand request, CancellationToken cancellationToken)
     {
+        if (await _repository.CodeExistsAsync(request.CompanyId, request.Code, cancellationToken))
+        {
+            throw new ValidationException(new[]
+            {
+                new FluentValidation.Results.ValidationFailure(nameof(request.Code), $"Asset code '{request.Code}' already exists for this company."),
+            });
+        }
+
         var asset = Domain.Assets.Asset.Create(request.CompanyId, request.Code, request.Name, request.Location);
 
         await _repository.AddAsync(asset, cancellationToken);

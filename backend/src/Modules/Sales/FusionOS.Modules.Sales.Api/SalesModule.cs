@@ -10,12 +10,16 @@ using FusionOS.Modules.Sales.Application.Customers.Commands.CreateCustomer;
 using FusionOS.Modules.Sales.Application.Customers.Contracts;
 using FusionOS.Modules.Sales.Application.Discounts.Contracts;
 using FusionOS.Modules.Sales.Application.Dispatches.Contracts;
+using FusionOS.Modules.Sales.Application.EWayBills.Contracts;
 using FusionOS.Modules.Sales.Application.Invoices.Contracts;
 using FusionOS.Modules.Sales.Application.PortalUsers.Contracts;
 using FusionOS.Modules.Sales.Application.PriceLists.Contracts;
 using FusionOS.Modules.Sales.Application.Quotations.Contracts;
+using FusionOS.Modules.Sales.Application.Invoices.Contracts;
 using FusionOS.Modules.Sales.Application.Returns.Contracts;
 using FusionOS.Modules.Sales.Application.SalesOrders.Contracts;
+using FusionOS.Modules.Sales.Application.Settings.Contracts;
+using FusionOS.Modules.Sales.Infrastructure.Gst;
 using FusionOS.Modules.Sales.Infrastructure.Persistence;
 using FusionOS.Modules.Sales.Infrastructure.Repositories;
 using FusionOS.Modules.Sales.Infrastructure.Security;
@@ -46,6 +50,15 @@ public sealed class SalesModule : IModule
         services.AddScoped<IPriceListRepository, PriceListRepository>();
         services.AddScoped<ISalesCommissionRateRepository, SalesCommissionRateRepository>();
         services.AddScoped<IDiscountRuleRepository, DiscountRuleRepository>();
+
+        // GST e-invoicing (IRN/QR) — SandboxGstIrpClient is a fake IRP implementation (see its
+        // own doc comment); swap for a real HTTP-backed IGstIrpClient once a GSP account exists.
+        services.AddScoped<IGstComplianceSettingsRepository, GstComplianceSettingsRepository>();
+        services.AddScoped<IGstIrpClient, SandboxGstIrpClient>();
+
+        // GST e-way bill generation — same sandbox-client reasoning as e-invoicing above.
+        services.AddScoped<IEWayBillRepository, EWayBillRepository>();
+        services.AddScoped<IEWayBillClient, SandboxEWayBillClient>();
 
         // Sales Returns / RMA (Phase 4 depth, 2026-07-22) — distinct from and
         // optionally linked to CreditNote, never auto-cascading into one.

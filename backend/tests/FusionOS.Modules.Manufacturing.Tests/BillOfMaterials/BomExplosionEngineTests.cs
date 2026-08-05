@@ -16,8 +16,8 @@ namespace FusionOS.Modules.Manufacturing.Tests.BillOfMaterials;
 /// </summary>
 public class BomExplosionEngineTests
 {
-    private static BillOfMaterials MakeBom(Guid companyId, Guid productId, string code, params BomLineInput[] lines) =>
-        BillOfMaterials.Create(companyId, code, code, productId, lines);
+    private static FusionOS.Modules.Manufacturing.Domain.BillOfMaterials.BillOfMaterials MakeBom(Guid companyId, Guid productId, string code, params BomLineInput[] lines) =>
+        FusionOS.Modules.Manufacturing.Domain.BillOfMaterials.BillOfMaterials.Create(companyId, code, code, productId, lines);
 
     [Fact]
     public async Task Explode_CircularBom_DetectsCycleAndTreatsOccurrenceAsLeaf()
@@ -72,7 +72,7 @@ public class BomExplosionEngineTests
         repository.GetByIdAsync(companyId, bomRoot.Id, Arg.Any<CancellationToken>()).Returns(bomRoot);
         repository.GetPrimaryByProductIdAsync(companyId, productMid, Arg.Any<CancellationToken>()).Returns(bomMid);
         repository.GetPrimaryByProductIdAsync(companyId, productLeafParent, Arg.Any<CancellationToken>()).Returns(bomLeafParent);
-        repository.GetPrimaryByProductIdAsync(companyId, leafComponent, Arg.Any<CancellationToken>()).Returns((BillOfMaterials?)null);
+        repository.GetPrimaryByProductIdAsync(companyId, leafComponent, Arg.Any<CancellationToken>()).Returns((FusionOS.Modules.Manufacturing.Domain.BillOfMaterials.BillOfMaterials?)null);
 
         var handler = new ExplodeBillOfMaterialsQueryHandler(repository);
 
@@ -108,7 +108,7 @@ public class BomExplosionEngineTests
         repository.GetByIdAsync(companyId, bomRoot.Id, Arg.Any<CancellationToken>()).Returns(bomRoot);
         repository.GetPrimaryByProductIdAsync(companyId, branchA, Arg.Any<CancellationToken>()).Returns(bomBranchA);
         repository.GetPrimaryByProductIdAsync(companyId, branchB, Arg.Any<CancellationToken>()).Returns(bomBranchB);
-        repository.GetPrimaryByProductIdAsync(companyId, sharedLeaf, Arg.Any<CancellationToken>()).Returns((BillOfMaterials?)null);
+        repository.GetPrimaryByProductIdAsync(companyId, sharedLeaf, Arg.Any<CancellationToken>()).Returns((FusionOS.Modules.Manufacturing.Domain.BillOfMaterials.BillOfMaterials?)null);
 
         var handler = new ExplodeBillOfMaterialsQueryHandler(repository);
 
@@ -132,7 +132,7 @@ public class BomExplosionEngineTests
         // deep but valid chain is still bounded rather than walked indefinitely).
         const int chainLength = 25;
         var productIds = Enumerable.Range(0, chainLength).Select(_ => Guid.NewGuid()).ToArray();
-        var boms = new BillOfMaterials[chainLength - 1];
+        var boms = new FusionOS.Modules.Manufacturing.Domain.BillOfMaterials.BillOfMaterials[chainLength - 1];
         for (var i = 0; i < chainLength - 1; i++)
         {
             boms[i] = MakeBom(companyId, productIds[i], $"BOM-{i}", new BomLineInput(productIds[i + 1], 1m));

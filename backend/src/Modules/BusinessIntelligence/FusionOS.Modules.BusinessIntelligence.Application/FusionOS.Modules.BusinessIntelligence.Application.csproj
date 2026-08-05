@@ -3,6 +3,29 @@
   <ItemGroup>
     <ProjectReference Include="../FusionOS.Modules.BusinessIntelligence.Domain/FusionOS.Modules.BusinessIntelligence.Domain.csproj" />
     <ProjectReference Include="../../../Shared/FusionOS.BuildingBlocks.Application/FusionOS.BuildingBlocks.Application.csproj" />
+
+    <!--
+      Phase 2.3 — live KPI data sources (IKpiDataSource) call straight into
+      Finance's and Inventory's existing report queries via ISender, following
+      the cross-module Application-to-Application precedent established by
+      FusionOS.Modules.Ai.Application.csproj (see its comment: only another
+      module's plain Query/DTO record types are referenced here, never its
+      Domain or Infrastructure assemblies, so every call still runs through
+      that module's own IRequirePermission gate).
+    -->
+    <ProjectReference Include="../../Finance/FusionOS.Modules.Finance.Application/FusionOS.Modules.Finance.Application.csproj" />
+    <ProjectReference Include="../../Inventory/FusionOS.Modules.Inventory.Application/FusionOS.Modules.Inventory.Application.csproj" />
+
+    <!--
+      Phase 2.3 (KPI data sources, cont'd) — SalesRevenueKpiDataSource,
+      WipValueKpiDataSource and OpenPurchaseOrderValueKpiDataSource follow the
+      exact same convention as the Finance/Inventory references above: only
+      plain Query/DTO record types are referenced, never Domain or
+      Infrastructure.
+    -->
+    <ProjectReference Include="../../Sales/FusionOS.Modules.Sales.Application/FusionOS.Modules.Sales.Application.csproj" />
+    <ProjectReference Include="../../Manufacturing/FusionOS.Modules.Manufacturing.Application/FusionOS.Modules.Manufacturing.Application.csproj" />
+    <ProjectReference Include="../../Procurement/FusionOS.Modules.Procurement.Application/FusionOS.Modules.Procurement.Application.csproj" />
   </ItemGroup>
 
 </Project>

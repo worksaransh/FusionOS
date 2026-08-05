@@ -122,6 +122,10 @@ test.describe('Finance — Exchange Rates create form (ExchangeRatesPanel.tsx)',
     await page.goto('/finance');
     await expect(page).toHaveURL(/\/finance$/);
 
+    // ExchangeRatesPanel only renders under the "Banking & Treasury" sub-tab
+    // (AccountsPage.tsx defaults activeFinanceTab to 'gl') — switch tabs first.
+    await page.getByRole('button', { name: 'Banking & Treasury' }).click();
+
     await page.getByLabel('From currency').fill('US');
     await page.getByLabel('To currency').fill('EUR');
     await page.getByLabel('Rate (1 From = Rate To)').fill('-1');
@@ -134,6 +138,9 @@ test.describe('Finance — Exchange Rates create form (ExchangeRatesPanel.tsx)',
 
   test('the effective date field is a native date input but still Zod-validated through noValidate', async ({ page }) => {
     await page.goto('/finance');
+
+    // ExchangeRatesPanel only renders under the "Banking & Treasury" sub-tab.
+    await page.getByRole('button', { name: 'Banking & Treasury' }).click();
 
     const dateInput = page.getByLabel('Effective date');
     await expect(dateInput).toHaveAttribute('type', 'date');

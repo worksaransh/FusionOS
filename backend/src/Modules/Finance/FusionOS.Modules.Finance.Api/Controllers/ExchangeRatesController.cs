@@ -1,5 +1,6 @@
 using FusionOS.Modules.Finance.Application.ExchangeRates.Commands.CreateExchangeRate;
 using FusionOS.Modules.Finance.Application.ExchangeRates.Commands.DeactivateExchangeRate;
+using FusionOS.Modules.Finance.Application.ExchangeRates.Commands.RevalueForeignCurrencyBalances;
 using FusionOS.Modules.Finance.Application.ExchangeRates.Commands.UpdateExchangeRate;
 using FusionOS.Modules.Finance.Application.ExchangeRates.Queries.ConvertAmount;
 using FusionOS.Modules.Finance.Application.ExchangeRates.Queries.GetExchangeRateById;
@@ -81,6 +82,26 @@ public sealed class ExchangeRatesController : ControllerBase
         return Ok(result);
     }
 
+    // Real FX revaluation (see RevalueForeignCurrencyBalancesCommandHandler's doc comment) —
+    // recomputes every GL account's open balance in CurrencyCode against the new rate and
+    // posts one balancing journal entry into GainLossAccountId, then records the new rate.
+    [HttpPost("revalue")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Revalue([FromBody] RevalueForeignCurrencyBalancesRequest request, CancellationToken cancellationToken)
+    {
+        var command = new RevalueForeignCurrencyBalancesCommand(
+            request.CompanyId,
+            request.CurrencyCode,
+            request.NewExchangeRate,
+            request.EffectiveDate,
+            request.BaseCurrencyCode,
+            request.GainLossAccountId);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     // Soft-deactivate only — never a real delete (04_DATABASE_GUIDELINES.md), same
     // body-bound-request convention as CostCentersController.Deactivate.
     [HttpPost("{id:guid}/deactivate")]
@@ -99,3 +120,11 @@ public sealed record CreateExchangeRateRequest(Guid CompanyId, string FromCurren
 public sealed record UpdateExchangeRateRequest(Guid CompanyId, decimal Rate, DateTimeOffset EffectiveDate);
 
 public sealed record DeactivateExchangeRateRequest(Guid CompanyId);
+
+public sealed record RevalueForeignCurrencyBalancesRequest(
+    Guid CompanyId,
+    string CurrencyCode,
+    decimal NewExchangeRate,
+    DateTimeOffset EffectiveDate,
+    string BaseCurrencyCode,
+    Guid GainLossAccountId);

@@ -26,5 +26,6 @@ public static class ModuleRegistry
         new FusionOS.Modules.Ai.Api.AiModule(),
         new FusionOS.Modules.Marketplace.Api.MarketplaceModule(),
         new FusionOS.Modules.IntegrationHub.Api.IntegrationHubModule(),
+        new FusionOS.Modules.Billing.Api.BillingModule(),
     };
 }

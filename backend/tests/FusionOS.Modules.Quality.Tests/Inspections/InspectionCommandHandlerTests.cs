@@ -1,7 +1,9 @@
 using FluentAssertions;
+using FusionOS.Modules.Quality.Application.InspectionPlans.Contracts;
 using FusionOS.Modules.Quality.Application.Inspections.Commands.CreateInspection;
 using FusionOS.Modules.Quality.Application.Inspections.Commands.RecordInspectionResults;
 using FusionOS.Modules.Quality.Application.Inspections.Contracts;
+using FusionOS.Modules.Quality.Application.QualityHolds.Contracts;
 using FusionOS.Modules.Quality.Domain.Inspections;
 using NSubstitute;
 using Xunit;
@@ -16,7 +18,7 @@ public class InspectionCommandHandlerTests
         var companyId = Guid.NewGuid();
         var repository = Substitute.For<IInspectionRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var handler = new CreateInspectionCommandHandler(repository, unitOfWork);
+        var handler = new CreateInspectionCommandHandler(repository, Substitute.For<IInspectionPlanRepository>(), unitOfWork);
 
         var result = await handler.Handle(
             new CreateInspectionCommand(companyId, InspectionType.Production, Guid.NewGuid(), new[] { "Torque", "Finish" }),
@@ -36,7 +38,7 @@ public class InspectionCommandHandlerTests
         var repository = Substitute.For<IInspectionRepository>();
         repository.GetByIdAsync(companyId, inspection.Id, Arg.Any<CancellationToken>()).Returns(inspection);
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var handler = new RecordInspectionResultsCommandHandler(repository, unitOfWork);
+        var handler = new RecordInspectionResultsCommandHandler(repository, Substitute.For<IQualityHoldRepository>(), unitOfWork);
 
         var result = await handler.Handle(
             new RecordInspectionResultsCommand(companyId, inspection.Id, new[] { new InspectionResultInput("Torque", true, null) }),
@@ -52,7 +54,7 @@ public class InspectionCommandHandlerTests
         var companyId = Guid.NewGuid();
         var repository = Substitute.For<IInspectionRepository>();
         repository.GetByIdAsync(companyId, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Inspection?)null);
-        var handler = new RecordInspectionResultsCommandHandler(repository, Substitute.For<IUnitOfWork>());
+        var handler = new RecordInspectionResultsCommandHandler(repository, Substitute.For<IQualityHoldRepository>(), Substitute.For<IUnitOfWork>());
 
         var act = () => handler.Handle(
             new RecordInspectionResultsCommand(companyId, Guid.NewGuid(), new[] { new InspectionResultInput("Torque", true, null) }),

@@ -10,4 +10,8 @@ public sealed record InvoiceDto(
     DateTimeOffset InvoiceDate,
     decimal TotalAmount,
     IReadOnlyList<InvoiceLineDto> Lines,
-    Guid? SalesPersonId);
+    Guid? SalesPersonId,
+    string? Irn = null,
+    DateTimeOffset? IrnGeneratedAt = null,
+    string? QrCodePayload = null,
+    string? IrpAckNumber = null);

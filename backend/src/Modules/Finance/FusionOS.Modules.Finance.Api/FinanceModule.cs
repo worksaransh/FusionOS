@@ -13,6 +13,7 @@ using FusionOS.Modules.Finance.Application.CostCenters.Contracts;
 using FusionOS.Modules.Finance.Application.ExchangeRates.Contracts;
 using FusionOS.Modules.Finance.Application.FixedAssets.Contracts;
 using FusionOS.Modules.Finance.Application.IntegrationEvents.Consumers;
+using FusionOS.Modules.Finance.Application.IntercompanyEliminationRules.Contracts;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using FusionOS.Modules.Finance.Application.Payables.Contracts;
 using FusionOS.Modules.Finance.Application.Receivables.Contracts;
@@ -21,6 +22,8 @@ using FusionOS.Modules.Finance.Application.Settings.Contracts;
 using FusionOS.Modules.Finance.Application.TaxJurisdictions.Contracts;
 using FusionOS.Modules.Finance.Application.TaxRates.Contracts;
 using FusionOS.Modules.Finance.Application.TaxTransactions.Contracts;
+using FusionOS.Modules.Finance.Application.WithholdingTaxRates.Contracts;
+using FusionOS.Modules.Finance.Application.WithholdingTaxTransactions.Contracts;
 using FusionOS.Modules.Finance.Infrastructure.Persistence;
 using FusionOS.Modules.Finance.Infrastructure.Repositories;
 using FusionOS.SharedKernel.Events;
@@ -81,6 +84,14 @@ public sealed class FinanceModule : IModule
         services.AddScoped<IFixedAssetRepository, FixedAssetRepository>();
         services.AddScoped<IFinanceSettingsRepository, FinanceSettingsRepository>();
         services.AddScoped<IPurchaseOrderFactRepository, PurchaseOrderFactRepository>();
+
+        // TDS/TCS withholding tax — Income Tax Act regime, distinct from GST TaxRate/TaxTransaction.
+        services.AddScoped<IWithholdingTaxRateRepository, WithholdingTaxRateRepository>();
+        services.AddScoped<IWithholdingTaxTransactionRepository, WithholdingTaxTransactionRepository>();
+
+        // Multi-entity/subsidiary consolidation (Phase 2.4): intercompany GL account
+        // code-pair elimination rules feeding GetConsolidatedTrialBalanceQuery.
+        services.AddScoped<IIntercompanyEliminationRuleRepository, IntercompanyEliminationRuleRepository>();
 
         // Fiscal Year/Period Close + Recurring Journal Entries (Phase 5, 2026-07-22).
         services.AddScoped<IAccountingPeriodRepository, AccountingPeriodRepository>();

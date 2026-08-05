@@ -29,6 +29,6 @@ public sealed class UpdateCompanyCommandHandler : IRequestHandler<UpdateCompanyC
         company.UpdateDetails(request.Name, request.LegalName, request.TaxId);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new CompanyDto(company.Id, company.Name, company.LegalName, company.TaxId, company.BaseCurrency, company.IsActive, company.CreatedAt);
+        return new CompanyDto(company.Id, company.Name, company.LegalName, company.TaxId, company.BaseCurrency, company.IsActive, company.CreatedAt, company.ParentCompanyId);
     }
 }

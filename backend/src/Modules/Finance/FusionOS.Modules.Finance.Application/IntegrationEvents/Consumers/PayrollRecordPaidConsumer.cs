@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FusionOS.Modules.Finance.Application.Accounts.Contracts;
+using FusionOS.Modules.Finance.Application.AccountingPeriods.Contracts;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using FusionOS.Modules.Finance.Application.Settings.Contracts;
 using FusionOS.Modules.Finance.Domain.JournalEntries;
@@ -31,21 +32,31 @@ namespace FusionOS.Modules.Finance.Application.IntegrationEvents.Consumers;
 /// has no AR/AP-style ledger of its own in this slice, so when settings are
 /// unconfigured this consumer has nothing left to do but mark the event
 /// processed.
+///
+/// Phase 10/11 hardening fix (2026-07-27): also skips the GL post — same
+/// silent-skip reasoning as the unconfigured-settings case above, since a
+/// background consumer has no user-facing channel to surface a validation
+/// error — when the payroll-paid date falls inside an already-closed
+/// accounting period, so this never trips PostJournalEntryCommandHandler's
+/// closed-period guard by creating an already-Posted entry that bypasses it.
 /// </summary>
 public sealed class PayrollRecordPaidConsumer : IIntegrationEventConsumer
 {
     private readonly IJournalEntryRepository _journalEntryRepository;
+    private readonly IAccountingPeriodRepository _accountingPeriodRepository;
     private readonly IFinanceSettingsRepository _settingsRepository;
     private readonly IProcessedIntegrationEventStore _processedEvents;
     private readonly IUnitOfWork _unitOfWork;
 
     public PayrollRecordPaidConsumer(
         IJournalEntryRepository journalEntryRepository,
+        IAccountingPeriodRepository accountingPeriodRepository,
         IFinanceSettingsRepository settingsRepository,
         IProcessedIntegrationEventStore processedEvents,
         IUnitOfWork unitOfWork)
     {
         _journalEntryRepository = journalEntryRepository;
+        _accountingPeriodRepository = accountingPeriodRepository;
         _settingsRepository = settingsRepository;
         _processedEvents = processedEvents;
         _unitOfWork = unitOfWork;
@@ -64,7 +75,9 @@ public sealed class PayrollRecordPaidConsumer : IIntegrationEventConsumer
             ?? throw new InvalidOperationException($"Could not deserialize PayrollRecordPaid payload for event {eventId}.");
 
         var settings = await _settingsRepository.GetByCompanyIdAsync(payload.CompanyId, cancellationToken);
-        if (settings?.DefaultSalaryExpenseAccountId is { } expenseAccountId && settings.DefaultSalaryPayableAccountId is { } payableAccountId)
+        var payrollPaidDate = new DateTimeOffset(payload.PeriodYear, payload.PeriodMonth, 1, 0, 0, 0, TimeSpan.Zero);
+        var closedPeriod = await _accountingPeriodRepository.FindClosedPeriodCoveringDateAsync(payload.CompanyId, payrollPaidDate, cancellationToken);
+        if (settings?.DefaultSalaryExpenseAccountId is { } expenseAccountId && settings.DefaultSalaryPayableAccountId is { } payableAccountId && closedPeriod is null)
         {
             var reference = $"Payroll {payload.PayrollRecordId} paid ({payload.PeriodMonth:D2}/{payload.PeriodYear})";
             var lines = new[]

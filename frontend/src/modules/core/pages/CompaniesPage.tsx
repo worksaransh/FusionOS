@@ -10,6 +10,7 @@ import { Card } from '../../../shared/ui/Card';
 import { PageHeader } from '../../../shared/ui/PageHeader';
 import { BranchesPanel } from './BranchesPanel';
 import { DepartmentsPanel } from './DepartmentsPanel';
+import { useAuthStore } from '../../../shared/auth/authStore';
 
 /**
  * The one real, end-to-end vertical slice in this scaffold: create + list
@@ -66,6 +67,9 @@ interface PagedResult<T> {
 export function CompaniesPage() {
   const queryClient = useQueryClient();
   const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const canUpdate = hasPermission('core.company.update');
+  const canDeactivate = hasPermission('core.company.deactivate');
 
   const companiesQuery = useQuery({
     queryKey: ['companies'],
@@ -108,24 +112,30 @@ export function CompaniesPage() {
     <div>
       <PageHeader title="Companies" description="Multi-company setup — Core Platform, Phase 0" />
 
-      <p className="mb-6 text-sm text-text-muted">
-        Manage who can do what:{' '}
-        <Link to="/core/roles" className="font-medium text-primary underline underline-offset-2">
-          Roles &amp; permissions
-        </Link>
-        {' · '}
-        <Link to="/core/audit-log" className="font-medium text-primary underline underline-offset-2">
-          Audit log
-        </Link>
-        {' · '}
-        <Link to="/core/settings" className="font-medium text-primary underline underline-offset-2">
-          Settings
-        </Link>
-        {' · '}
-        <Link to="/core/feature-flags" className="font-medium text-primary underline underline-offset-2">
-          Feature flags
-        </Link>
-      </p>
+      {(() => {
+        const adminLinks = [
+          hasPermission('core.role.manage') && { to: '/core/roles', label: 'Roles & permissions' },
+          hasPermission('core.audit.read') && { to: '/core/audit-log', label: 'Audit log' },
+          hasPermission('core.settings.read') && { to: '/core/settings', label: 'Settings' },
+          hasPermission('core.feature-flag.read') && { to: '/core/feature-flags', label: 'Feature flags' },
+        ].filter((link): link is { to: string; label: string } => Boolean(link));
+
+        if (adminLinks.length === 0) return null;
+
+        return (
+          <p className="mb-6 text-sm text-text-muted">
+            Manage who can do what:{' '}
+            {adminLinks.map((link, i) => (
+              <span key={link.to}>
+                {i > 0 && ' · '}
+                <Link to={link.to} className="font-medium text-primary underline underline-offset-2">
+                  {link.label}
+                </Link>
+              </span>
+            ))}
+          </p>
+        );
+      })()}
 
       <Card className="mb-6">
         <form noValidate onSubmit={handleSubmit((values) => createCompany.mutate(values))} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -183,10 +193,12 @@ export function CompaniesPage() {
                   <td className="py-2">{new Date(company.createdAt).toLocaleDateString()}</td>
                   <td className="py-2">
                     <div className="flex items-center gap-2">
-                      <Button variant="secondary" onClick={() => setEditingCompanyId(company.id)}>
-                        Edit
-                      </Button>
-                      {company.isActive && (
+                      {canUpdate && (
+                        <Button variant="secondary" onClick={() => setEditingCompanyId(company.id)}>
+                          Edit
+                        </Button>
+                      )}
+                      {canDeactivate && company.isActive && (
                         <Button
                           variant="danger"
                           disabled={deactivateCompany.isPending}
@@ -194,6 +206,9 @@ export function CompaniesPage() {
                         >
                           {deactivateCompany.isPending ? 'Deactivating…' : 'Deactivate'}
                         </Button>
+                      )}
+                      {!canUpdate && !canDeactivate && (
+                        <span className="text-xs text-text-muted">No actions available</span>
                       )}
                     </div>
                   </td>

@@ -49,7 +49,13 @@ public class AccountingPeriodTests
     {
         var period = AccountingPeriod.Create(Guid.NewGuid(), new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), new DateTimeOffset(2026, 1, 31, 0, 0, 0, TimeSpan.Zero));
 
-        var overlaps = period.OverlapsWith(DateTimeOffset.Parse(otherStart), DateTimeOffset.Parse(otherEnd));
+        // DateTimeOffset.Parse alone assumes the LOCAL machine's UTC offset, not zero —
+        // on a non-UTC machine (e.g. IST, +5:30) that silently shifts these instants away
+        // from the UTC-zero dates AccountingPeriod.Create uses above, flipping the exact
+        // boundary cases this test exists to cover. Force zero offset explicitly instead.
+        var overlaps = period.OverlapsWith(
+            new DateTimeOffset(DateTime.Parse(otherStart), TimeSpan.Zero),
+            new DateTimeOffset(DateTime.Parse(otherEnd), TimeSpan.Zero));
 
         overlaps.Should().Be(expectedOverlap);
     }

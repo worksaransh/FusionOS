@@ -1,5 +1,8 @@
+using FusionOS.BuildingBlocks.Application.Abstractions;
+using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Procurement.Application.PurchaseOrders.Commands.ApprovePurchaseOrder;
 using FusionOS.Modules.Procurement.Application.PurchaseOrders.Contracts;
+using FusionOS.Modules.Procurement.Application.Suppliers.Contracts;
 using FusionOS.Modules.Procurement.Domain.PurchaseOrders;
 using FusionOS.SharedKernel.Context;
 using FluentAssertions;
@@ -27,7 +30,8 @@ public class ApprovePurchaseOrderCommandHandlerTests
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var currentUser = Substitute.For<ICurrentUserContext>();
         currentUser.UserId.Returns(Guid.NewGuid());
-        var handler = new ApprovePurchaseOrderCommandHandler(repository, unitOfWork, currentUser);
+        var sodService = Substitute.For<ISegregationOfDutiesService>();
+        var handler = new ApprovePurchaseOrderCommandHandler(repository, unitOfWork, currentUser, sodService);
 
         var result = await handler.Handle(new ApprovePurchaseOrderCommand(companyId, order.Id), CancellationToken.None);
 
@@ -45,11 +49,33 @@ public class ApprovePurchaseOrderCommandHandlerTests
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var currentUser = Substitute.For<ICurrentUserContext>();
         currentUser.UserId.Returns(Guid.Empty); // matches the un-stamped order.CreatedBy default
-        var handler = new ApprovePurchaseOrderCommandHandler(repository, unitOfWork, currentUser);
+        var sodService = Substitute.For<ISegregationOfDutiesService>(); // no active rule configured -> falls back to the generic maker-checker guard
+        var handler = new ApprovePurchaseOrderCommandHandler(repository, unitOfWork, currentUser, sodService);
 
         var act = () => handler.Handle(new ApprovePurchaseOrderCommand(companyId, order.Id), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+        await unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenApproverIsTheSameAsTheCreatorAndAnActiveSodRuleCoversTheseTwoPermissions_ThrowsValidationException()
+    {
+        var companyId = Guid.NewGuid();
+        var order = PurchaseOrder.Create(companyId, Guid.NewGuid(), new[] { new PurchaseOrderLineInput(Guid.NewGuid(), 5m, 10m) });
+        var repository = Substitute.For<IPurchaseOrderRepository>();
+        repository.GetByIdAsync(companyId, order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var currentUser = Substitute.For<ICurrentUserContext>();
+        currentUser.UserId.Returns(Guid.Empty); // matches the un-stamped order.CreatedBy default
+        var sodService = Substitute.For<ISegregationOfDutiesService>();
+        sodService.HasConflictAsync(companyId, "procurement.purchase-order.create", "procurement.purchase-order.approve", Arg.Any<CancellationToken>())
+            .Returns(true);
+        var handler = new ApprovePurchaseOrderCommandHandler(repository, unitOfWork, currentUser, sodService);
+
+        var act = () => handler.Handle(new ApprovePurchaseOrderCommand(companyId, order.Id), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ValidationException>();
         await unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
@@ -63,7 +89,8 @@ public class ApprovePurchaseOrderCommandHandlerTests
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var currentUser = Substitute.For<ICurrentUserContext>();
         currentUser.UserId.Returns(Guid.NewGuid());
-        var handler = new ApprovePurchaseOrderCommandHandler(repository, unitOfWork, currentUser);
+        var sodService = Substitute.For<ISegregationOfDutiesService>();
+        var handler = new ApprovePurchaseOrderCommandHandler(repository, unitOfWork, currentUser, sodService);
         await handler.Handle(new ApprovePurchaseOrderCommand(companyId, order.Id), CancellationToken.None);
 
         var act = () => handler.Handle(new ApprovePurchaseOrderCommand(companyId, order.Id), CancellationToken.None);
@@ -80,7 +107,8 @@ public class ApprovePurchaseOrderCommandHandlerTests
         repository.GetByIdAsync(companyId, orderId, Arg.Any<CancellationToken>()).Returns((PurchaseOrder?)null);
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var currentUser = Substitute.For<ICurrentUserContext>();
-        var handler = new ApprovePurchaseOrderCommandHandler(repository, unitOfWork, currentUser);
+        var sodService = Substitute.For<ISegregationOfDutiesService>();
+        var handler = new ApprovePurchaseOrderCommandHandler(repository, unitOfWork, currentUser, sodService);
 
         var act = () => handler.Handle(new ApprovePurchaseOrderCommand(companyId, orderId), CancellationToken.None);
 

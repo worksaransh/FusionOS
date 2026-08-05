@@ -45,4 +45,14 @@ public sealed class KpiDefinition : TenantAggregateRoot
     }
 
     public void Deactivate() => IsActive = false;
+
+    /// <summary>Update deliberately excludes Code — it's the immutable business key, same convention as UpdateBranchCommand/UpdateCostCenterCommand/UpdateCompanyCommand.</summary>
+    public void UpdateDetails(string name, string? unit)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("KPI name is required.", nameof(name));
+
+        Name = name.Trim();
+        Unit = string.IsNullOrWhiteSpace(unit) ? null : unit.Trim();
+    }
 }

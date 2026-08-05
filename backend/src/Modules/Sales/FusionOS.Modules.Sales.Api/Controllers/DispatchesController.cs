@@ -1,5 +1,6 @@
 using FusionOS.Modules.Sales.Application.Dispatches.Commands.CreateDispatch;
 using FusionOS.Modules.Sales.Application.Dispatches.Queries.ListDispatches;
+using FusionOS.Modules.Sales.Application.EWayBills.Commands.GenerateEWayBill;
 using FusionOS.Modules.Sales.Domain.Dispatches;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -32,6 +33,18 @@ public sealed class DispatchesController : ControllerBase
     public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(new ListDispatchesQuery(companyId, page, pageSize), cancellationToken);
+        return Ok(result);
+    }
+
+    // GST e-way bill — see GenerateEWayBillCommandHandler's doc comment for the 180-day
+    // generation cutoff this enforces.
+    [HttpPost("{id:guid}/generate-e-way-bill")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GenerateEWayBill(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GenerateEWayBillCommand(companyId, id), cancellationToken);
         return Ok(result);
     }
 }

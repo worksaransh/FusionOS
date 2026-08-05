@@ -94,4 +94,34 @@ public sealed class JournalEntryRepository : IJournalEntryRepository
 
         return grouped.Select(g => (g.AccountId, g.TotalDebit, g.TotalCredit)).ToList();
     }
+
+    public Task<bool> ExistsDraftEntryInDateRangeAsync(Guid companyId, DateTimeOffset dateFrom, DateTimeOffset dateTo, CancellationToken cancellationToken = default) =>
+        _context.JournalEntries.AnyAsync(
+            e => e.CompanyId == companyId
+                 && e.Status == JournalEntryStatus.Draft
+                 && e.EntryDate >= dateFrom
+                 && e.EntryDate <= dateTo,
+            cancellationToken);
+
+    public async Task<IReadOnlyList<(Guid AccountId, decimal NetForeignAmount, decimal NetBaseAmount)>> GetOpenForeignCurrencyBalancesByAccountAsync(Guid companyId, string currencyCode, CancellationToken cancellationToken = default)
+    {
+        var normalized = currencyCode.Trim().ToUpperInvariant();
+
+        var grouped = await (
+            from entry in _context.JournalEntries
+            where entry.CompanyId == companyId
+                  && entry.Status == JournalEntryStatus.Posted
+            from line in entry.Lines
+            where line.ForeignCurrencyCode == normalized
+            group line by line.AccountId into g
+            select new
+            {
+                AccountId = g.Key,
+                NetForeignAmount = g.Sum(l => l.Debit > 0 ? l.ForeignAmount!.Value : -l.ForeignAmount!.Value),
+                NetBaseAmount = g.Sum(l => l.Debit - l.Credit),
+            })
+            .ToListAsync(cancellationToken);
+
+        return grouped.Select(g => (g.AccountId, g.NetForeignAmount, g.NetBaseAmount)).ToList();
+    }
 }

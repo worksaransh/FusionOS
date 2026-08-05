@@ -106,6 +106,23 @@ public sealed class BillOfMaterials : TenantAggregateRoot
     /// <summary>The standard soft-deactivate — a superseded BOM is hidden from active lists, never hard-deleted.</summary>
     public void Deactivate() => IsActive = false;
 
+    /// <summary>
+    /// Updates the header-level editable fields only (Name and ProductId) — deliberately
+    /// distinct from <see cref="CreateNewVersion"/>: it does not touch Lines/Operations,
+    /// does not bump Version, and does not create a new row. Code is excluded — it's the
+    /// immutable business key, same convention as UpdateBranchCommand/UpdateCostCenterCommand.
+    /// </summary>
+    public void UpdateHeader(string name, Guid productId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Bill of materials name is required.", nameof(name));
+        if (productId == Guid.Empty)
+            throw new ArgumentException("Manufactured product id is required.", nameof(productId));
+
+        Name = name.Trim();
+        ProductId = productId;
+    }
+
     /// <summary>Marks this BOM as the product's primary/default one — see the IsPrimary property doc comment for the multi-BOM-per-product coordination this doesn't itself enforce.</summary>
     public void MarkAsPrimary() => IsPrimary = true;
 

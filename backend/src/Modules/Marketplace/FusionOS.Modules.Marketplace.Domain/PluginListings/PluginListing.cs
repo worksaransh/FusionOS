@@ -56,4 +56,17 @@ public sealed class PluginListing : TenantAggregateRoot
 
     /// <summary>Delists the listing — same "soft-deactivate, never hard-delete" convention as every other master-data aggregate in this codebase.</summary>
     public void Deactivate() => IsActive = false;
+
+    /// <summary>Update deliberately excludes Code — it's the immutable business key, same convention as UpdateBranchCommand/UpdateCostCenterCommand/UpdateCompanyCommand.</summary>
+    public void UpdateDetails(string name, string publisher, PluginCategory category)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Plugin listing name is required.", nameof(name));
+        if (string.IsNullOrWhiteSpace(publisher))
+            throw new ArgumentException("Publisher is required.", nameof(publisher));
+
+        Name = name.Trim();
+        Publisher = publisher.Trim();
+        Category = category;
+    }
 }

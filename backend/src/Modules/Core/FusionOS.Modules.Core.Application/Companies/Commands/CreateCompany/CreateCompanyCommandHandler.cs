@@ -22,6 +22,6 @@ public sealed class CreateCompanyCommandHandler : IRequestHandler<CreateCompanyC
         await _repository.AddAsync(company, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new CompanyDto(company.Id, company.Name, company.LegalName, company.TaxId, company.BaseCurrency, company.IsActive, company.CreatedAt);
+        return new CompanyDto(company.Id, company.Name, company.LegalName, company.TaxId, company.BaseCurrency, company.IsActive, company.CreatedAt, company.ParentCompanyId);
     }
 }

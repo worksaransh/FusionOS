@@ -1,5 +1,6 @@
 using FusionOS.Modules.Finance.Application.CostCenters.Commands.UpdateCostCenter;
 using FusionOS.Modules.Finance.Application.CostCenters.Contracts;
+using FusionOS.Modules.Finance.Application.Accounts.Contracts;
 using FusionOS.Modules.Finance.Domain.CostCenters;
 using FluentAssertions;
 using NSubstitute;

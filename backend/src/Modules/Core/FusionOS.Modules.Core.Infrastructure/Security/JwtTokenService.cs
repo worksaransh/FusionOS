@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using FusionOS.BuildingBlocks.Infrastructure.Security;
 using FusionOS.Modules.Core.Application.Auth.Contracts;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -10,9 +11,22 @@ namespace FusionOS.Modules.Core.Infrastructure.Security;
 
 /// <summary>
 /// Issues access tokens as standard signed JWTs (HMAC-SHA256) carrying the same
-/// sub/company_id/branch_id/permission claims HttpCurrentUserContext already
+/// sub/company_id/branch_id/permissions claims HttpCurrentUserContext already
 /// reads (see ICurrentUserContext). Refresh tokens are opaque random values -
 /// only their SHA-256 hash is ever persisted, per 07_SECURITY.md.
+///
+/// Permissions are packed into ONE gzip+base64url claim rather than one JWT
+/// claim per permission code. A role holding every catalog permission (e.g. the
+/// default Owner role, or any company whose permission catalog has grown since
+/// the role was last synced) previously produced an Authorization header north
+/// of 16KB once the catalog passed a few hundred codes - large enough to trip
+/// the default request-header-size limit on Node/Vite's dev server (HTTP 431)
+/// and to sit uncomfortably close to common reverse-proxy header-buffer limits
+/// (nginx's default 8KB, for one) in front of a real deployment. Gzip exploits
+/// the heavy shared-prefix redundancy in dot-delimited permission codes
+/// ("finance.account.create", "finance.account.read", ...) to keep this small
+/// even as the catalog keeps growing - see JwtPermissionsCodec for the exact
+/// encode/decode pair HttpCurrentUserContext uses on the other end.
 /// </summary>
 public sealed class JwtTokenService : IJwtTokenService
 {
@@ -37,7 +51,9 @@ public sealed class JwtTokenService : IJwtTokenService
             claimsList.Add(new Claim("company_id", companyId.ToString()));
         if (claims.BranchId is { } branchId)
             claimsList.Add(new Claim("branch_id", branchId.ToString()));
-        claimsList.AddRange(claims.Permissions.Select(p => new Claim("permission", p)));
+        var encodedPermissions = JwtPermissionsCodec.Encode(claims.Permissions);
+        if (encodedPermissions.Length > 0)
+            claimsList.Add(new Claim("permissions", encodedPermissions));
 
         var signingCredentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),

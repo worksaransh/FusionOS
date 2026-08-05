@@ -52,4 +52,25 @@ public sealed class ChecklistTemplate : TenantAggregateRoot
 
     /// <summary>Soft-deactivate — a retired procedure is hidden from active lists, never hard-deleted. Same convention as Asset.Deactivate.</summary>
     public void Deactivate() => IsActive = false;
+
+    /// <summary>
+    /// Update replaces the whole step list, same "no independent lifecycle outside
+    /// its template" reasoning as Create — steps are re-sequenced from scratch
+    /// rather than diffed against the previous set.
+    /// </summary>
+    public void UpdateDetails(string name, string? description, IReadOnlyCollection<string> stepDescriptions)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Checklist template name is required.", nameof(name));
+        if (stepDescriptions is null || stepDescriptions.Count == 0)
+            throw new ArgumentException("A checklist template must have at least one step.", nameof(stepDescriptions));
+
+        Name = name.Trim();
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+
+        _items.Clear();
+        var sequence = 1;
+        foreach (var step in stepDescriptions)
+            _items.Add(ChecklistItem.Create(sequence++, step));
+    }
 }

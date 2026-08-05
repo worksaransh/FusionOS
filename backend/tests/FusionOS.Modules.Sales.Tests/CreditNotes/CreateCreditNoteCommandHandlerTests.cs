@@ -1,3 +1,4 @@
+using FusionOS.Modules.Sales.Application.Customers.Contracts;
 using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Sales.Application.CreditNotes.Commands.CreateCreditNote;
 using FusionOS.Modules.Sales.Application.CreditNotes.Contracts;

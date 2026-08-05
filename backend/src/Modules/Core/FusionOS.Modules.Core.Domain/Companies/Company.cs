@@ -16,6 +16,17 @@ public sealed class Company : AuditableAggregateRoot
     public string BaseCurrency { get; private set; } = "USD";
     public bool IsActive { get; private set; } = true;
 
+    /// <summary>
+    /// Self-referencing FK to another Company (Phase 2.4 — multi-entity/subsidiary
+    /// consolidation). Null means "this company has no parent" — the ordinary,
+    /// single-company case that must keep working undisturbed. When set, this
+    /// company is a subsidiary consolidated under the referenced parent company
+    /// for reporting purposes (see GetConsolidatedTrialBalanceQuery). Deliberately
+    /// shallow (no depth/cycle validation here) — Phase 2.4 only models one level
+    /// of parent/subsidiary, matching the roadmap's scope.
+    /// </summary>
+    public Guid? ParentCompanyId { get; private set; }
+
     private Company() { }
 
     public static Company Create(string name, string legalName, string baseCurrency, string? taxId = null)
@@ -52,5 +63,22 @@ public sealed class Company : AuditableAggregateRoot
         Name = name.Trim();
         LegalName = legalName.Trim();
         TaxId = taxId;
+    }
+
+    /// <summary>
+    /// Sets or clears this company's parent for consolidation purposes (Phase 2.4).
+    /// Pass null to detach from any parent. Guards against the one structurally
+    /// invalid case that would otherwise be silently accepted: a company naming
+    /// itself as its own parent. Cross-company reachability (e.g. A -&gt; B -&gt; A cycles)
+    /// is intentionally not checked here — the roadmap scope for this phase is a
+    /// single parent/subsidiary level, and enforcing deeper-cycle detection would
+    /// require a company directory lookup this aggregate does not have.
+    /// </summary>
+    public void SetParentCompany(Guid? parentCompanyId)
+    {
+        if (parentCompanyId is { } id && id == Id)
+            throw new ArgumentException("A company cannot be its own parent.", nameof(parentCompanyId));
+
+        ParentCompanyId = parentCompanyId;
     }
 }

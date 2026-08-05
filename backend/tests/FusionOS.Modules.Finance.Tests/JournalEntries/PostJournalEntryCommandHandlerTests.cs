@@ -1,8 +1,12 @@
 using FluentAssertions;
+using FusionOS.BuildingBlocks.Application.Abstractions;
+using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Finance.Application.Accounts.Contracts;
+using FusionOS.Modules.Finance.Application.AccountingPeriods.Contracts;
 using FusionOS.Modules.Finance.Application.JournalEntries.Commands.PostJournalEntry;
 using FusionOS.Modules.Finance.Application.JournalEntries.Contracts;
 using FusionOS.Modules.Finance.Domain.JournalEntries;
+using FusionOS.SharedKernel.Context;
 using NSubstitute;
 using Xunit;
 
@@ -21,9 +25,13 @@ public class PostJournalEntryCommandHandlerTests
         });
 
         var repository = Substitute.For<IJournalEntryRepository>();
+        var accountingPeriodRepository = Substitute.For<IAccountingPeriodRepository>();
         repository.GetByIdAsync(companyId, entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var handler = new PostJournalEntryCommandHandler(repository, unitOfWork);
+        var currentUser = Substitute.For<ICurrentUserContext>();
+        currentUser.UserId.Returns(Guid.NewGuid());
+        var sodService = Substitute.For<ISegregationOfDutiesService>();
+        var handler = new PostJournalEntryCommandHandler(repository, accountingPeriodRepository, unitOfWork, currentUser, sodService);
         var command = new PostJournalEntryCommand(companyId, entry.Id);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -33,12 +41,43 @@ public class PostJournalEntryCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenPosterIsTheSameAsTheCreatorAndAnActiveSodRuleCoversTheseTwoPermissions_ThrowsValidationException()
+    {
+        var companyId = Guid.NewGuid();
+        var entry = JournalEntry.Create(companyId, "REF-1", new[]
+        {
+            new JournalEntryLineInput(Guid.NewGuid(), 100m, 0m, null),
+            new JournalEntryLineInput(Guid.NewGuid(), 0m, 100m, null),
+        });
+
+        var repository = Substitute.For<IJournalEntryRepository>();
+        var accountingPeriodRepository = Substitute.For<IAccountingPeriodRepository>();
+        repository.GetByIdAsync(companyId, entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var currentUser = Substitute.For<ICurrentUserContext>();
+        currentUser.UserId.Returns(Guid.Empty); // matches the un-stamped entry.CreatedBy default
+        var sodService = Substitute.For<ISegregationOfDutiesService>();
+        sodService.HasConflictAsync(companyId, "finance.journal-entry.create", "finance.journal-entry.post", Arg.Any<CancellationToken>())
+            .Returns(true);
+        var handler = new PostJournalEntryCommandHandler(repository, accountingPeriodRepository, unitOfWork, currentUser, sodService);
+        var command = new PostJournalEntryCommand(companyId, entry.Id);
+
+        var act = () => handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ValidationException>();
+        await unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_WhenEntryDoesNotExist_Throws()
     {
         var repository = Substitute.For<IJournalEntryRepository>();
+        var accountingPeriodRepository = Substitute.For<IAccountingPeriodRepository>();
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((JournalEntry?)null);
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var handler = new PostJournalEntryCommandHandler(repository, unitOfWork);
+        var currentUser = Substitute.For<ICurrentUserContext>();
+        var sodService = Substitute.For<ISegregationOfDutiesService>();
+        var handler = new PostJournalEntryCommandHandler(repository, accountingPeriodRepository, unitOfWork, currentUser, sodService);
         var command = new PostJournalEntryCommand(Guid.NewGuid(), Guid.NewGuid());
 
         var act = async () => await handler.Handle(command, CancellationToken.None);

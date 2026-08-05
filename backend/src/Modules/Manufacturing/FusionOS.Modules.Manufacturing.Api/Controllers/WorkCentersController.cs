@@ -1,5 +1,6 @@
 using FusionOS.Modules.Manufacturing.Application.WorkCenters.Commands.CreateWorkCenter;
 using FusionOS.Modules.Manufacturing.Application.WorkCenters.Commands.DeactivateWorkCenter;
+using FusionOS.Modules.Manufacturing.Application.WorkCenters.Commands.UpdateWorkCenter;
 using FusionOS.Modules.Manufacturing.Application.WorkCenters.Queries.GetWorkCenterCapacityLoad;
 using FusionOS.Modules.Manufacturing.Application.WorkCenters.Queries.ListWorkCenters;
 using MediatR;
@@ -40,6 +41,18 @@ public sealed class WorkCentersController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWorkCenterRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateWorkCenterCommand(request.CompanyId, id, request.Name, request.CapacityHoursPerDay);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -68,5 +81,7 @@ public sealed class WorkCentersController : ControllerBase
 }
 
 public sealed record CreateWorkCenterRequest(Guid CompanyId, string Code, string Name, decimal CapacityHoursPerDay);
+
+public sealed record UpdateWorkCenterRequest(Guid CompanyId, string Name, decimal CapacityHoursPerDay);
 
 public sealed record DeactivateWorkCenterRequest(Guid CompanyId);

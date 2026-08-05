@@ -1,5 +1,6 @@
 using FusionOS.Modules.Procurement.Application.SupplierContracts.Commands.TerminateSupplierContract;
 using FusionOS.Modules.Procurement.Application.SupplierContracts.Contracts;
+using FusionOS.Modules.Procurement.Application.Suppliers.Contracts;
 using FusionOS.Modules.Procurement.Domain.SupplierContracts;
 using FluentAssertions;
 using NSubstitute;

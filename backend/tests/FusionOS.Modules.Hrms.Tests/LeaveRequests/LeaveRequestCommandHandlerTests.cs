@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FusionOS.Modules.Hrms.Application.Employees.Contracts;
+using FusionOS.Modules.Hrms.Application.LeaveBalances.Contracts;
 using FusionOS.Modules.Hrms.Application.LeaveRequests.Commands.ApproveLeaveRequest;
 using FusionOS.Modules.Hrms.Application.LeaveRequests.Commands.CreateLeaveRequest;
 using FusionOS.Modules.Hrms.Application.LeaveRequests.Commands.RejectLeaveRequest;
@@ -54,14 +55,35 @@ public class LeaveRequestCommandHandlerTests
     public async Task ApproveLeaveRequest_ResolvesToApproved()
     {
         var companyId = Guid.NewGuid();
-        var request = Domain.LeaveRequests.LeaveRequest.Create(companyId, Guid.NewGuid(), LeaveType.Annual, Start, End, null);
+        var employeeId = Guid.NewGuid();
+        var request = Domain.LeaveRequests.LeaveRequest.Create(companyId, employeeId, LeaveType.Annual, Start, End, null);
         var repository = Substitute.For<ILeaveRequestRepository>();
         repository.GetByIdAsync(companyId, request.Id, Arg.Any<CancellationToken>()).Returns(request);
-        var handler = new ApproveLeaveRequestCommandHandler(repository, Substitute.For<IUnitOfWork>());
+        var balance = Domain.LeaveBalances.LeaveBalance.Create(companyId, employeeId, LeaveType.Annual, Start.Year, entitledDays: 20m);
+        var leaveBalanceRepository = Substitute.For<ILeaveBalanceRepository>();
+        leaveBalanceRepository.GetAsync(companyId, employeeId, LeaveType.Annual, Start.Year, Arg.Any<CancellationToken>()).Returns(balance);
+        var handler = new ApproveLeaveRequestCommandHandler(repository, leaveBalanceRepository, Substitute.For<IUnitOfWork>());
 
         var result = await handler.Handle(new ApproveLeaveRequestCommand(companyId, request.Id), CancellationToken.None);
 
         result.Status.Should().Be("Approved");
+    }
+
+    [Fact]
+    public async Task ApproveLeaveRequest_WhenNoLeaveBalanceExists_Throws()
+    {
+        var companyId = Guid.NewGuid();
+        var employeeId = Guid.NewGuid();
+        var request = Domain.LeaveRequests.LeaveRequest.Create(companyId, employeeId, LeaveType.Annual, Start, End, null);
+        var repository = Substitute.For<ILeaveRequestRepository>();
+        repository.GetByIdAsync(companyId, request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        var leaveBalanceRepository = Substitute.For<ILeaveBalanceRepository>();
+        leaveBalanceRepository.GetAsync(companyId, employeeId, LeaveType.Annual, Start.Year, Arg.Any<CancellationToken>()).Returns((Domain.LeaveBalances.LeaveBalance?)null);
+        var handler = new ApproveLeaveRequestCommandHandler(repository, leaveBalanceRepository, Substitute.For<IUnitOfWork>());
+
+        var act = () => handler.Handle(new ApproveLeaveRequestCommand(companyId, request.Id), CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]

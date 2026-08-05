@@ -1,5 +1,6 @@
 using FusionOS.Modules.Manufacturing.Application.Machines.Commands.CreateMachine;
 using FusionOS.Modules.Manufacturing.Application.Machines.Commands.DeactivateMachine;
+using FusionOS.Modules.Manufacturing.Application.Machines.Commands.UpdateMachine;
 using FusionOS.Modules.Manufacturing.Application.Machines.Queries.ListMachinesByWorkCenter;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -38,6 +39,18 @@ public sealed class MachinesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateMachineRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateMachineCommand(request.CompanyId, id, request.Name, request.WorkCenterId);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -50,5 +63,7 @@ public sealed class MachinesController : ControllerBase
 }
 
 public sealed record CreateMachineRequest(Guid CompanyId, string Code, string Name, Guid WorkCenterId);
+
+public sealed record UpdateMachineRequest(Guid CompanyId, string Name, Guid WorkCenterId);
 
 public sealed record DeactivateMachineRequest(Guid CompanyId);

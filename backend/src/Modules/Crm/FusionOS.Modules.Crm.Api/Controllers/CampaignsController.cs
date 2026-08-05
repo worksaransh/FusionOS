@@ -2,6 +2,7 @@ using FusionOS.Modules.Crm.Application.Campaigns.Commands.AddCampaignMember;
 using FusionOS.Modules.Crm.Application.Campaigns.Commands.CreateCampaign;
 using FusionOS.Modules.Crm.Application.Campaigns.Commands.DeactivateCampaign;
 using FusionOS.Modules.Crm.Application.Campaigns.Commands.RemoveCampaignMember;
+using FusionOS.Modules.Crm.Application.Campaigns.Commands.UpdateCampaign;
 using FusionOS.Modules.Crm.Application.Campaigns.Queries.GetCampaignById;
 using FusionOS.Modules.Crm.Application.Campaigns.Queries.ListCampaigns;
 using MediatR;
@@ -47,6 +48,18 @@ public sealed class CampaignsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCampaignRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateCampaignCommand(request.CompanyId, id, request.Name, request.Description, request.StartDate, request.EndDate);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -80,5 +93,7 @@ public sealed class CampaignsController : ControllerBase
 }
 
 public sealed record CreateCampaignRequest(Guid CompanyId, string Name, string? Description, DateTimeOffset StartDate, DateTimeOffset? EndDate);
+
+public sealed record UpdateCampaignRequest(Guid CompanyId, string Name, string? Description, DateTimeOffset StartDate, DateTimeOffset? EndDate);
 
 public sealed record AddCampaignMemberRequest(Guid CompanyId, string MemberEntityType, Guid MemberEntityId);

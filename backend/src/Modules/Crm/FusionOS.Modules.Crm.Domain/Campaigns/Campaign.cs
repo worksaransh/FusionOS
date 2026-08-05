@@ -46,4 +46,17 @@ public sealed class Campaign : TenantAggregateRoot
 
     /// <summary>Soft-deactivate only — never a hard delete (same convention as Account.Deactivate).</summary>
     public void Deactivate() => IsActive = false;
+
+    public void UpdateDetails(string name, string? description, DateTimeOffset startDate, DateTimeOffset? endDate)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Campaign name is required.", nameof(name));
+        if (endDate is { } end && end < startDate)
+            throw new ArgumentException("End date cannot be before the start date.", nameof(endDate));
+
+        Name = name.Trim();
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        StartDate = startDate;
+        EndDate = endDate;
+    }
 }

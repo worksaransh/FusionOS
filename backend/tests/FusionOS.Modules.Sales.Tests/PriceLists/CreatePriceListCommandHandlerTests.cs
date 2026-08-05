@@ -1,3 +1,4 @@
+using FusionOS.Modules.Sales.Application.Customers.Contracts;
 using FusionOS.Modules.Sales.Application.PriceLists.Commands.CreatePriceList;
 using FusionOS.Modules.Sales.Application.PriceLists.Contracts;
 using FusionOS.Modules.Sales.Domain.PriceLists;

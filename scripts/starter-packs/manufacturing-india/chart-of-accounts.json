@@ -1,0 +1,26 @@
+{
+  "_comment": "Manufacturing (India) starter pack - Schedule III aligned minimum viable Chart of Accounts. Fields map 1:1 onto CreateAccountRequest (POST /api/v1/finance/accounts): CompanyId, Code, Name, AccountType, ParentAccountId. AccountType values are the exact case-sensitive names of FusionOS.Modules.Finance.Domain.Accounts.AccountType: Asset, Liability, Equity, Revenue, Expense.",
+  "accounts": [
+    { "Code": "1100", "Name": "Cash", "AccountType": "Asset" },
+    { "Code": "1200", "Name": "Bank Accounts", "AccountType": "Asset" },
+    { "Code": "1300", "Name": "Accounts Receivable", "AccountType": "Asset" },
+    { "Code": "1410", "Name": "Inventory - Raw Materials", "AccountType": "Asset" },
+    { "Code": "1420", "Name": "Inventory - Finished Goods", "AccountType": "Asset" },
+    { "Code": "1500", "Name": "GST Input Tax Credit", "AccountType": "Asset" },
+    { "Code": "1600", "Name": "Fixed Assets - Plant & Machinery", "AccountType": "Asset" },
+    { "Code": "1650", "Name": "Accumulated Depreciation", "AccountType": "Asset" },
+    { "Code": "2100", "Name": "Accounts Payable", "AccountType": "Liability" },
+    { "Code": "2200", "Name": "GST Output Tax Payable", "AccountType": "Liability" },
+    { "Code": "2300", "Name": "Salaries Payable", "AccountType": "Liability" },
+    { "Code": "3100", "Name": "Share Capital", "AccountType": "Equity" },
+    { "Code": "3200", "Name": "Retained Earnings", "AccountType": "Equity" },
+    { "Code": "4100", "Name": "Sales Revenue - Domestic", "AccountType": "Revenue" },
+    { "Code": "4200", "Name": "Sales Revenue - Export", "AccountType": "Revenue" },
+    { "Code": "5100", "Name": "Cost of Goods Sold", "AccountType": "Expense" },
+    { "Code": "5200", "Name": "Raw Material Purchases", "AccountType": "Expense" },
+    { "Code": "5300", "Name": "Salaries & Wages", "AccountType": "Expense" },
+    { "Code": "5400", "Name": "Depreciation Expense", "AccountType": "Expense" },
+    { "Code": "5500", "Name": "Power & Fuel", "AccountType": "Expense" },
+    { "Code": "5600", "Name": "Freight & Forwarding", "AccountType": "Expense" }
+  ]
+}

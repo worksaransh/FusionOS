@@ -1,4 +1,5 @@
 using FusionOS.Modules.Sales.Domain.SalesOrders;
+using Events = FusionOS.Modules.Sales.Domain.SalesOrders.Events;
 using FluentAssertions;
 using Xunit;
 

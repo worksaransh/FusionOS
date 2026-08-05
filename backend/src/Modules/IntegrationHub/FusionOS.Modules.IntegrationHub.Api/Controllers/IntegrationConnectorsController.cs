@@ -1,5 +1,6 @@
 using FusionOS.Modules.IntegrationHub.Application.IntegrationConnectors.Commands.CreateIntegrationConnector;
 using FusionOS.Modules.IntegrationHub.Application.IntegrationConnectors.Commands.DeactivateIntegrationConnector;
+using FusionOS.Modules.IntegrationHub.Application.IntegrationConnectors.Commands.UpdateIntegrationConnector;
 using FusionOS.Modules.IntegrationHub.Application.IntegrationConnectors.Queries.GetIntegrationConnectorById;
 using FusionOS.Modules.IntegrationHub.Application.IntegrationConnectors.Queries.ListIntegrationConnectors;
 using FusionOS.Modules.IntegrationHub.Domain.IntegrationConnectors;
@@ -49,6 +50,18 @@ public sealed class IntegrationConnectorsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateIntegrationConnectorRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateIntegrationConnectorCommand(request.CompanyId, id, request.Name, request.Provider, request.Category);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -61,5 +74,7 @@ public sealed class IntegrationConnectorsController : ControllerBase
 }
 
 public sealed record CreateIntegrationConnectorRequest(Guid CompanyId, string Code, string Name, string Provider, ConnectorCategory Category);
+
+public sealed record UpdateIntegrationConnectorRequest(Guid CompanyId, string Name, string Provider, ConnectorCategory Category);
 
 public sealed record DeactivateIntegrationConnectorRequest(Guid CompanyId);

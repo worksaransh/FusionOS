@@ -1,3 +1,4 @@
+using FusionOS.Modules.Sales.Application.Customers.Contracts;
 using FusionOS.Modules.Sales.Application.CreditNotes.Commands.IssueCreditNote;
 using FusionOS.Modules.Sales.Application.CreditNotes.Contracts;
 using FusionOS.Modules.Sales.Domain.CreditNotes;

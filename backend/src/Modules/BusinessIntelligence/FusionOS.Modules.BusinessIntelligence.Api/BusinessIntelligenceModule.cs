@@ -4,6 +4,8 @@ using FusionOS.BuildingBlocks.EventBus;
 using FusionOS.Modules.BusinessIntelligence.Application.KpiDefinitions.Commands.CreateKpiDefinition;
 using FusionOS.Modules.BusinessIntelligence.Application.KpiDefinitions.Contracts;
 using FusionOS.Modules.BusinessIntelligence.Application.KpiSnapshots.Contracts;
+using FusionOS.Modules.BusinessIntelligence.Application.KpiValues.Contracts;
+using FusionOS.Modules.BusinessIntelligence.Application.KpiValues.DataSources;
 using FusionOS.Modules.BusinessIntelligence.Infrastructure.Persistence;
 using FusionOS.Modules.BusinessIntelligence.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Routing;
@@ -36,6 +38,16 @@ public sealed class BusinessIntelligenceModule : IModule
         services.AddScoped<IKpiDefinitionRepository, KpiDefinitionRepository>();
         services.AddScoped<IKpiSnapshotRepository, KpiSnapshotRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Phase 2.3 — live KPI data sources (one per live-computable KpiDefinition.Code),
+        // resolved as IEnumerable<IKpiDataSource> by GetLiveKpiValueQueryHandler.
+        services.AddScoped<IKpiDataSource, ArOutstandingKpiDataSource>();
+        services.AddScoped<IKpiDataSource, ApOutstandingKpiDataSource>();
+        services.AddScoped<IKpiDataSource, LowStockItemCountKpiDataSource>();
+        services.AddScoped<IKpiDataSource, SalesRevenueKpiDataSource>();
+        services.AddScoped<IKpiDataSource, WipValueKpiDataSource>();
+        services.AddScoped<IKpiDataSource, OpenPurchaseOrderValueKpiDataSource>();
+        services.AddScoped<IKpiDataSource, OverdueInvoiceCountKpiDataSource>();
 
         services.AddModuleApplication(typeof(CreateKpiDefinitionCommand).Assembly);
 

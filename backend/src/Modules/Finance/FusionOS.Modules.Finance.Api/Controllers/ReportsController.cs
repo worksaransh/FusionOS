@@ -2,6 +2,7 @@ using FusionOS.Modules.Finance.Application.Reports.Queries.GetApAgingReport;
 using FusionOS.Modules.Finance.Application.Reports.Queries.GetArAgingReport;
 using FusionOS.Modules.Finance.Application.Reports.Queries.GetBalanceSheetReport;
 using FusionOS.Modules.Finance.Application.Reports.Queries.GetCashFlowStatementReport;
+using FusionOS.Modules.Finance.Application.Reports.Queries.GetConsolidatedTrialBalance;
 using FusionOS.Modules.Finance.Application.Reports.Queries.GetProfitAndLossReport;
 using FusionOS.Modules.Finance.Application.Reports.Queries.GetTaxPeriodSummaryReport;
 using FusionOS.Modules.Finance.Application.Reports.Queries.GetTrialBalance;
@@ -22,9 +23,9 @@ public sealed class ReportsController : ControllerBase
 
     [HttpGet("ar-aging")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetArAging([FromQuery] Guid companyId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetArAging([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetArAgingReportQuery(companyId), cancellationToken);
+        var result = await _sender.Send(new GetArAgingReportQuery(companyId, fromDate, toDate), cancellationToken);
         return Ok(result);
     }
 
@@ -36,11 +37,23 @@ public sealed class ReportsController : ControllerBase
         return Ok(result);
     }
 
+    // Multi-entity/subsidiary consolidation (Phase 2.4) — group-level rollup of
+    // trial-balance's own per-company report, see GetConsolidatedTrialBalanceQuery.
+    [HttpGet("consolidated-trial-balance")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetConsolidatedTrialBalance([FromQuery] Guid parentCompanyId, [FromQuery] DateTimeOffset asOf, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetConsolidatedTrialBalanceQuery(parentCompanyId, asOf), cancellationToken);
+        return Ok(result);
+    }
+
     [HttpGet("ap-aging")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetApAging([FromQuery] Guid companyId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetApAging([FromQuery] Guid companyId, [FromQuery] DateTimeOffset? fromDate, [FromQuery] DateTimeOffset? toDate, CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new GetApAgingReportQuery(companyId), cancellationToken);
+        var result = await _sender.Send(new GetApAgingReportQuery(companyId, fromDate, toDate), cancellationToken);
         return Ok(result);
     }
 

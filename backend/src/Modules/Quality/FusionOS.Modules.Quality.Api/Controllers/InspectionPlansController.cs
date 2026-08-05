@@ -1,5 +1,6 @@
 using FusionOS.Modules.Quality.Application.InspectionPlans.Commands.CreateInspectionPlan;
 using FusionOS.Modules.Quality.Application.InspectionPlans.Commands.DeactivateInspectionPlan;
+using FusionOS.Modules.Quality.Application.InspectionPlans.Commands.UpdateInspectionPlan;
 using FusionOS.Modules.Quality.Application.InspectionPlans.Queries.GetInspectionPlanById;
 using FusionOS.Modules.Quality.Application.InspectionPlans.Queries.ListInspectionPlans;
 using FusionOS.Modules.Quality.Domain.Inspections;
@@ -50,6 +51,18 @@ public sealed class InspectionPlansController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateInspectionPlanRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateInspectionPlanCommand(request.CompanyId, id, request.Name, request.InspectionType, request.CharacteristicNames);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -65,3 +78,5 @@ public sealed class InspectionPlansController : ControllerBase
 public sealed record CreateInspectionPlanRequest(Guid CompanyId, string Name, InspectionType InspectionType, IReadOnlyList<string> CharacteristicNames);
 
 public sealed record DeactivateInspectionPlanRequest(Guid CompanyId);
+
+public sealed record UpdateInspectionPlanRequest(Guid CompanyId, string Name, InspectionType InspectionType, IReadOnlyList<string> CharacteristicNames);

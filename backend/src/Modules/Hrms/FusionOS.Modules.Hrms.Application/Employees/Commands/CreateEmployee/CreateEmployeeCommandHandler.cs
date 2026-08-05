@@ -1,3 +1,4 @@
+using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Hrms.Application.Employees.Contracts;
 using MediatR;
 
@@ -22,6 +23,14 @@ public sealed class CreateEmployeeCommandHandler : IRequestHandler<CreateEmploye
         // Employee.cs's class doc comment).
         if (request.ManagerId.HasValue && !await _repository.ExistsAsync(request.CompanyId, request.ManagerId.Value, cancellationToken))
             throw new KeyNotFoundException($"Manager '{request.ManagerId}' was not found.");
+
+        if (await _repository.CodeExistsAsync(request.CompanyId, request.Code, cancellationToken))
+        {
+            throw new ValidationException(new[]
+            {
+                new FluentValidation.Results.ValidationFailure(nameof(request.Code), $"Employee code '{request.Code}' already exists for this company."),
+            });
+        }
 
         var employee = Domain.Employees.Employee.Create(
             request.CompanyId, request.Code, request.FullName, request.Email, request.DepartmentName, request.HireDate,

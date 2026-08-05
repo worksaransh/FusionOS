@@ -19,13 +19,14 @@ public class RegisterUserCommandHandlerTests
         var hasher = Substitute.For<IPasswordHasher>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var currentUser = Substitute.For<ICurrentUserContext>();
+        var billingBootstrap = Substitute.For<FusionOS.BuildingBlocks.Application.Abstractions.IBillingBootstrapService>();
         var companyId = Guid.NewGuid();
         var ownerRoleId = Guid.NewGuid();
         users.CompanyHasAnyUsersAsync(companyId, Arg.Any<CancellationToken>()).Returns(false);
         users.GetByEmailAsync("first@acme.com", Arg.Any<CancellationToken>()).Returns((User?)null);
         hasher.Hash("password123").Returns("hashed-password");
         users.GetOrCreateCompanyOwnerRoleAsync(companyId, Arg.Any<CancellationToken>()).Returns(ownerRoleId);
-        var handler = new RegisterUserCommandHandler(users, hasher, unitOfWork, currentUser);
+        var handler = new RegisterUserCommandHandler(users, hasher, unitOfWork, currentUser, billingBootstrap);
 
         var result = await handler.Handle(new RegisterUserCommand("first@acme.com", "First Owner", "password123", companyId), CancellationToken.None);
 
@@ -41,6 +42,7 @@ public class RegisterUserCommandHandlerTests
         var hasher = Substitute.For<IPasswordHasher>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var currentUser = Substitute.For<ICurrentUserContext>();
+        var billingBootstrap = Substitute.For<FusionOS.BuildingBlocks.Application.Abstractions.IBillingBootstrapService>();
         var companyId = Guid.NewGuid();
         var memberRoleId = Guid.NewGuid();
         currentUser.HasPermission("core.user.register").Returns(true);
@@ -48,7 +50,7 @@ public class RegisterUserCommandHandlerTests
         users.GetByEmailAsync("teammate@acme.com", Arg.Any<CancellationToken>()).Returns((User?)null);
         hasher.Hash("password123").Returns("hashed-password");
         users.GetOrCreateDefaultMemberRoleAsync(companyId, Arg.Any<CancellationToken>()).Returns(memberRoleId);
-        var handler = new RegisterUserCommandHandler(users, hasher, unitOfWork, currentUser);
+        var handler = new RegisterUserCommandHandler(users, hasher, unitOfWork, currentUser, billingBootstrap);
 
         var result = await handler.Handle(new RegisterUserCommand("teammate@acme.com", "Teammate", "password123", companyId), CancellationToken.None);
 
@@ -63,10 +65,11 @@ public class RegisterUserCommandHandlerTests
         var hasher = Substitute.For<IPasswordHasher>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var currentUser = Substitute.For<ICurrentUserContext>();
+        var billingBootstrap = Substitute.For<FusionOS.BuildingBlocks.Application.Abstractions.IBillingBootstrapService>();
         var companyId = Guid.NewGuid();
         currentUser.HasPermission("core.user.register").Returns(false);
         users.CompanyHasAnyUsersAsync(companyId, Arg.Any<CancellationToken>()).Returns(true);
-        var handler = new RegisterUserCommandHandler(users, hasher, unitOfWork, currentUser);
+        var handler = new RegisterUserCommandHandler(users, hasher, unitOfWork, currentUser, billingBootstrap);
 
         var act = () => handler.Handle(new RegisterUserCommand("teammate@acme.com", "Teammate", "password123", companyId), CancellationToken.None);
 
@@ -80,12 +83,13 @@ public class RegisterUserCommandHandlerTests
         var hasher = Substitute.For<IPasswordHasher>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var currentUser = Substitute.For<ICurrentUserContext>();
+        var billingBootstrap = Substitute.For<FusionOS.BuildingBlocks.Application.Abstractions.IBillingBootstrapService>();
         var companyId = Guid.NewGuid();
         var existingUser = User.Register("first@acme.com", "First Owner", "hashed-password");
         currentUser.HasPermission("core.user.register").Returns(true);
         users.CompanyHasAnyUsersAsync(companyId, Arg.Any<CancellationToken>()).Returns(true);
         users.GetByEmailAsync("first@acme.com", Arg.Any<CancellationToken>()).Returns(existingUser);
-        var handler = new RegisterUserCommandHandler(users, hasher, unitOfWork, currentUser);
+        var handler = new RegisterUserCommandHandler(users, hasher, unitOfWork, currentUser, billingBootstrap);
 
         var act = () => handler.Handle(new RegisterUserCommand("first@acme.com", "Duplicate", "password123", companyId), CancellationToken.None);
 

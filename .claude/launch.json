@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
+      "port": 5173,
+      "autoPort": false
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--no-build", "--project", "backend/src/Host/FusionOS.Api.Host/FusionOS.Api.Host.csproj"],
+      "port": 5000,
+      "autoPort": false
+    }
+  ]
+}

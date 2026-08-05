@@ -65,4 +65,32 @@ public sealed class InspectionPlan : TenantAggregateRoot
 
         IsActive = false;
     }
+
+    /// <summary>Update replaces the whole characteristic list (same ordering/uniqueness rules as <see cref="Create"/>), same convention as UpdateBranchCommand/UpdateCostCenterCommand/UpdateCompanyCommand.</summary>
+    public void UpdateDetails(string name, InspectionType inspectionType, IReadOnlyCollection<string> characteristicNames)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Inspection plan name is required.", nameof(name));
+        if (characteristicNames is null || characteristicNames.Count == 0)
+            throw new ArgumentException("An inspection plan must define at least one characteristic.", nameof(characteristicNames));
+
+        Name = name.Trim();
+        InspectionType = inspectionType;
+
+        _characteristics.Clear();
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var sequence = 1;
+        foreach (var characteristicName in characteristicNames)
+        {
+            var trimmed = characteristicName?.Trim() ?? string.Empty;
+            if (trimmed.Length == 0)
+                throw new ArgumentException("An inspection plan characteristic cannot be blank.", nameof(characteristicNames));
+            if (!seen.Add(trimmed))
+                throw new ArgumentException($"Characteristic '{trimmed}' appears more than once in the plan.", nameof(characteristicNames));
+
+            _characteristics.Add(InspectionPlanCharacteristic.Create(trimmed, sequence));
+            sequence++;
+        }
+    }
 }

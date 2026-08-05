@@ -18,7 +18,11 @@ public sealed class BillOfMaterialsConfiguration : IEntityTypeConfiguration<Bill
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md)
         builder.Ignore(x => x.RowVersion);
         builder.Ignore(x => x.DomainEvents);
-        builder.HasIndex(x => new { x.CompanyId, x.Code }).IsUnique();
+        // Code is intentionally NOT unique alone: CreateNewBomVersion (BillOfMaterials.CreateNewVersion)
+        // inserts a new row that reuses the same business Code at Version+1, with IsCurrentVersion
+        // distinguishing the active one - see CreateNewBomVersionCommandHandler. A (CompanyId, Code)-only
+        // unique index made every "new version" call crash with an unhandled unique-violation 500.
+        builder.HasIndex(x => new { x.CompanyId, x.Code, x.Version }).IsUnique();
         builder.HasIndex(x => x.ProductId);
 
         builder.HasMany(x => x.Lines)

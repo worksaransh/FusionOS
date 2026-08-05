@@ -40,7 +40,7 @@ export function LoginPage() {
     onSuccess: (session) => {
       setSession(session);
       if (session.companyId) setCompanyId(session.companyId);
-      const redirectTo = (location.state as { from?: string } | null)?.from ?? '/core';
+      const redirectTo = (location.state as { from?: string } | null)?.from ?? '/dashboard';
       navigate(redirectTo, { replace: true });
     },
     onError: (error) => {

@@ -1,0 +1,21 @@
+{
+  "_comment": "Manufacturing (India) starter pack - GST tax rates. TaxJurisdiction maps onto CreateTaxJurisdictionRequest (POST /api/v1/finance/tax-jurisdictions): CompanyId, Code, Name. Each tax rate maps onto CreateTaxRateRequest (POST /api/v1/finance/tax-rates): CompanyId, TaxJurisdictionId, Code, Name, Percentage, GstComponent. GstComponent values are the exact names of FusionOS.Modules.Finance.Domain.TaxRates.GstComponent (parsed case-insensitively): NotApplicable, CGST, SGST, IGST. Intra-state supplies split a slab evenly across CGST + SGST; inter-state supplies use the full slab as IGST.",
+  "jurisdiction": { "Code": "IN-GST", "Name": "India - GST" },
+  "taxRates": [
+    { "Code": "CGST-5", "Name": "GST 5% - CGST (Intra-state, Central)", "Percentage": 2.5, "GstComponent": "CGST" },
+    { "Code": "SGST-5", "Name": "GST 5% - SGST (Intra-state, State)", "Percentage": 2.5, "GstComponent": "SGST" },
+    { "Code": "IGST-5", "Name": "GST 5% - IGST (Inter-state)", "Percentage": 5, "GstComponent": "IGST" },
+
+    { "Code": "CGST-12", "Name": "GST 12% - CGST (Intra-state, Central)", "Percentage": 6, "GstComponent": "CGST" },
+    { "Code": "SGST-12", "Name": "GST 12% - SGST (Intra-state, State)", "Percentage": 6, "GstComponent": "SGST" },
+    { "Code": "IGST-12", "Name": "GST 12% - IGST (Inter-state)", "Percentage": 12, "GstComponent": "IGST" },
+
+    { "Code": "CGST-18", "Name": "GST 18% - CGST (Intra-state, Central)", "Percentage": 9, "GstComponent": "CGST" },
+    { "Code": "SGST-18", "Name": "GST 18% - SGST (Intra-state, State)", "Percentage": 9, "GstComponent": "SGST" },
+    { "Code": "IGST-18", "Name": "GST 18% - IGST (Inter-state)", "Percentage": 18, "GstComponent": "IGST" },
+
+    { "Code": "CGST-28", "Name": "GST 28% - CGST (Intra-state, Central)", "Percentage": 14, "GstComponent": "CGST" },
+    { "Code": "SGST-28", "Name": "GST 28% - SGST (Intra-state, State)", "Percentage": 14, "GstComponent": "SGST" },
+    { "Code": "IGST-28", "Name": "GST 28% - IGST (Inter-state)", "Percentage": 28, "GstComponent": "IGST" }
+  ]
+}

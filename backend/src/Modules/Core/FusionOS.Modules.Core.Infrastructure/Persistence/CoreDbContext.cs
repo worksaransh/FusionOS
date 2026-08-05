@@ -8,6 +8,7 @@ using FusionOS.Modules.Core.Domain.Identity;
 using FusionOS.Modules.Core.Domain.Notifications;
 using FusionOS.Modules.Core.Domain.Organizations;
 using FusionOS.Modules.Core.Domain.Settings;
+using FusionOS.Modules.Core.Domain.SodConflictRules;
 using FusionOS.Modules.Core.Domain.Workflow;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,7 @@ public sealed class CoreDbContext : BaseDbContext
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
     public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<SodConflictRule> SodConflictRules => Set<SodConflictRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

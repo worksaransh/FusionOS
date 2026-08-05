@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ShoppingBag, ShoppingCart, AlertTriangle, DollarSign, CreditCard, Plus, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../../shared/api/client';
@@ -80,9 +81,29 @@ interface SalesOrderSummaryDto {
 
 const LOW_STOCK_THRESHOLD = 10;
 
+/** Formats a client-side "as of" freshness timestamp captured at query-success time (Phase 2.3). */
+function formatAsOf(date: Date | undefined): string {
+  if (!date) return '…';
+  return `as of ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+/** Small inline freshness stamp shown next to a widget header. */
+function AsOfStamp({ date }: { date: Date | undefined }) {
+  return <span className="text-xs font-normal text-text-muted">{formatAsOf(date)}</span>;
+}
+
 export function DashboardPage() {
   const { companyId } = useActiveCompany();
   const navigate = useNavigate();
+
+  // Date-range filter (Phase 2.3) shared by the AR/AP aging widgets. Empty string = no filter (all-time), matching the backend's optional fromDate/toDate.
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
+  // Client-side "as of" freshness timestamps, captured whenever each widget's query last succeeded.
+  const [arAgingFetchedAt, setArAgingFetchedAt] = useState<Date>();
+  const [apAgingFetchedAt, setApAgingFetchedAt] = useState<Date>();
+  const [stockValuationFetchedAt, setStockValuationFetchedAt] = useState<Date>();
 
   const salesOrdersQuery = useQuery({
     queryKey: ['dashboard-sales-orders-count', companyId],
@@ -98,13 +119,25 @@ export function DashboardPage() {
 
   const stockValuationQuery = useQuery({
     queryKey: ['dashboard-stock-valuation', companyId],
-    queryFn: () => apiClient.get<StockValuationReportDto>(`/inventory/reports/stock-valuation?companyId=${companyId}`),
+    queryFn: () =>
+      apiClient.get<StockValuationReportDto>(`/inventory/reports/stock-valuation?companyId=${companyId}`).then((data) => {
+        setStockValuationFetchedAt(new Date());
+        return data;
+      }),
     enabled: Boolean(companyId),
   });
 
   const arAgingQuery = useQuery({
-    queryKey: ['dashboard-ar-aging', companyId],
-    queryFn: () => apiClient.get<ArAgingReportDto>(`/finance/reports/ar-aging?companyId=${companyId}`),
+    queryKey: ['dashboard-ar-aging', companyId, fromDate, toDate],
+    queryFn: () =>
+      apiClient
+        .get<ArAgingReportDto>(
+          `/finance/reports/ar-aging?companyId=${companyId}${fromDate ? `&fromDate=${fromDate}` : ''}${toDate ? `&toDate=${toDate}` : ''}`,
+        )
+        .then((data) => {
+          setArAgingFetchedAt(new Date());
+          return data;
+        }),
     enabled: Boolean(companyId),
   });
 
@@ -115,8 +148,16 @@ export function DashboardPage() {
   });
 
   const apAgingQuery = useQuery({
-    queryKey: ['dashboard-ap-aging', companyId],
-    queryFn: () => apiClient.get<ApAgingReportDto>(`/finance/reports/ap-aging?companyId=${companyId}`),
+    queryKey: ['dashboard-ap-aging', companyId, fromDate, toDate],
+    queryFn: () =>
+      apiClient
+        .get<ApAgingReportDto>(
+          `/finance/reports/ap-aging?companyId=${companyId}${fromDate ? `&fromDate=${fromDate}` : ''}${toDate ? `&toDate=${toDate}` : ''}`,
+        )
+        .then((data) => {
+          setApAgingFetchedAt(new Date());
+          return data;
+        }),
     enabled: Boolean(companyId),
   });
 
@@ -147,6 +188,48 @@ export function DashboardPage() {
             <ShoppingBag size={14} className="mr-1" /> Purchase Order
           </Button>
         </div>
+      </div>
+
+      {/* AR/AP Aging Date-Range Filter */}
+      <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-surface p-3">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="dashboard-from-date" className="text-xs font-medium text-text-muted">
+            From date
+          </label>
+          <input
+            id="dashboard-from-date"
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="rounded border border-border bg-surface px-2 py-1 text-sm text-text"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="dashboard-to-date" className="text-xs font-medium text-text-muted">
+            To date
+          </label>
+          <input
+            id="dashboard-to-date"
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="rounded border border-border bg-surface px-2 py-1 text-sm text-text"
+          />
+        </div>
+        {(fromDate || toDate) && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="text-xs"
+            onClick={() => {
+              setFromDate('');
+              setToDate('');
+            }}
+          >
+            Clear range
+          </Button>
+        )}
+        <p className="text-xs text-text-muted">Filters the AR/AP Aging widgets below. Leave blank for all-time.</p>
       </div>
 
       {/* KPI Cards Grid */}
@@ -189,11 +272,17 @@ export function DashboardPage() {
         <div className="space-y-6">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-text">Accounts Receivable (AR) Aging</h2>
+              <h2 className="flex items-baseline gap-2 text-lg font-semibold text-text">
+                Accounts Receivable (AR) Aging
+                <AsOfStamp date={arAgingFetchedAt} />
+              </h2>
               <Button type="button" variant="secondary" onClick={() => navigate('/finance')} className="text-xs">
                 View GL <ArrowRight size={12} className="ml-1" />
               </Button>
             </div>
+            <p className="mb-3 text-2xl font-bold text-text">
+              Total AR Outstanding: <span className="text-emerald-600 dark:text-emerald-400">${(arAgingQuery.data?.grandTotal ?? 0).toLocaleString()}</span>
+            </p>
             <Card className="mb-4">
               <div className="grid grid-cols-4 gap-2 text-center text-xs sm:text-sm">
                 <div className="border-r border-border pr-2">
@@ -239,7 +328,13 @@ export function DashboardPage() {
           </div>
 
           <div>
-            <h2 className="mb-3 text-lg font-semibold text-text">Accounts Payable (AP) Aging</h2>
+            <h2 className="mb-3 flex items-baseline gap-2 text-lg font-semibold text-text">
+              Accounts Payable (AP) Aging
+              <AsOfStamp date={apAgingFetchedAt} />
+            </h2>
+            <p className="mb-3 text-2xl font-bold text-text">
+              Total AP Outstanding: <span className="text-rose-500">${(apAgingQuery.data?.grandTotal ?? 0).toLocaleString()}</span>
+            </p>
             <Card className="mb-4">
               <div className="grid grid-cols-4 gap-2 text-center text-xs sm:text-sm">
                 <div className="border-r border-border pr-2">
@@ -281,7 +376,10 @@ export function DashboardPage() {
         <div className="space-y-6">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-text">Low-Stock Stock Valuation Alert</h2>
+              <h2 className="flex items-baseline gap-2 text-lg font-semibold text-text">
+                Low-Stock Stock Valuation Alert
+                <AsOfStamp date={stockValuationFetchedAt} />
+              </h2>
               <Button type="button" variant="secondary" onClick={() => navigate('/inventory')} className="text-xs">
                 Inventory Catalog <ArrowRight size={12} className="ml-1" />
               </Button>

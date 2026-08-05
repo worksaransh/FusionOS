@@ -14,7 +14,7 @@ public sealed class DepartmentConfiguration : IEntityTypeConfiguration<Departmen
         builder.Property(d => d.Code).HasMaxLength(20).IsRequired();
         builder.UseXminAsConcurrencyToken(); // Postgres system column, not the app-level RowVersion byte[] (04_DATABASE_GUIDELINES.md — SQL Server IsRowVersion() idiom fixed)
         builder.Ignore(d => d.RowVersion);
-        builder.HasIndex(d => new { d.CompanyId, d.Code });
+        builder.HasIndex(d => new { d.CompanyId, d.Code }).IsUnique();
         builder.Ignore(d => d.DomainEvents);
     }
 }

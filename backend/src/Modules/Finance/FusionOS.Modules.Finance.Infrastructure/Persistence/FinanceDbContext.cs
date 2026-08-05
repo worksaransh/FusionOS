@@ -8,6 +8,7 @@ using FusionOS.Modules.Finance.Domain.Budgets;
 using FusionOS.Modules.Finance.Domain.CostCenters;
 using FusionOS.Modules.Finance.Domain.ExchangeRates;
 using FusionOS.Modules.Finance.Domain.FixedAssets;
+using FusionOS.Modules.Finance.Domain.IntercompanyEliminationRules;
 using FusionOS.Modules.Finance.Domain.JournalEntries;
 using FusionOS.Modules.Finance.Domain.Payables;
 using FusionOS.Modules.Finance.Domain.Receivables;
@@ -16,6 +17,8 @@ using FusionOS.Modules.Finance.Domain.Settings;
 using FusionOS.Modules.Finance.Domain.TaxJurisdictions;
 using FusionOS.Modules.Finance.Domain.TaxRates;
 using FusionOS.Modules.Finance.Domain.TaxTransactions;
+using FusionOS.Modules.Finance.Domain.WithholdingTaxRates;
+using FusionOS.Modules.Finance.Domain.WithholdingTaxTransactions;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -71,6 +74,9 @@ public sealed class FinanceDbContext : BaseDbContext
     public DbSet<AccountingPeriod> AccountingPeriods => Set<AccountingPeriod>();
     public DbSet<RecurringJournalEntryTemplate> RecurringJournalEntryTemplates => Set<RecurringJournalEntryTemplate>();
     public DbSet<TaxTransaction> TaxTransactions => Set<TaxTransaction>();
+    public DbSet<WithholdingTaxRate> WithholdingTaxRates => Set<WithholdingTaxRate>();
+    public DbSet<WithholdingTaxTransaction> WithholdingTaxTransactions => Set<WithholdingTaxTransaction>();
+    public DbSet<IntercompanyEliminationRule> IntercompanyEliminationRules => Set<IntercompanyEliminationRule>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -14,6 +14,7 @@ import {
   Users,
   BarChart3,
   LogIn,
+  Download,
 } from 'lucide-react';
 
 interface PublicOutletContext {
@@ -65,7 +66,18 @@ export function LandingHomePage() {
             >
               <LogIn size={18} className="text-primary" /> Login to FusionOS
             </button>
+
+            <a
+              href="/downloads/FusionOS-Setup.exe"
+              download
+              className="flex items-center gap-2 rounded-xl border border-border bg-surface px-6 py-3.5 text-sm font-semibold text-text shadow-sm hover:border-primary/50 hover:bg-surface-muted transition-all"
+            >
+              <Download size={18} className="text-primary" /> Download for Windows
+            </a>
           </div>
+          <p className="mt-3 text-xs text-text-muted">
+            Installs a local FusionOS server on this PC — needs an existing PostgreSQL database.
+          </p>
 
           {/* Trust Badges */}
           <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-xs text-text-muted">

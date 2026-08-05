@@ -9,4 +9,8 @@
     <Company>FusionOS</Company>
     <Product>FusionOS Enterprise Business Operating System</Product>
   </PropertyGroup>
+  
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Api')) or $(MSBuildProjectName.EndsWith('.Host'))">
+    <Using Include="Microsoft.AspNetCore.Http" />
+  </ItemGroup>
 </Project>

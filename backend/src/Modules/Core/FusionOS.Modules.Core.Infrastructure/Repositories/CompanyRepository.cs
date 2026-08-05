@@ -26,4 +26,10 @@ public sealed class CompanyRepository : ICompanyRepository
 
     public Task<int> CountAsync(CancellationToken cancellationToken = default) =>
         _context.Companies.CountAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Company>> ListByParentCompanyIdAsync(Guid parentCompanyId, CancellationToken cancellationToken = default) =>
+        await _context.Companies
+            .Where(c => c.ParentCompanyId == parentCompanyId)
+            .OrderBy(c => c.Name)
+            .ToListAsync(cancellationToken);
 }

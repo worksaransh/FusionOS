@@ -34,6 +34,7 @@
     <ProjectReference Include="../../Modules/Ai/FusionOS.Modules.Ai.Api/FusionOS.Modules.Ai.Api.csproj" />
     <ProjectReference Include="../../Modules/Marketplace/FusionOS.Modules.Marketplace.Api/FusionOS.Modules.Marketplace.Api.csproj" />
     <ProjectReference Include="../../Modules/IntegrationHub/FusionOS.Modules.IntegrationHub.Api/FusionOS.Modules.IntegrationHub.Api.csproj" />
+    <ProjectReference Include="../../Modules/Billing/FusionOS.Modules.Billing.Api/FusionOS.Modules.Billing.Api.csproj" />
     <ProjectReference Include="../../Shared/FusionOS.BuildingBlocks.EventBus/FusionOS.BuildingBlocks.EventBus.csproj" />
   </ItemGroup>
 

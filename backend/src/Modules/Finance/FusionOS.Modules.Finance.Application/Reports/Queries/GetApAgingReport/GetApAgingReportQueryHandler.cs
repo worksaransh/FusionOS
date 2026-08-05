@@ -15,6 +15,11 @@ public sealed class GetApAgingReportQueryHandler : IRequestHandler<GetApAgingRep
         var balances = await _repository.GetOutstandingSupplierBalancesAsync(request.CompanyId, cancellationToken);
         var now = DateTimeOffset.UtcNow;
 
+        if (request.FromDate is { } fromDate)
+            balances = balances.Where(b => b.OldestChargeDate >= fromDate).ToList();
+        if (request.ToDate is { } toDate)
+            balances = balances.Where(b => b.OldestChargeDate <= toDate).ToList();
+
         var lines = balances
             .Select(b =>
             {

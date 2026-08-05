@@ -1,4 +1,5 @@
 using FusionOS.Modules.Marketplace.Application.PluginInstallations.Contracts;
+using FusionOS.Modules.Marketplace.Application.PluginListings.Contracts;
 using MediatR;
 
 namespace FusionOS.Modules.Marketplace.Application.PluginInstallations.Commands.DisablePluginInstallation;

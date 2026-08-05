@@ -1,4 +1,5 @@
 using FusionOS.Modules.Sales.Domain.Quotations;
+using Events = FusionOS.Modules.Sales.Domain.Quotations.Events;
 using FluentAssertions;
 using Xunit;
 
@@ -87,7 +88,9 @@ public class QuotationTests
 
         quotation.Status.Should().Be(QuotationStatus.Converted);
         quotation.ConvertedSalesOrderId.Should().Be(salesOrderId);
-        quotation.DomainEvents.Should().ContainSingle(e => e is Events.QuotationConverted c && c.SalesOrderId == salesOrderId);
+        var converted = quotation.DomainEvents.Should().ContainSingle(e => e is Events.QuotationConverted)
+            .Subject.Should().BeOfType<Events.QuotationConverted>().Subject;
+        converted.SalesOrderId.Should().Be(salesOrderId);
     }
 
     [Fact]

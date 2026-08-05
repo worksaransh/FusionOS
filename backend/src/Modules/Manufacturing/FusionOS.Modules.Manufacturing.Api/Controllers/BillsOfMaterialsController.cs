@@ -5,6 +5,7 @@ using FusionOS.Modules.Manufacturing.Application.BillOfMaterials.Commands.Deacti
 using FusionOS.Modules.Manufacturing.Application.BillOfMaterials.Commands.RemoveRoutingOperation;
 using FusionOS.Modules.Manufacturing.Application.BillOfMaterials.Commands.ReorderRoutingOperations;
 using FusionOS.Modules.Manufacturing.Application.BillOfMaterials.Commands.SetPrimaryBillOfMaterials;
+using FusionOS.Modules.Manufacturing.Application.BillOfMaterials.Commands.UpdateBillOfMaterials;
 using FusionOS.Modules.Manufacturing.Application.BillOfMaterials.Contracts;
 using FusionOS.Modules.Manufacturing.Application.BillOfMaterials.Queries.ExplodeBillOfMaterials;
 using FusionOS.Modules.Manufacturing.Application.BillOfMaterials.Queries.GetBillOfMaterialsById;
@@ -55,6 +56,19 @@ public sealed class BillsOfMaterialsController : ControllerBase
     public async Task<IActionResult> List([FromQuery] Guid companyId, [FromQuery] string? search = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(new ListBillOfMaterialsQuery(companyId, search, page, pageSize), cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>Header-level-only update (Name, ProductId) — deliberately distinct from CreateNewVersion/SetPrimary; does not touch Lines/Operations or bump Version.</summary>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBillOfMaterialsRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateBillOfMaterialsCommand(request.CompanyId, id, request.Name, request.ProductId);
+        var result = await _sender.Send(command, cancellationToken);
         return Ok(result);
     }
 
@@ -160,6 +174,8 @@ public sealed class BillsOfMaterialsController : ControllerBase
 }
 
 public sealed record CreateBillOfMaterialsRequest(Guid CompanyId, string Code, string Name, Guid ProductId, IReadOnlyList<BomLineInput> Lines);
+
+public sealed record UpdateBillOfMaterialsRequest(Guid CompanyId, string Name, Guid ProductId);
 
 public sealed record DeactivateBillOfMaterialsRequest(Guid CompanyId);
 

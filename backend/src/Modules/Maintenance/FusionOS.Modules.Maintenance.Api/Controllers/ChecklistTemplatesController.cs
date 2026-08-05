@@ -1,5 +1,6 @@
 using FusionOS.Modules.Maintenance.Application.ChecklistTemplates.Commands.CreateChecklistTemplate;
 using FusionOS.Modules.Maintenance.Application.ChecklistTemplates.Commands.DeactivateChecklistTemplate;
+using FusionOS.Modules.Maintenance.Application.ChecklistTemplates.Commands.UpdateChecklistTemplate;
 using FusionOS.Modules.Maintenance.Application.ChecklistTemplates.Queries.GetChecklistTemplateById;
 using FusionOS.Modules.Maintenance.Application.ChecklistTemplates.Queries.ListChecklistTemplates;
 using MediatR;
@@ -50,6 +51,18 @@ public sealed class ChecklistTemplatesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateChecklistTemplateRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateChecklistTemplateCommand(request.CompanyId, id, request.Name, request.Description, request.StepDescriptions);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -62,5 +75,7 @@ public sealed class ChecklistTemplatesController : ControllerBase
 }
 
 public sealed record CreateChecklistTemplateRequest(Guid CompanyId, string Name, string? Description, IReadOnlyList<string> StepDescriptions);
+
+public sealed record UpdateChecklistTemplateRequest(Guid CompanyId, string Name, string? Description, IReadOnlyList<string> StepDescriptions);
 
 public sealed record DeactivateChecklistTemplateRequest(Guid CompanyId);

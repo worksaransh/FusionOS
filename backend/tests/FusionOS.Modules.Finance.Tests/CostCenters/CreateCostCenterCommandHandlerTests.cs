@@ -2,6 +2,7 @@ using FluentAssertions;
 using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Finance.Application.CostCenters.Commands.CreateCostCenter;
 using FusionOS.Modules.Finance.Application.CostCenters.Contracts;
+using FusionOS.Modules.Finance.Application.Accounts.Contracts;
 using NSubstitute;
 using Xunit;
 

@@ -35,6 +35,18 @@ public sealed class Machine : TenantAggregateRoot
         };
     }
 
+    /// <summary>Updates the editable header fields, including reassigning the machine to a different work center. Code is deliberately excluded — it's the immutable business key, same convention as UpdateBranchCommand/UpdateCostCenterCommand.</summary>
+    public void UpdateDetails(string name, Guid workCenterId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Machine name is required.", nameof(name));
+        if (workCenterId == Guid.Empty)
+            throw new ArgumentException("Work center id is required.", nameof(workCenterId));
+
+        Name = name.Trim();
+        WorkCenterId = workCenterId;
+    }
+
     /// <summary>The standard soft-deactivate — never a hard delete.</summary>
     public void Deactivate() => IsActive = false;
 }

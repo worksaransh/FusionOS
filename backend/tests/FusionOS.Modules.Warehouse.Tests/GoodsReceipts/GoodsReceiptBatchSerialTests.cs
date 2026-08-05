@@ -58,9 +58,10 @@ public class GoodsReceiptBatchSerialTests
             null,
             new[] { new GoodsReceiptLineInput(productId, 10m, 5m, "LOT-42", "SN-001") });
 
-        receipt.DomainEvents.Should().ContainSingle(e => e is GoodsReceiptLineReceived received
-            && received.ProductId == productId
-            && received.BatchNumber == "LOT-42"
-            && received.SerialNumber == "SN-001");
+        var receivedEvent = receipt.DomainEvents.Should().ContainSingle(e => e is GoodsReceiptLineReceived)
+            .Subject.Should().BeOfType<GoodsReceiptLineReceived>().Subject;
+        receivedEvent.ProductId.Should().Be(productId);
+        receivedEvent.BatchNumber.Should().Be("LOT-42");
+        receivedEvent.SerialNumber.Should().Be("SN-001");
     }
 }

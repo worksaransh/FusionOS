@@ -51,4 +51,17 @@ public sealed class IntegrationConnector : TenantAggregateRoot
 
     /// <summary>Same "soft-deactivate, never hard-delete" convention as every other master-data aggregate in this codebase.</summary>
     public void Deactivate() => IsActive = false;
+
+    /// <summary>Update deliberately excludes Code — it's the immutable business key, same convention as Branch/CostCenter/Company.</summary>
+    public void UpdateDetails(string name, string provider, ConnectorCategory category)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Connector name is required.", nameof(name));
+        if (string.IsNullOrWhiteSpace(provider))
+            throw new ArgumentException("Provider is required.", nameof(provider));
+
+        Name = name.Trim();
+        Provider = provider.Trim();
+        Category = category;
+    }
 }

@@ -1,4 +1,5 @@
 using FluentValidation.Results;
+using FusionOS.BuildingBlocks.Application.Abstractions;
 using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Core.Application.Auth.Contracts;
 using FusionOS.Modules.Core.Application.Companies.Contracts;
@@ -14,13 +15,16 @@ public sealed class RegisterUserCommandHandler : IRequestHandler<RegisterUserCom
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
+    private readonly IBillingBootstrapService _billingBootstrap;
 
-    public RegisterUserCommandHandler(IUserRepository users, IPasswordHasher passwordHasher, IUnitOfWork unitOfWork, ICurrentUserContext currentUser)
+    public RegisterUserCommandHandler(
+        IUserRepository users, IPasswordHasher passwordHasher, IUnitOfWork unitOfWork, ICurrentUserContext currentUser, IBillingBootstrapService billingBootstrap)
     {
         _users = users;
         _passwordHasher = passwordHasher;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _billingBootstrap = billingBootstrap;
     }
 
     public async Task<UserDto> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
@@ -54,6 +58,15 @@ public sealed class RegisterUserCommandHandler : IRequestHandler<RegisterUserCom
         await _users.LinkUserToCompanyAsync(user.Id, request.CompanyId, roleId, branchId: null, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Phase 1.3 (Billing/subscription domain): a brand-new company's bootstrap also gets a
+        // default trial Subscription, so there's something to meter/bill against from day one.
+        // Called the same cross-module way ISegregationOfDutiesService is - synchronously,
+        // in-request, through a BuildingBlocks abstraction rather than a direct project
+        // reference to Billing.Application (see IBillingBootstrapService's doc comment). Never
+        // for the "invite a teammate" path - that company already has a Subscription.
+        if (!companyAlreadyHasUsers)
+            await _billingBootstrap.EnsureDefaultSubscriptionAsync(request.CompanyId, cancellationToken);
 
         return new UserDto(user.Id, user.Email, user.FullName, user.IsActive, user.CreatedAt);
     }

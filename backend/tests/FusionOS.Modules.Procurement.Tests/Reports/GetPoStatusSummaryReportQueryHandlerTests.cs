@@ -21,11 +21,14 @@ public class GetPoStatusSummaryReportQueryHandlerTests
 
         var result = await handler.Handle(new GetPoStatusSummaryReportQuery(companyId), CancellationToken.None);
 
-        result.Lines.Should().HaveCount(4);
+        result.Lines.Should().HaveCount(7);
         result.Lines.Should().Contain(l => l.Status == "Draft" && l.Count == 3);
         result.Lines.Should().Contain(l => l.Status == "Approved" && l.Count == 0);
         result.Lines.Should().Contain(l => l.Status == "PartiallyReceived" && l.Count == 0);
         result.Lines.Should().Contain(l => l.Status == "FullyReceived" && l.Count == 0);
+        result.Lines.Should().Contain(l => l.Status == "PendingApproval" && l.Count == 0);
+        result.Lines.Should().Contain(l => l.Status == "Rejected" && l.Count == 0);
+        result.Lines.Should().Contain(l => l.Status == "Cancelled" && l.Count == 0);
     }
 
     [Fact]

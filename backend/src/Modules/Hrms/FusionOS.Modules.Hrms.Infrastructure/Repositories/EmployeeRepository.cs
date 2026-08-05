@@ -17,6 +17,9 @@ public sealed class EmployeeRepository : IEmployeeRepository
     public Task<bool> ExistsAsync(Guid companyId, Guid employeeId, CancellationToken cancellationToken = default) =>
         _context.Employees.AnyAsync(e => e.CompanyId == companyId && e.Id == employeeId, cancellationToken);
 
+    public Task<bool> CodeExistsAsync(Guid companyId, string code, CancellationToken cancellationToken = default) =>
+        _context.Employees.AnyAsync(e => e.CompanyId == companyId && e.Code == code.Trim().ToUpper(), cancellationToken);
+
     public async Task AddAsync(Employee employee, CancellationToken cancellationToken = default) =>
         await _context.Employees.AddAsync(employee, cancellationToken);
 

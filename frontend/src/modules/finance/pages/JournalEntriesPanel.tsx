@@ -17,6 +17,10 @@ const lineSchema = z
     accountId: z.string().uuid('Pick an account'),
     debit: z.string().refine((v) => v === '' || Number(v) >= 0, 'Debit cannot be negative'),
     credit: z.string().refine((v) => v === '' || Number(v) >= 0, 'Credit cannot be negative'),
+    costCenterId: z.string().optional(),
+    departmentId: z.string().optional(),
+    projectId: z.string().optional(),
+    locationId: z.string().optional(),
   })
   .refine((l) => (Number(l.debit) || 0) > 0 !== (Number(l.credit) || 0) > 0, {
     message: 'Each line needs exactly one of debit or credit',
@@ -35,6 +39,10 @@ interface JournalEntryLineDto {
   debit: number;
   credit: number;
   description: string | null;
+  costCenterId?: string | null;
+  departmentId?: string | null;
+  projectId?: string | null;
+  locationId?: string | null;
 }
 
 interface JournalEntryDto {
@@ -47,13 +55,6 @@ interface JournalEntryDto {
   lines: JournalEntryLineDto[];
 }
 
-/**
- * General Ledger journal entries — the second Phase 2 slice, built on Accounts.
- * A journal entry must balance (total debit == total credit) before it can be
- * created at all; Post() is a separate step, mirroring the Draft -> Approved /
- * Draft -> Confirmed workflows already used by Purchase Orders and Sales Orders.
- * Each line's Account is picked via the shared EntityCombobox.
- */
 export function JournalEntriesPanel() {
   const { companyId } = useActiveCompany();
   const queryClient = useQueryClient();
@@ -82,6 +83,10 @@ export function JournalEntriesPanel() {
           debit: Number(l.debit) || 0,
           credit: Number(l.credit) || 0,
           description: null,
+          costCenterId: l.costCenterId || null,
+          departmentId: l.departmentId || null,
+          projectId: l.projectId || null,
+          locationId: l.locationId || null,
         })),
       }),
     onSuccess: () => {
@@ -99,9 +104,9 @@ export function JournalEntriesPanel() {
 
   return (
     <div className="mt-8">
-      <h2 className="mb-3 text-lg font-semibold text-text">Journal Entries</h2>
+      <h2 className="mb-3 text-lg font-semibold text-text">Journal Entries (Multidimensional GL)</h2>
       <p className="mb-3 text-xs text-text-muted">
-        Every line needs exactly one of debit or credit, and total debit must equal total credit.
+        Every line needs exactly one of debit or credit, total debit must equal total credit, and optional cost center/department/project/location tags can be assigned per line.
       </p>
 
       <Card className="mb-6">
@@ -119,7 +124,7 @@ export function JournalEntriesPanel() {
 
           <div className="flex flex-col gap-2">
             {fields.map((field, index) => (
-              <div key={field.id} className="flex items-end gap-2">
+              <div key={field.id} className="flex flex-wrap items-end gap-2 border-b border-border/40 pb-3">
                 <label className="flex flex-col gap-1 text-sm">
                   Account
                   <Controller
@@ -127,7 +132,7 @@ export function JournalEntriesPanel() {
                     name={`lines.${index}.accountId`}
                     render={({ field: lineField }) => (
                       <EntityCombobox
-                        className="w-72"
+                        className="w-64"
                         value={lineField.value}
                         onChange={lineField.onChange}
                         options={accountOptions.options}
@@ -144,7 +149,7 @@ export function JournalEntriesPanel() {
                     control={control}
                     name={`lines.${index}.debit`}
                     render={({ field: lineField }) => (
-                      <input className="w-28 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
+                      <input className="w-24 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
                     )}
                   />
                 </label>
@@ -154,7 +159,37 @@ export function JournalEntriesPanel() {
                     control={control}
                     name={`lines.${index}.credit`}
                     render={({ field: lineField }) => (
-                      <input className="w-28 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
+                      <input className="w-24 rounded-md border border-border bg-surface px-2 py-1.5" {...lineField} />
+                    )}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  Cost Center ID
+                  <Controller
+                    control={control}
+                    name={`lines.${index}.costCenterId`}
+                    render={({ field: lineField }) => (
+                      <input placeholder="Optional GUID" className="w-32 rounded-md border border-border bg-surface px-2 py-1.5 text-xs" {...lineField} />
+                    )}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  Dept ID
+                  <Controller
+                    control={control}
+                    name={`lines.${index}.departmentId`}
+                    render={({ field: lineField }) => (
+                      <input placeholder="Optional GUID" className="w-32 rounded-md border border-border bg-surface px-2 py-1.5 text-xs" {...lineField} />
+                    )}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  Project ID
+                  <Controller
+                    control={control}
+                    name={`lines.${index}.projectId`}
+                    render={({ field: lineField }) => (
+                      <input placeholder="Optional GUID" className="w-32 rounded-md border border-border bg-surface px-2 py-1.5 text-xs" {...lineField} />
                     )}
                   />
                 </label>

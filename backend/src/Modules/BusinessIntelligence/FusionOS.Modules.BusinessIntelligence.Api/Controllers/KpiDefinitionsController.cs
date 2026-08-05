@@ -1,7 +1,9 @@
 using FusionOS.Modules.BusinessIntelligence.Application.KpiDefinitions.Commands.CreateKpiDefinition;
 using FusionOS.Modules.BusinessIntelligence.Application.KpiDefinitions.Commands.DeactivateKpiDefinition;
+using FusionOS.Modules.BusinessIntelligence.Application.KpiDefinitions.Commands.UpdateKpiDefinition;
 using FusionOS.Modules.BusinessIntelligence.Application.KpiDefinitions.Queries.GetKpiDefinitionById;
 using FusionOS.Modules.BusinessIntelligence.Application.KpiDefinitions.Queries.ListKpiDefinitions;
+using FusionOS.Modules.BusinessIntelligence.Application.KpiValues.Queries.GetLiveKpiValue;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -48,6 +50,18 @@ public sealed class KpiDefinitionsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateKpiDefinitionRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateKpiDefinitionCommand(request.CompanyId, id, request.Name, request.Unit);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -57,8 +71,26 @@ public sealed class KpiDefinitionsController : ControllerBase
         var result = await _sender.Send(new DeactivateKpiDefinitionCommand(request.CompanyId, id), cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Phase 2.3 — the KPI's current value computed live from operational data
+    /// (via IKpiDataSource) instead of the most recent manually-recorded
+    /// bi.kpi-snapshot.record value. Response includes ComputedAt as the "as of"
+    /// freshness timestamp.
+    /// </summary>
+    [HttpGet("{id:guid}/live-value")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetLiveValue(Guid id, [FromQuery] Guid companyId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetLiveKpiValueQuery(companyId, id), cancellationToken);
+        return Ok(result);
+    }
 }
 
 public sealed record CreateKpiDefinitionRequest(Guid CompanyId, string Code, string Name, string? Unit);
+
+public sealed record UpdateKpiDefinitionRequest(Guid CompanyId, string Name, string? Unit);
 
 public sealed record DeactivateKpiDefinitionRequest(Guid CompanyId);

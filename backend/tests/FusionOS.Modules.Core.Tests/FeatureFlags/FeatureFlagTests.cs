@@ -1,4 +1,5 @@
 using FusionOS.Modules.Core.Domain.FeatureFlags;
+using FusionOS.Modules.Core.Domain.FeatureFlags.Events;
 using FluentAssertions;
 using Xunit;
 
@@ -17,7 +18,7 @@ public class FeatureFlagTests
         flag.Name.Should().Be("New Dashboard Widget");
         flag.IsEnabled.Should().BeTrue();
         flag.RolloutPercentage.Should().Be(100);
-        flag.DomainEvents.Should().ContainSingle(e => e is Events.FeatureFlagCreated);
+        flag.DomainEvents.Should().ContainSingle(e => e is FeatureFlagCreated);
     }
 
     [Theory]

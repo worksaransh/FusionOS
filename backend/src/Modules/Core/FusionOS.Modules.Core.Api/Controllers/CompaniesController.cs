@@ -1,5 +1,6 @@
 using FusionOS.Modules.Core.Application.Companies.Commands.CreateCompany;
 using FusionOS.Modules.Core.Application.Companies.Commands.DeactivateCompany;
+using FusionOS.Modules.Core.Application.Companies.Commands.SetCompanyParent;
 using FusionOS.Modules.Core.Application.Companies.Commands.UpdateCompany;
 using FusionOS.Modules.Core.Application.Companies.Queries.GetCompanyById;
 using FusionOS.Modules.Core.Application.Companies.Queries.ListCompanies;
@@ -78,7 +79,26 @@ public sealed class CompaniesController : ControllerBase
         var result = await _sender.Send(new DeactivateCompanyCommand(id), cancellationToken);
         return result is null ? NotFound() : Ok(result);
     }
+
+    /// <summary>
+    /// Sets or clears this company's parent for consolidation (Phase 2.4). A separate
+    /// endpoint from PUT (Update) rather than folded into it — see
+    /// UpdateCompanyCommand's class doc comment for why: this keeps every existing
+    /// caller of Update completely unaffected.
+    /// </summary>
+    [HttpPut("{id:guid}/parent")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetParent(Guid id, [FromBody] SetCompanyParentRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new SetCompanyParentCommand(id, request.ParentCompanyId), cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
 }
 
 /// <summary>Body shape for PUT /companies/{id} — Id comes from the route, not the body.</summary>
 public sealed record UpdateCompanyRequest(string Name, string LegalName, string? TaxId);
+
+/// <summary>Body shape for PUT /companies/{id}/parent — null ParentCompanyId detaches from any parent.</summary>
+public sealed record SetCompanyParentRequest(Guid? ParentCompanyId);

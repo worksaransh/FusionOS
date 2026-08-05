@@ -17,6 +17,8 @@ using FusionOS.Modules.Core.Application.IntegrationEvents.Consumers;
 using FusionOS.Modules.Core.Application.Notifications.Contracts;
 using FusionOS.Modules.Core.Application.Notifications.Services;
 using FusionOS.Modules.Core.Application.Settings.Contracts;
+using FusionOS.Modules.Core.Application.SodConflictRules.Contracts;
+using FusionOS.Modules.Core.Application.SodConflictRules.Services;
 using FusionOS.Modules.Core.Application.Workflow.Contracts;
 using FusionOS.Modules.Core.Infrastructure.Auditing;
 using FusionOS.Modules.Core.Infrastructure.BackgroundServices;
@@ -74,6 +76,14 @@ public sealed class CoreModule : IModule
         // Comments + the merged Activity Timeline that reads them alongside
         // AuditLogRepository (Phase 2 Core Platform, net-new, 2026-07-21).
         services.AddScoped<ICommentRepository, CommentRepository>();
+
+        // Segregation-of-Duties (SoD) conflict rules (Phase 2.2 roadmap, net-new) —
+        // lightweight maker-checker guard, not a full GRC engine. ISegregationOfDutiesService
+        // is published in BuildingBlocks.Application.Abstractions so other modules (e.g.
+        // Procurement's ApprovePurchaseOrderCommandHandler) can depend on the abstraction
+        // without referencing Core.Application directly — see that interface's doc comment.
+        services.AddScoped<ISodConflictRuleRepository, SodConflictRuleRepository>();
+        services.AddScoped<ISegregationOfDutiesService, SegregationOfDutiesService>();
 
         // Settings module (Phase M5, 2026-07-15 — previously 0% per docs/PROJECT_TRACKER.md).
         services.AddScoped<ICompanySettingsRepository, CompanySettingsRepository>();

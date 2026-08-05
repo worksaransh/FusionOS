@@ -18,5 +18,15 @@ public sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.Ignore(c => c.RowVersion);
         builder.HasIndex(c => c.Name);
         builder.Ignore(c => c.DomainEvents);
+
+        // Self-referencing parent/subsidiary link (Phase 2.4 — multi-entity consolidation).
+        // Nullable, no cascade delete: deleting/deactivating a parent must never cascade
+        // into its subsidiaries' rows — Company is never hard-deleted anyway (soft-delete
+        // only), but Restrict is the safe default for a self-FK regardless.
+        builder.HasOne<Company>()
+            .WithMany()
+            .HasForeignKey(c => c.ParentCompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(c => c.ParentCompanyId);
     }
 }

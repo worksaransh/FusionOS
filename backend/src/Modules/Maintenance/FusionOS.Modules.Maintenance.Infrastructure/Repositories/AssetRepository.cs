@@ -17,6 +17,9 @@ public sealed class AssetRepository : IAssetRepository
     public Task<bool> ExistsAsync(Guid companyId, Guid assetId, CancellationToken cancellationToken = default) =>
         _context.Assets.AnyAsync(a => a.CompanyId == companyId && a.Id == assetId, cancellationToken);
 
+    public Task<bool> CodeExistsAsync(Guid companyId, string code, CancellationToken cancellationToken = default) =>
+        _context.Assets.AnyAsync(a => a.CompanyId == companyId && a.Code == code.Trim().ToUpper(), cancellationToken);
+
     public async Task AddAsync(Asset asset, CancellationToken cancellationToken = default) =>
         await _context.Assets.AddAsync(asset, cancellationToken);
 

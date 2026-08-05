@@ -1,3 +1,4 @@
+using FusionOS.Modules.Sales.Application.Customers.Contracts;
 using FusionOS.Modules.Sales.Application.SalesOrders.Commands.ClearSalesOrderLineBackorder;
 using FusionOS.Modules.Sales.Application.SalesOrders.Contracts;
 using FusionOS.Modules.Sales.Domain.SalesOrders;

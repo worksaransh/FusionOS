@@ -19,7 +19,7 @@ public class ListRolesQueryHandlerTests
             Role.CreateCompanyRole(companyId, "Owner"),
             Role.CreateCompanyRole(companyId, "Warehouse Clerk"),
         };
-        users.ListRolesByCompanyAsync(companyId, Arg.Any<CancellationToken>()).Returns(roles);
+        users.ListRolesByCompanyAsync(companyId, Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(roles);
         var handler = new ListRolesQueryHandler(users);
 
         var result = await handler.Handle(new ListRolesQuery(companyId), CancellationToken.None);

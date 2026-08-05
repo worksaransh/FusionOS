@@ -1,4 +1,5 @@
 using FusionOS.Modules.Procurement.Domain.Rfqs;
+using Events = FusionOS.Modules.Procurement.Domain.Rfqs.Events;
 using FluentAssertions;
 using Xunit;
 
@@ -119,7 +120,9 @@ public class RequestForQuotationTests
 
         rfq.Status.Should().Be(RfqStatus.Awarded);
         rfq.AwardedSupplierQuoteId.Should().Be(quote.Id);
-        rfq.DomainEvents.Should().ContainSingle(e => e is Events.RfqAwarded a && a.SupplierId == supplierId);
+        var awarded = rfq.DomainEvents.Should().ContainSingle(e => e is Events.RfqAwarded)
+            .Subject.Should().BeOfType<Events.RfqAwarded>().Subject;
+        awarded.SupplierId.Should().Be(supplierId);
     }
 
     [Fact]
@@ -147,7 +150,9 @@ public class RequestForQuotationTests
         rfq.MarkConverted(purchaseOrderId);
 
         rfq.ConvertedPurchaseOrderId.Should().Be(purchaseOrderId);
-        rfq.DomainEvents.Should().ContainSingle(e => e is Events.RfqConverted c && c.PurchaseOrderId == purchaseOrderId);
+        var converted = rfq.DomainEvents.Should().ContainSingle(e => e is Events.RfqConverted)
+            .Subject.Should().BeOfType<Events.RfqConverted>().Subject;
+        converted.PurchaseOrderId.Should().Be(purchaseOrderId);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using FusionOS.Modules.Marketplace.Application.PluginListings.Commands.CreatePluginListing;
 using FusionOS.Modules.Marketplace.Application.PluginListings.Commands.DeactivatePluginListing;
+using FusionOS.Modules.Marketplace.Application.PluginListings.Commands.UpdatePluginListing;
 using FusionOS.Modules.Marketplace.Application.PluginListings.Queries.GetPluginListingById;
 using FusionOS.Modules.Marketplace.Application.PluginListings.Queries.ListPluginListings;
 using FusionOS.Modules.Marketplace.Domain.PluginListings;
@@ -49,6 +50,18 @@ public sealed class PluginListingsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePluginListingRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdatePluginListingCommand(request.CompanyId, id, request.Name, request.Publisher, request.Category);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -63,3 +76,5 @@ public sealed class PluginListingsController : ControllerBase
 public sealed record CreatePluginListingRequest(Guid CompanyId, string Code, string Name, string Publisher, PluginCategory Category);
 
 public sealed record DeactivatePluginListingRequest(Guid CompanyId);
+
+public sealed record UpdatePluginListingRequest(Guid CompanyId, string Name, string Publisher, PluginCategory Category);

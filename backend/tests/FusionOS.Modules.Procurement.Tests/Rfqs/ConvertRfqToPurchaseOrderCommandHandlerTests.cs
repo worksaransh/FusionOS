@@ -1,6 +1,7 @@
 using FusionOS.Modules.Procurement.Application.PurchaseOrders.Contracts;
 using FusionOS.Modules.Procurement.Application.Rfqs.Commands.ConvertRfqToPurchaseOrder;
 using FusionOS.Modules.Procurement.Application.Rfqs.Contracts;
+using FusionOS.Modules.Procurement.Application.Suppliers.Contracts;
 using FusionOS.Modules.Procurement.Domain.PurchaseOrders;
 using FusionOS.Modules.Procurement.Domain.Rfqs;
 using FluentAssertions;

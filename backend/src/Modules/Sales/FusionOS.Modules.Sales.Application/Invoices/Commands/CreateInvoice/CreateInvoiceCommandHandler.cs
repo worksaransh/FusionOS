@@ -93,5 +93,9 @@ public sealed class CreateInvoiceCommandHandler : IRequestHandler<CreateInvoiceC
         invoice.InvoiceDate,
         invoice.TotalAmount,
         invoice.Lines.Select(l => new InvoiceLineDto(l.Id, l.ProductId, l.Quantity, l.UnitPrice, l.LineTotal, l.TaxRateId, l.TaxAmount)).ToList(),
-        invoice.SalesPersonId);
+        invoice.SalesPersonId,
+        invoice.Irn,
+        invoice.IrnGeneratedAt,
+        invoice.QrCodePayload,
+        invoice.IrpAckNumber);
 }

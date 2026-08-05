@@ -24,6 +24,6 @@ public sealed class GetCompanyByIdQueryHandler : IRequestHandler<GetCompanyByIdQ
         if (company is null)
             return null;
 
-        return new CompanyDto(company.Id, company.Name, company.LegalName, company.TaxId, company.BaseCurrency, company.IsActive, company.CreatedAt);
+        return new CompanyDto(company.Id, company.Name, company.LegalName, company.TaxId, company.BaseCurrency, company.IsActive, company.CreatedAt, company.ParentCompanyId);
     }
 }

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FusionOS.BuildingBlocks.Infrastructure.Security;
 using FusionOS.SharedKernel.Context;
 using Microsoft.AspNetCore.Http;
 
@@ -22,7 +23,7 @@ public sealed class HttpCurrentUserContext : ICurrentUserContext
     public Guid? BranchId => Guid.TryParse(User?.FindFirstValue("branch_id"), out var id) ? id : null;
 
     public IReadOnlyCollection<string> Permissions =>
-        User?.FindAll("permission").Select(c => c.Value).ToArray() ?? Array.Empty<string>();
+        JwtPermissionsCodec.Decode(User?.FindFirstValue("permissions"));
 
     public bool HasPermission(string permissionCode) => Permissions.Contains(permissionCode);
 

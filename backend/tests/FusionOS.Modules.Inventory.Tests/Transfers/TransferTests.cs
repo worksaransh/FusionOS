@@ -1,4 +1,5 @@
 using FusionOS.Modules.Inventory.Domain.Transfers;
+using FusionOS.Modules.Inventory.Domain.Transfers.Events;
 using FluentAssertions;
 using Xunit;
 
@@ -12,7 +13,7 @@ public class TransferTests
         var transfer = Transfer.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 10m);
 
         transfer.Status.Should().Be(TransferStatus.Pending);
-        transfer.DomainEvents.Should().ContainSingle(e => e is Events.TransferCreated);
+        transfer.DomainEvents.Should().ContainSingle(e => e is TransferCreated);
     }
 
     [Fact]
@@ -42,7 +43,7 @@ public class TransferTests
         transfer.Complete();
 
         transfer.Status.Should().Be(TransferStatus.Completed);
-        transfer.DomainEvents.Should().ContainSingle(e => e is Events.TransferCompleted);
+        transfer.DomainEvents.Should().ContainSingle(e => e is TransferCompleted);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using FusionOS.Modules.Procurement.Domain.PurchaseOrders;
+using Events = FusionOS.Modules.Procurement.Domain.PurchaseOrders.Events;
 using FluentAssertions;
 using Xunit;
 

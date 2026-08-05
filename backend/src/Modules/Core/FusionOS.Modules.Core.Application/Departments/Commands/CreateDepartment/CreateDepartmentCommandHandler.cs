@@ -1,3 +1,4 @@
+using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Core.Application.Companies.Contracts;
 using FusionOS.Modules.Core.Application.Departments.Contracts;
 using FusionOS.Modules.Core.Domain.Organizations;
@@ -18,6 +19,14 @@ public sealed class CreateDepartmentCommandHandler : IRequestHandler<CreateDepar
 
     public async Task<DepartmentDto> Handle(CreateDepartmentCommand request, CancellationToken cancellationToken)
     {
+        if (await _repository.CodeExistsAsync(request.CompanyId, request.Code, cancellationToken))
+        {
+            throw new ValidationException(new[]
+            {
+                new FluentValidation.Results.ValidationFailure(nameof(request.Code), $"Department code '{request.Code}' already exists for this company."),
+            });
+        }
+
         var department = Department.Create(request.CompanyId, request.BranchId, request.Name, request.Code, request.ParentDepartmentId);
 
         await _repository.AddAsync(department, cancellationToken);

@@ -1,4 +1,5 @@
 using FusionOS.Modules.Procurement.Domain.SupplierContracts;
+using Events = FusionOS.Modules.Procurement.Domain.SupplierContracts.Events;
 using FluentAssertions;
 using Xunit;
 

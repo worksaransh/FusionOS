@@ -5,6 +5,7 @@ using FusionOS.Modules.Procurement.Application.VendorReturns.Commands.CancelVend
 using FusionOS.Modules.Procurement.Application.VendorReturns.Commands.CompleteVendorReturn;
 using FusionOS.Modules.Procurement.Application.VendorReturns.Commands.CreateVendorReturn;
 using FusionOS.Modules.Procurement.Application.VendorReturns.Contracts;
+using FusionOS.Modules.Procurement.Application.Suppliers.Contracts;
 using FusionOS.Modules.Procurement.Domain.PurchaseOrders;
 using FusionOS.Modules.Procurement.Domain.VendorReturns;
 using NSubstitute;

@@ -1,3 +1,4 @@
+using FusionOS.Modules.Sales.Application.Customers.Contracts;
 using FusionOS.Modules.Sales.Application.Invoices.Commands.IssueInvoice;
 using FusionOS.Modules.Sales.Application.Invoices.Contracts;
 using FusionOS.Modules.Sales.Domain.Invoices;

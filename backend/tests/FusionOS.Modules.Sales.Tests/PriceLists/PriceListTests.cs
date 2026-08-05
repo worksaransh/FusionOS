@@ -1,4 +1,5 @@
 using FusionOS.Modules.Sales.Domain.PriceLists;
+using Events = FusionOS.Modules.Sales.Domain.PriceLists.Events;
 using FluentAssertions;
 using Xunit;
 

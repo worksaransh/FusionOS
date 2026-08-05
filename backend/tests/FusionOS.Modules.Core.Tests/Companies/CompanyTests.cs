@@ -1,4 +1,5 @@
 using FusionOS.Modules.Core.Domain.Companies;
+using FusionOS.Modules.Core.Domain.Companies.Events;
 using FluentAssertions;
 using Xunit;
 
@@ -13,7 +14,7 @@ public class CompanyTests
 
         company.Name.Should().Be("Acme Trading");
         company.BaseCurrency.Should().Be("INR");
-        company.DomainEvents.Should().ContainSingle(e => e is Events.CompanyCreated);
+        company.DomainEvents.Should().ContainSingle(e => e is CompanyCreated);
     }
 
     [Theory]

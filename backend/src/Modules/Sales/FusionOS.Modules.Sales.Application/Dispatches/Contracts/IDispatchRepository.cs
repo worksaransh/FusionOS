@@ -2,6 +2,9 @@ namespace FusionOS.Modules.Sales.Application.Dispatches.Contracts;
 
 public interface IDispatchRepository
 {
+    /// <summary>Backs GenerateEWayBillCommandHandler — needs one specific Dispatch's DispatchDate to enforce the 180-day e-way-bill generation cutoff.</summary>
+    Task<Domain.Dispatches.Dispatch?> GetByIdAsync(Guid companyId, Guid id, CancellationToken cancellationToken = default);
+
     Task AddAsync(Domain.Dispatches.Dispatch dispatch, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Domain.Dispatches.Dispatch>> ListAsync(Guid companyId, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<int> CountAsync(Guid companyId, CancellationToken cancellationToken = default);

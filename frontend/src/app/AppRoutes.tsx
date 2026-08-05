@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from './layout/AppShell';
 import { RequireAuth } from './RequireAuth';
 import { RequirePermission } from './RequirePermission';
+import { useAuthStore } from '../shared/auth/authStore';
 import { LoginPage } from '../modules/core/pages/LoginPage';
 import { RegisterPage } from '../modules/core/pages/RegisterPage';
 import { PortalLoginPage } from '../portal/PortalLoginPage';
@@ -98,6 +99,8 @@ function RouteFallback() {
  * not a replacement for them.
  */
 export function AppRoutes() {
+  const session = useAuthStore((s) => s.session);
+
   return (
     <Routes>
       {/* Public Enterprise Marketing Suite */}
@@ -106,7 +109,13 @@ export function AppRoutes() {
         <Route path="/platform" element={<Suspense fallback={<RouteFallback />}><PlatformPage /></Suspense>} />
         <Route path="/solutions" element={<Suspense fallback={<RouteFallback />}><SolutionsPage /></Suspense>} />
         <Route path="/modules" element={<Suspense fallback={<RouteFallback />}><ModulesPage /></Suspense>} />
-        <Route path="/ai" element={<Suspense fallback={<RouteFallback />}><AiPage /></Suspense>} />
+        {/* /ai also exists as the real authenticated AI module route below (RecommendationsPage).
+            Both are static "/ai" paths in the same route tree, and React Router always resolves
+            a tie between equally-specific static paths to whichever is declared first — so without
+            this guard, a signed-in user could never reach the real module page; this marketing page
+            would win unconditionally. Only register it here when there's no session, so the
+            authenticated route further down is the sole match once signed in. */}
+        {!session && <Route path="/ai" element={<Suspense fallback={<RouteFallback />}><AiPage /></Suspense>} />}
         <Route path="/pricing" element={<Suspense fallback={<RouteFallback />}><PricingPage /></Suspense>} />
         <Route path="/integrations" element={<Suspense fallback={<RouteFallback />}><IntegrationsPage /></Suspense>} />
         <Route path="/security" element={<Suspense fallback={<RouteFallback />}><SecurityPage /></Suspense>} />

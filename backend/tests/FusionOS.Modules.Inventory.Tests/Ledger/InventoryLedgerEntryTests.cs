@@ -1,4 +1,5 @@
 using FusionOS.Modules.Inventory.Domain.Ledger;
+using FusionOS.Modules.Inventory.Domain.Ledger.Events;
 using FluentAssertions;
 using Xunit;
 
@@ -12,7 +13,7 @@ public class InventoryLedgerEntryTests
         var entry = InventoryLedgerEntry.RecordAdjustment(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 10m, "Cycle count correction");
 
         entry.QuantityDelta.Should().Be(10m);
-        entry.DomainEvents.Should().ContainSingle(e => e is Events.StockAdjusted);
+        entry.DomainEvents.Should().ContainSingle(e => e is StockAdjusted);
     }
 
     [Fact]

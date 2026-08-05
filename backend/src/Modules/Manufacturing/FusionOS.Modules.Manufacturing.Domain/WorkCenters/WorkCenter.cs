@@ -47,6 +47,18 @@ public sealed class WorkCenter : TenantAggregateRoot
         CapacityHoursPerDay = capacityHoursPerDay;
     }
 
+    /// <summary>Updates the editable header fields. Code is deliberately excluded — it's the immutable business key, same convention as UpdateBranchCommand/UpdateCostCenterCommand.</summary>
+    public void UpdateDetails(string name, decimal capacityHoursPerDay)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Work center name is required.", nameof(name));
+        if (capacityHoursPerDay <= 0)
+            throw new ArgumentException("Capacity hours per day must be greater than zero.", nameof(capacityHoursPerDay));
+
+        Name = name.Trim();
+        CapacityHoursPerDay = capacityHoursPerDay;
+    }
+
     /// <summary>The standard soft-deactivate — never a hard delete.</summary>
     public void Deactivate() => IsActive = false;
 }

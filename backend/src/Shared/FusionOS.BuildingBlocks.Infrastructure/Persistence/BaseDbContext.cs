@@ -74,6 +74,18 @@ public abstract class BaseDbContext : DbContext
             if (entry.State == EntityState.Added) entry.Entity.SetCreationAudit(now, actor);
             else if (entry.State == EntityState.Modified) entry.Entity.SetModificationAudit(now, actor);
         }
+
+        // Local-run finding (2026-08-03): AuditableAggregateRoot (Company, the tenant
+        // root — audited but deliberately NOT tenant-scoped, so it can't derive from
+        // TenantAggregateRoot) was missing from this method entirely. Every entity
+        // deriving from it never got CreatedAt/CreatedBy stamped at all, leaving the
+        // CLR default (0001-01-01, Guid.Empty) persisted — confirmed via a real
+        // Company created through the actual registration flow.
+        foreach (var entry in ChangeTracker.Entries<AuditableAggregateRoot>())
+        {
+            if (entry.State == EntityState.Added) entry.Entity.SetCreationAudit(now, actor);
+            else if (entry.State == EntityState.Modified) entry.Entity.SetModificationAudit(now, actor);
+        }
     }
 
     /// <summary>

@@ -35,7 +35,7 @@ public sealed class ListCompaniesQueryHandler : IRequestHandler<ListCompaniesQue
         if (company is null)
             return new PagedResult<CompanyDto>(Array.Empty<CompanyDto>(), request.Page, request.PageSize, 0);
 
-        var dto = new CompanyDto(company.Id, company.Name, company.LegalName, company.TaxId, company.BaseCurrency, company.IsActive, company.CreatedAt);
+        var dto = new CompanyDto(company.Id, company.Name, company.LegalName, company.TaxId, company.BaseCurrency, company.IsActive, company.CreatedAt, company.ParentCompanyId);
         return new PagedResult<CompanyDto>(new[] { dto }, request.Page, request.PageSize, 1);
     }
 }

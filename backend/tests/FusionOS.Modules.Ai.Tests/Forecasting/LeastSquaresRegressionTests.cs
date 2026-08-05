@@ -30,14 +30,15 @@ public class LeastSquaresRegressionTests
             (0, 1m), (1, 5m), (2, 6m), (3, 11m), (4, 12m),
         };
 
-        // Hand-computed via the closed-form normal equations:
-        // n=5, sumX=10, sumY=35, sumXY=100, sumXX=30
-        // slope = (5*100 - 10*35) / (5*30 - 10*10) = (500-350)/(150-100) = 150/50 = 3
-        // intercept = (35 - 3*10) / 5 = (35-30)/5 = 1
+        // Hand-computed via the closed-form normal equations (re-verified — the
+        // previous version of this comment had an arithmetic error in sumXY):
+        // n=5, sumX=10, sumY=35, sumXY=(0*1)+(1*5)+(2*6)+(3*11)+(4*12)=0+5+12+33+48=98, sumXX=30
+        // slope = (5*98 - 10*35) / (5*30 - 10*10) = (490-350)/(150-100) = 140/50 = 2.8
+        // intercept = (35 - 2.8*10) / 5 = (35-28)/5 = 1.4
         var (slope, intercept) = LeastSquaresRegression.Fit(points);
 
-        slope.Should().Be(3m);
-        intercept.Should().Be(1m);
+        slope.Should().Be(2.8m);
+        intercept.Should().Be(1.4m);
     }
 
     [Fact]

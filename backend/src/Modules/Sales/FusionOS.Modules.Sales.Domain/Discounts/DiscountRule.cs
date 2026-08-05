@@ -57,4 +57,18 @@ public sealed class DiscountRule : TenantAggregateRoot
     }
 
     public void Deactivate() => IsActive = false;
+
+    public void UpdateDetails(Guid productId, decimal minQuantity, decimal discountPercentage)
+    {
+        if (productId == Guid.Empty)
+            throw new ArgumentException("Product id is required.", nameof(productId));
+        if (minQuantity <= 0)
+            throw new ArgumentException("Minimum quantity must be greater than zero.", nameof(minQuantity));
+        if (discountPercentage <= 0 || discountPercentage > 100)
+            throw new ArgumentException("Discount percentage must be greater than zero and no more than 100.", nameof(discountPercentage));
+
+        ProductId = productId;
+        MinQuantity = minQuantity;
+        DiscountPercentage = discountPercentage;
+    }
 }

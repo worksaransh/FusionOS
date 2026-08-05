@@ -102,12 +102,21 @@ export function SalesOrdersPanel() {
     onSuccess: () => {
       reset({ customerId: '', lines: [{ productId: '', quantity: '1', unitPrice: '0', discountPercentage: '0' }] });
       queryClient.invalidateQueries({ queryKey: ['sales-orders', companyId] });
+      // Other panels on this page (Invoices, Dispatches) pick a sales order via
+      // useSalesOrderOptions' own cached ['sales-order-options', companyId] query —
+      // a separate cache key from this table's ['sales-orders', companyId]. Without
+      // this, a sales order created or confirmed here stays invisible to those
+      // pickers until a full page reload refetches it.
+      queryClient.invalidateQueries({ queryKey: ['sales-order-options', companyId] });
     },
   });
 
   const confirmOrder = useMutation({
     mutationFn: (id: string) => apiClient.post(`/sales/sales-orders/${id}/confirm?companyId=${companyId}`, {}),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sales-orders', companyId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales-orders', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['sales-order-options', companyId] });
+    },
   });
 
   const flagBackorder = useMutation({

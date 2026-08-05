@@ -104,9 +104,10 @@ public class GoodsReceiptPutawayTests
         receipt.ClearDomainEvents();
         receipt.ConfirmPutaway(lineId, binId);
 
-        receipt.DomainEvents.Should().ContainSingle(e => e is Domain.GoodsReceipts.Events.GoodsReceiptLinePutAway putAway
-            && putAway.GoodsReceiptId == receipt.Id
-            && putAway.LineId == lineId
-            && putAway.BinId == binId);
+        var putAway = receipt.DomainEvents.Should().ContainSingle(e => e is Domain.GoodsReceipts.Events.GoodsReceiptLinePutAway)
+            .Subject.Should().BeOfType<Domain.GoodsReceipts.Events.GoodsReceiptLinePutAway>().Subject;
+        putAway.GoodsReceiptId.Should().Be(receipt.Id);
+        putAway.LineId.Should().Be(lineId);
+        putAway.BinId.Should().Be(binId);
     }
 }

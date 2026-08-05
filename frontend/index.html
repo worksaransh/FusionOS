@@ -3,8 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>FusionOS</title>
+
+    <!-- PWA: installable on desktop/Android, and iOS's Add to Home Screen substitute
+         for a native app (no App Store, no Apple Developer account needed). -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#7e14ff" />
+
+    <!-- iOS ignores the web manifest for home-screen behavior — it needs these
+         Apple-specific tags instead to run full-screen without Safari's chrome. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FusionOS" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   </head>
   <body>
     <div id="root"></div>

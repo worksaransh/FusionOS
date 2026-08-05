@@ -1,5 +1,6 @@
 using FusionOS.Modules.Sales.Application.Discounts.Commands.CreateDiscountRule;
 using FusionOS.Modules.Sales.Application.Discounts.Commands.DeactivateDiscountRule;
+using FusionOS.Modules.Sales.Application.Discounts.Commands.UpdateDiscountRule;
 using FusionOS.Modules.Sales.Application.Discounts.Queries.GetApplicableDiscount;
 using FusionOS.Modules.Sales.Application.Discounts.Queries.ListDiscountRules;
 using MediatR;
@@ -49,6 +50,18 @@ public sealed class DiscountRulesController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDiscountRuleRequest request, CancellationToken cancellationToken)
+    {
+        var command = new UpdateDiscountRuleCommand(request.CompanyId, id, request.ProductId, request.MinQuantity, request.DiscountPercentage);
+        var result = await _sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -61,3 +74,5 @@ public sealed class DiscountRulesController : ControllerBase
 }
 
 public sealed record DiscountRuleActionRequest(Guid CompanyId);
+
+public sealed record UpdateDiscountRuleRequest(Guid CompanyId, Guid ProductId, decimal MinQuantity, decimal DiscountPercentage);

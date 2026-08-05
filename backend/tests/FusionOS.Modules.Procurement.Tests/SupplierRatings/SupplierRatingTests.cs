@@ -1,4 +1,5 @@
 using FusionOS.Modules.Procurement.Domain.SupplierRatings;
+using Events = FusionOS.Modules.Procurement.Domain.SupplierRatings.Events;
 using FluentAssertions;
 using Xunit;
 

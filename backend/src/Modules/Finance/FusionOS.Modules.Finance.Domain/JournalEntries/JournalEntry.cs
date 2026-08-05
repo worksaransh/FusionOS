@@ -39,7 +39,17 @@ public sealed class JournalEntry : TenantAggregateRoot
         };
 
         foreach (var line in lines)
-            entry._lines.Add(JournalEntryLine.Create(line.AccountId, line.Debit, line.Credit, line.Description, line.CostCenterId));
+            entry._lines.Add(JournalEntryLine.Create(
+                line.AccountId,
+                line.Debit,
+                line.Credit,
+                line.Description,
+                line.CostCenterId,
+                line.DepartmentId,
+                line.ProjectId,
+                line.LocationId,
+                line.ForeignCurrencyCode,
+                line.ForeignAmount));
 
         if (entry.TotalDebit != entry.TotalCredit)
             throw new InvalidOperationException($"Journal entry is not balanced: total debit {entry.TotalDebit} != total credit {entry.TotalCredit}.");

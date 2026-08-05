@@ -53,4 +53,27 @@ public interface IJournalEntryRepository
     /// Asset/Liability/Equity snapshot does.
     /// </summary>
     Task<IReadOnlyList<(Guid AccountId, decimal TotalDebit, decimal TotalCredit)>> GetPostedBalancesByAccountInRangeAsync(Guid companyId, DateTimeOffset dateFrom, DateTimeOffset dateTo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Backs CloseAccountingPeriodCommandHandler's close-time guard (Phase 10/11 hardening,
+    /// 2026-07-27): a period must not be closeable while a Draft entry still sits inside its
+    /// [dateFrom, dateTo] range, because PostJournalEntryCommandHandler's own closed-period
+    /// check would then make that Draft permanently unpostable with no recovery path short of
+    /// reopening the whole period. Only Draft entries matter here — Posted entries are exactly
+    /// what closing a period is supposed to lock in.
+    /// </summary>
+    Task<bool> ExistsDraftEntryInDateRangeAsync(Guid companyId, DateTimeOffset dateFrom, DateTimeOffset dateTo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Backs RevalueForeignCurrencyBalancesCommandHandler. Sums every Posted line tagged with
+    /// <paramref name="currencyCode"/> (see JournalEntryLine.ForeignCurrencyCode/ForeignAmount),
+    /// grouped by AccountId — NetForeignAmount is the signed (debit positive, credit negative)
+    /// sum of ForeignAmount, NetBaseAmount is the signed sum of (Debit - Credit) in the
+    /// company's base currency at the rate each line was originally posted at. The difference
+    /// between NetForeignAmount priced at a new rate and NetBaseAmount is the realized/unrealized
+    /// FX gain or loss the revaluation command posts. Lines with no ForeignCurrencyCode (the
+    /// vast majority — ordinary base-currency transactions) are excluded entirely, not treated
+    /// as zero-exposure.
+    /// </summary>
+    Task<IReadOnlyList<(Guid AccountId, decimal NetForeignAmount, decimal NetBaseAmount)>> GetOpenForeignCurrencyBalancesByAccountAsync(Guid companyId, string currencyCode, CancellationToken cancellationToken = default);
 }

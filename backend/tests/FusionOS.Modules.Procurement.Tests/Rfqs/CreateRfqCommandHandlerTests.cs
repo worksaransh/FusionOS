@@ -1,5 +1,6 @@
 using FusionOS.Modules.Procurement.Application.Rfqs.Commands.CreateRfq;
 using FusionOS.Modules.Procurement.Application.Rfqs.Contracts;
+using FusionOS.Modules.Procurement.Application.Suppliers.Contracts;
 using FusionOS.Modules.Procurement.Domain.Rfqs;
 using FluentAssertions;
 using NSubstitute;

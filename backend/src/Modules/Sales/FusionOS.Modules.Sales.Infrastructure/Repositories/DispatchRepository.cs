@@ -11,6 +11,9 @@ public sealed class DispatchRepository : IDispatchRepository
 
     public DispatchRepository(SalesDbContext context) => _context = context;
 
+    public Task<Dispatch?> GetByIdAsync(Guid companyId, Guid id, CancellationToken cancellationToken = default) =>
+        _context.Dispatches.Include(d => d.Lines).FirstOrDefaultAsync(d => d.CompanyId == companyId && d.Id == id, cancellationToken);
+
     public async Task AddAsync(Dispatch dispatch, CancellationToken cancellationToken = default) =>
         await _context.Dispatches.AddAsync(dispatch, cancellationToken);
 

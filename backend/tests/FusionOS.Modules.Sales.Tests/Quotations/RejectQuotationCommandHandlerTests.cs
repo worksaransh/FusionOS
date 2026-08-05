@@ -1,3 +1,4 @@
+using FusionOS.Modules.Sales.Application.Customers.Contracts;
 using FusionOS.Modules.Sales.Application.Quotations.Commands.RejectQuotation;
 using FusionOS.Modules.Sales.Application.Quotations.Contracts;
 using FusionOS.Modules.Sales.Domain.Quotations;

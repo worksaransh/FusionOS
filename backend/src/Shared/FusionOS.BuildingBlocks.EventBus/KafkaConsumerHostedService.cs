@@ -68,6 +68,16 @@ public sealed class KafkaConsumerHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Critical: yield back to the caller immediately. BackgroundService.StartAsync
+        // invokes ExecuteAsync() and runs everything up to the first `await` SYNCHRONOUSLY
+        // on the host startup thread — and this method's consume loop below calls the
+        // blocking (non-async) Confluent.Kafka consumer.Consume(stoppingToken), which never
+        // returns while no broker is reachable. Without this Task.Yield(), a Kafka outage
+        // (e.g. no broker running locally) wedges the ENTIRE host during IHost.StartAsync(),
+        // so Kestrel never binds to a port — every request just hangs/gets a gateway error,
+        // with no exception or log line to explain why. This one line is the fix.
+        await Task.Yield();
+
         List<string> eventTypes;
         using (var startupScope = _scopeFactory.CreateScope())
         {
@@ -109,7 +119,8 @@ public sealed class KafkaConsumerHostedService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Kafka consume loop error");
+                _logger.LogWarning("Kafka consume loop warning (retrying in 5s): {Message}", ex.Message);
+                try { await Task.Delay(5000, stoppingToken); } catch (OperationCanceledException) { break; }
                 continue;
             }
 

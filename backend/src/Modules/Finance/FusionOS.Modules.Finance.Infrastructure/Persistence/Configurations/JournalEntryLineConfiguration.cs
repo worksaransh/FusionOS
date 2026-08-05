@@ -22,11 +22,25 @@ public sealed class JournalEntryLineConfiguration : IEntityTypeConfiguration<Jou
         builder.Property(x => x.Debit).HasColumnType("numeric(19,4)").IsRequired();
         builder.Property(x => x.Credit).HasColumnType("numeric(19,4)").IsRequired();
         builder.Property(x => x.Description).HasMaxLength(500);
-        // Optional same-module cost-center reference (nullable). Indexed to support
-        // the cost-center-filtered Budget vs-actual sum without a full table scan.
-        // No FK constraint declared: existence is validated in the command handler,
-        // keeping the reference consistent with how AccountId is treated on this line.
+        // Multidimensional accounting dimension references (nullable). Indexed to support
+        // dimension-filtered GL queries without full table scans.
         builder.Property(x => x.CostCenterId);
         builder.HasIndex(x => x.CostCenterId);
+
+        builder.Property(x => x.DepartmentId);
+        builder.HasIndex(x => x.DepartmentId);
+
+        builder.Property(x => x.ProjectId);
+        builder.HasIndex(x => x.ProjectId);
+
+        builder.Property(x => x.LocationId);
+        builder.HasIndex(x => x.LocationId);
+
+        // FX revaluation support (RevalueForeignCurrencyBalancesCommandHandler) — both null
+        // for ordinary base-currency lines, both set together for a line whose Debit/Credit
+        // represents a converted foreign-currency transaction.
+        builder.Property(x => x.ForeignCurrencyCode).HasMaxLength(3);
+        builder.Property(x => x.ForeignAmount).HasColumnType("numeric(19,4)");
+        builder.HasIndex(x => x.ForeignCurrencyCode);
     }
 }

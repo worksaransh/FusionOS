@@ -3,12 +3,14 @@ using FusionOS.Modules.Sales.Domain.Commissions;
 using FusionOS.Modules.Sales.Domain.CreditNotes;
 using FusionOS.Modules.Sales.Domain.Discounts;
 using FusionOS.Modules.Sales.Domain.Dispatches;
+using FusionOS.Modules.Sales.Domain.EWayBills;
 using FusionOS.Modules.Sales.Domain.Invoices;
 using FusionOS.Modules.Sales.Domain.PortalUsers;
 using FusionOS.Modules.Sales.Domain.PriceLists;
 using FusionOS.Modules.Sales.Domain.Quotations;
 using FusionOS.Modules.Sales.Domain.Returns;
 using FusionOS.Modules.Sales.Domain.SalesOrders;
+using FusionOS.Modules.Sales.Domain.Settings;
 using FusionOS.SharedKernel.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,6 +26,7 @@ public sealed class SalesDbContext : BaseDbContext
     public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Dispatch> Dispatches => Set<Dispatch>();
+    public DbSet<EWayBill> EWayBills => Set<EWayBill>();
     public DbSet<CreditNote> CreditNotes => Set<CreditNote>();
     public DbSet<Quotation> Quotations => Set<Quotation>();
     public DbSet<PriceList> PriceLists => Set<PriceList>();
@@ -31,6 +34,7 @@ public sealed class SalesDbContext : BaseDbContext
     public DbSet<DiscountRule> DiscountRules => Set<DiscountRule>();
     public DbSet<SalesReturn> SalesReturns => Set<SalesReturn>();
     public DbSet<CustomerPortalUser> CustomerPortalUsers => Set<CustomerPortalUser>();
+    public DbSet<GstComplianceSettings> GstComplianceSettings => Set<GstComplianceSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

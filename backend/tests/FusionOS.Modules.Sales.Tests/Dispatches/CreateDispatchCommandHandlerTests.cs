@@ -1,3 +1,4 @@
+using FusionOS.Modules.Sales.Application.Customers.Contracts;
 using FusionOS.BuildingBlocks.Application.Exceptions;
 using FusionOS.Modules.Sales.Application.Dispatches.Commands.CreateDispatch;
 using FusionOS.Modules.Sales.Application.Dispatches.Contracts;

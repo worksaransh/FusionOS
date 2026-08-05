@@ -3,6 +3,12 @@
   <ItemGroup>
     <ProjectReference Include="../FusionOS.Modules.Finance.Domain/FusionOS.Modules.Finance.Domain.csproj" />
     <ProjectReference Include="../../../Shared/FusionOS.BuildingBlocks.Application/FusionOS.BuildingBlocks.Application.csproj" />
+    <!-- Phase 2.4 (multi-entity/subsidiary consolidation): GetConsolidatedTrialBalanceQuery
+         needs Core's ICompanyRepository/CompanyDto to walk the ParentCompanyId hierarchy.
+         Core.Application has no reciprocal reference to Finance, so this stays one-directional;
+         both modules still share a single DI container at the Host (all modules are registered
+         into one IServiceCollection), so ICompanyRepository resolves at runtime as normal. -->
+    <ProjectReference Include="../../Core/FusionOS.Modules.Core.Application/FusionOS.Modules.Core.Application.csproj" />
   </ItemGroup>
 
 </Project>

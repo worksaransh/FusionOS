@@ -10,7 +10,10 @@ public static class DependencyInjection
     /// <summary>
     /// Registers MediatR + FluentValidation + the standard pipeline for a module's
     /// Application assembly. Pipeline order is deliberate: log everything first,
-    /// reject invalid input before checking permissions, audit only what succeeds.
+    /// reject invalid input before checking permissions, check plan entitlement
+    /// immediately after RBAC permission (same "is this allowed at all" family of
+    /// check, just plan-scoped instead of user-scoped — see PlanEntitlementBehavior's
+    /// own doc comment), then tenant-scope, then audit only what succeeds.
     /// </summary>
     public static IServiceCollection AddModuleApplication(this IServiceCollection services, Assembly assembly)
     {
@@ -20,6 +23,7 @@ public static class DependencyInjection
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+        services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(PlanEntitlementBehavior<,>));
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(TenantIsolationBehavior<,>));
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(AuditBehavior<,>));
 
